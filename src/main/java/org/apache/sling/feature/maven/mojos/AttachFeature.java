@@ -22,11 +22,14 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.io.json.FeatureJSONReader.SubstituteVariables;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
@@ -73,5 +76,20 @@ public class AttachFeature extends AbstractFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         attach(ProjectHelper.getFeature(this.project), FeatureConstants.FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_FEATURE);
         attach(ProjectHelper.getTestFeature(this.project), FeatureConstants.TEST_FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_TEST_FEATURE);
+
+        // Find all features that have a classifier and attach each of them
+        String processedFeatures = project.getBuild().getDirectory() + "/features/processed";
+        for (File f : new File(processedFeatures).listFiles((d,f) -> f.endsWith(".json"))) {
+            try {
+                Feature feat = FeatureJSONReader.read(new FileReader(f), null, SubstituteVariables.NONE);
+                String classifier = feat.getId().getClassifier();
+                if (classifier == null || classifier.length() == 0)
+                    continue;
+                projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, classifier, f);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Unable to attach embedded features", e);
+            }
+        }
+
     }
 }
