@@ -1,0 +1,8 @@
+{
+  "id":"testing:test_b:1.0.0",
+  "configurations": {
+    "some.pid": {
+      "x": "y"
+    }
+  }
+}

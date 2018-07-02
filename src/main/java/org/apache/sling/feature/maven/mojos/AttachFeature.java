@@ -77,8 +77,12 @@ public class AttachFeature extends AbstractFeatureMojo {
         attach(ProjectHelper.getFeature(this.project), FeatureConstants.FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_FEATURE);
         attach(ProjectHelper.getTestFeature(this.project), FeatureConstants.TEST_FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_TEST_FEATURE);
 
+        attachClassifierFeatures();
+    }
+
+    void attachClassifierFeatures() throws MojoExecutionException {
         // Find all features that have a classifier and attach each of them
-        String processedFeatures = project.getBuild().getDirectory() + "/features/processed";
+        String processedFeatures = project.getBuild().getDirectory() + FeatureConstants.FEATURE_PROCESSED_LOCATION;
         for (File f : new File(processedFeatures).listFiles((d,f) -> f.endsWith(".json"))) {
             try {
                 Feature feat = FeatureJSONReader.read(new FileReader(f), null, SubstituteVariables.NONE);
@@ -90,6 +94,5 @@ public class AttachFeature extends AbstractFeatureMojo {
                 throw new MojoExecutionException("Unable to attach embedded features", e);
             }
         }
-
     }
 }

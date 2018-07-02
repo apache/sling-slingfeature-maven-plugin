@@ -18,7 +18,7 @@ package org.apache.sling.feature.maven;
 
 public abstract class FeatureConstants {
 
-    public static final String PACKAGING_FEATURE = "osgifeature";
+    public static final String PACKAGING_FEATURE = "slingfeature";
 
     public static final String PACKAGING_APPLICATION = "osgiapp";
 
@@ -27,6 +27,8 @@ public abstract class FeatureConstants {
     public static final String CLASSIFIER_TEST_FEATURE = "testfeature";
 
     public static final String FEATURE_ARTIFACT_NAME = "feature.json";
+
+    public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
 
     public static final String TEST_FEATURE_ARTIFACT_NAME = "testfeature.json";
 }
