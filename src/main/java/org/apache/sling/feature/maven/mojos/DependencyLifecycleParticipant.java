@@ -42,7 +42,7 @@ public class DependencyLifecycleParticipant extends AbstractMavenLifecyclePartic
     /**
      * The plugin ID consists of <code>groupId:artifactId</code>, see {@link Plugin#constructKey(String, String)}
      */
-    private static final String PLUGIN_ID = "org.apache.sling:osgifeature-maven-plugin";
+    private static final String PLUGIN_ID = "org.apache.sling:slingfeature-maven-plugin";
 
     @Requirement
     private Logger logger;

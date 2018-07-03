@@ -111,6 +111,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     protected MavenProjectHelper projectHelper;
 
     protected File getTmpDir() {
-        return new File(this.project.getBuild().getDirectory(), "osgifeature-tmp");
+        return new File(this.project.getBuild().getDirectory(), "slingfeature-tmp");
     }
 }
