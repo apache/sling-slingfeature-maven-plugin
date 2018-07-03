@@ -29,13 +29,16 @@ public class AttachFeatureTest {
     @Test
     public void testAttachArtifacts() throws Exception {
         File feat_a = new File(getClass().getResource("/attach-resources/features/processed/test_a.json").toURI());
-        File feat_c = new File(getClass().getResource("/attach-resources/features/processed/test_c.json").toURI());
+        File feat_d = new File(getClass().getResource("/attach-resources/features/processed/test_d.json").toURI());
         File featuresDir = feat_a.getParentFile().getParentFile().getParentFile();
 
         Build build = new Build();
         build.setDirectory(featuresDir.getCanonicalPath());
 
         MavenProject project = new MavenProject();
+        project.setGroupId("testing");
+        project.setArtifactId("test");
+        project.setVersion("1.0.1");
         project.setBuild(build);
 
         AttachFeature af = new AttachFeature();
@@ -46,6 +49,7 @@ public class AttachFeatureTest {
 
         af.attachClassifierFeatures();
         Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", feat_a);
-        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testc", feat_c);
+        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", feat_d);
+        Mockito.verifyNoMoreInteractions(helper);
     }
 }

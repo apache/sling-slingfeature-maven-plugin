@@ -21,6 +21,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONReader.SubstituteVariables;
@@ -65,6 +66,8 @@ public class AttachFeature extends AbstractFeatureMojo {
                  && (FeatureConstants.CLASSIFIER_FEATURE.equals(classifier))) {
                 project.getArtifact().setFile(outputFile);
             } else {
+                // TODO do we need to check that the feature's GAV matches the project's GAV?
+
                 // otherwise attach it as an additional artifact
                 projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
                     classifier, outputFile);
@@ -86,7 +89,17 @@ public class AttachFeature extends AbstractFeatureMojo {
         for (File f : new File(processedFeatures).listFiles((d,f) -> f.endsWith(".json"))) {
             try {
                 Feature feat = FeatureJSONReader.read(new FileReader(f), null, SubstituteVariables.NONE);
-                String classifier = feat.getId().getClassifier();
+
+                ArtifactId aid = feat.getId();
+                // Only attach features that have the same GAV, they will differ in classifier
+                if (!aid.getGroupId().equals(project.getGroupId()))
+                    continue;
+                if (!aid.getArtifactId().equals(project.getArtifactId()))
+                    continue;
+                if (!aid.getVersion().equals(project.getVersion()))
+                    continue;
+
+                String classifier = aid.getClassifier();
                 if (classifier == null || classifier.length() == 0)
                     continue;
                 projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, classifier, f);
