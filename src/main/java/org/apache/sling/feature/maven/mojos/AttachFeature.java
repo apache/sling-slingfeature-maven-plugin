@@ -86,7 +86,15 @@ public class AttachFeature extends AbstractFeatureMojo {
     void attachClassifierFeatures() throws MojoExecutionException {
         // Find all features that have a classifier and attach each of them
         String processedFeatures = project.getBuild().getDirectory() + FeatureConstants.FEATURE_PROCESSED_LOCATION;
-        for (File f : new File(processedFeatures).listFiles((d,f) -> f.endsWith(".json"))) {
+
+        File featuresDir = new File(processedFeatures);
+        if (!featuresDir.isDirectory()) {
+            featuresDir = new File(project.getBasedir(), "src/main/features");
+            if (!featuresDir.isDirectory()) {
+                return;
+            }
+        }
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
             try {
                 Feature feat = FeatureJSONReader.read(new FileReader(f), null, SubstituteVariables.NONE);
 
