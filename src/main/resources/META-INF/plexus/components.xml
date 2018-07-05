@@ -100,7 +100,7 @@
         <type>slingfeature</type>
         <includesDependencies>false</includesDependencies>
         <language>json</language>
-        <extension>json</extension>
+        <extension>slingfeature</extension>
         <addedToClasspath>false</addedToClasspath>
       </configuration>
     </component>
