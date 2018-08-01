@@ -27,7 +27,7 @@
 
     <name>Apache Sling OSGi Feature Maven Plugin</name>
     <description>
-        Maven Plugin for OSGi Applicatgions
+        Maven Plugin for OSGi Applications
     </description>
 
     <properties>
