@@ -23,6 +23,7 @@
                 <goals>
                     <goal>process-resources</goal>
                     <goal>attach-feature</goal>
+                    <goal>aggregate-features</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>

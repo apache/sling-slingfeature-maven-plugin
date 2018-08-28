@@ -83,9 +83,9 @@ public class GenerateResourceTest {
         Mockito.when(mp.getArtifactId()).thenReturn("a.b.c");
         Mockito.when(mp.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
-        assertEquals("xxxabcyyy", GenerateResources.replaceVars(mp,
+        assertEquals("xxxabcyyy", Substitution.replaceMavenVars(mp,
                 "xxx${project.groupId}yyy"));
-        assertEquals("xxxabcyyya.b.c1.2.3-SNAPSHOT", GenerateResources.replaceVars(mp,
+        assertEquals("xxxabcyyya.b.c1.2.3-SNAPSHOT", Substitution.replaceMavenVars(mp,
                 "xxx${project.groupId}yyy${project.artifactId}${project.version}"));
     }
 

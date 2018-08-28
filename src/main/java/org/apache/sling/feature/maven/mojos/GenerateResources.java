@@ -22,12 +22,10 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.maven.FeatureConstants;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 
 @Mojo(
         name = "generate-resources",
@@ -44,7 +42,7 @@ public class GenerateResources extends AbstractFeatureMojo {
         if (files == null)
             return;
 
-        File processedFeaturesDir = new File(project.getBuild().getDirectory(), "features/processed");
+        File processedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);
         processedFeaturesDir.mkdirs();
 
         for (File f : files) {
@@ -53,35 +51,10 @@ public class GenerateResources extends AbstractFeatureMojo {
             }
 
             try {
-                substituteVars(project, f, processedFeaturesDir);
+                Substitution.substituteMavenVars(project, f, processedFeaturesDir);
             } catch (IOException e) {
                 throw new MojoExecutionException("Problem processing feature file " + f.getAbsolutePath(), e);
             }
         }
-    }
-
-    private static File substituteVars(MavenProject project, File f, File processedFeaturesDir) throws IOException {
-        File file = new File(processedFeaturesDir, f.getName());
-
-        if (file.exists() && file.lastModified() > f.lastModified()) {
-            // The file already exists, so we don't need to write it again
-            return file;
-        }
-
-        try (FileWriter fw = new FileWriter(file)) {
-            for (String s : Files.readAllLines(f.toPath())) {
-                fw.write(replaceVars(project, s));
-                fw.write(System.getProperty("line.separator"));
-            }
-        }
-        return file;
-    }
-
-    static String replaceVars(MavenProject project, String s) {
-        // There must be a better way than enumerating all these?
-        s = s.replaceAll("\\Q${project.groupId}\\E", project.getGroupId());
-        s = s.replaceAll("\\Q${project.artifactId}\\E", project.getArtifactId());
-        s = s.replaceAll("\\Q${project.version}\\E", project.getVersion());
-        return s;
     }
 }
