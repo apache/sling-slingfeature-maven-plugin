@@ -60,23 +60,23 @@ import java.util.stream.Collectors;
     threadSafe = true
 )
 public class AggregateFeatures extends AbstractFeatureMojo {
-    @Parameter(required=false)
-    private String classifier;
+    @Parameter(required = true)
+    String classifier;
 
-    @Parameter
-    private List<FeatureConfig> features;
+    @Parameter(required = true)
+    List<FeatureConfig> features;
 
     @Parameter(property = "project.remoteArtifactRepositories", readonly = true, required = true)
-    protected List<ArtifactRepository> remoteRepositories;
+    List<ArtifactRepository> remoteRepositories;
 
     @Parameter(property = "localRepository", readonly = true, required = true)
-    protected ArtifactRepository localRepository;
+    ArtifactRepository localRepository;
 
     @Component
-    private RepositorySystem repoSystem;
+    RepositorySystem repoSystem;
 
     @Component
-    private ArtifactResolver artifactResolver;
+    ArtifactResolver artifactResolver;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -130,9 +130,9 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 fc.groupId, fc.artifactId, fc.version, fc.type, fc.classifier);
 
         ArtifactResolutionRequest resReq = new ArtifactResolutionRequest()
-                .setArtifact(art)
-                .setLocalRepository(localRepository)
-                .setRemoteRepositories(remoteRepositories);
+            .setArtifact(art)
+            .setLocalRepository(localRepository)
+            .setRemoteRepositories(remoteRepositories);
         artifactResolver.resolve(resReq);
 
         File artFile = art.getFile();
