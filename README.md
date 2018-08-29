@@ -16,7 +16,7 @@ This goal processed feature files to substitute Maven variable placeholders in f
 ### attach-feature
 Attach feature files to the projects produced artifacts
 
-### assemble-feature
+### aggregate-features
 Produce an assembled feature from a list of features.
 
 Sample configuration:
