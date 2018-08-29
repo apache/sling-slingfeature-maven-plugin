@@ -44,7 +44,11 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -99,6 +103,66 @@ public class AggregateFeaturesTest {
         assertEquals("1.2.3", fc.version);
         assertEquals("slingfeature", fc.type);
         assertEquals("clf1", fc.classifier);
+    }
+
+    @Test
+    public void testAggregateFeaturesFromDirectory() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir").getFile());
+
+        FeatureConfig fc = new FeatureConfig();
+        fc.location = featuresDir.getAbsolutePath();
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "aggregated";
+        af.features = Collections.singletonList(fc);
+        af.project = mockProj;
+
+        af.execute();
+
+        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
+        try (Reader fr = new FileReader(expectedFile)) {
+            Feature genFeat = FeatureJSONReader.read(fr, null, FeatureJSONReader.SubstituteVariables.NONE);
+            ArtifactId id = genFeat.getId();
+
+            assertEquals("org.foo", id.getGroupId());
+            assertEquals("org.foo.bar", id.getArtifactId());
+            assertEquals("1.2.3-SNAPSHOT", id.getVersion());
+            assertEquals("slingfeature", id.getType());
+            assertEquals("aggregated", id.getClassifier());
+
+            int numBundlesFound = 0;
+            for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
+                numBundlesFound++;
+
+                ArtifactId expectedBundleCoords =
+                        new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null);
+                assertEquals(expectedBundleCoords, art.getId());
+            }
+            assertEquals("Expected only one bundle", 1, numBundlesFound);
+
+            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+            expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
+            Dictionary<String, Object> dict = new Hashtable<>();
+            dict.put("foo", 123L);
+            dict.put("bar", Boolean.TRUE);
+            expectedConfigs.put("another.pid", dict);
+
+            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+                actualConfigs.put(conf.getPid(), conf.getProperties());
+            }
+            assertEquals(expectedConfigs, actualConfigs);
+        }
     }
 
     @Test
@@ -168,15 +232,14 @@ public class AggregateFeaturesTest {
             assertEquals("mynewfeature", id.getClassifier());
 
             int numFound = 0;
-            for (org.apache.sling.feature.Artifact art :
-                (Iterable<org.apache.sling.feature.Artifact>) () -> genFeat.getBundles().iterator()) {
+            for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
                 numFound++;
 
                 ArtifactId expectedBundleCoords =
                         new ArtifactId("mygroup", "org.apache.aries.util", "1.1.3", null, null);
                 assertEquals(expectedBundleCoords, art.getId());
             }
-            assertEquals("Expectec only one bundle", 1, numFound);
+            assertEquals("Expected only one bundle", 1, numFound);
         }
     }
 
