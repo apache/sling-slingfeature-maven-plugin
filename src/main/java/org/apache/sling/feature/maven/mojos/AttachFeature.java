@@ -24,7 +24,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.io.json.FeatureJSONReader.SubstituteVariables;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -96,7 +95,7 @@ public class AttachFeature extends AbstractFeatureMojo {
         }
         for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
             try {
-                Feature feat = FeatureJSONReader.read(new FileReader(f), null, SubstituteVariables.NONE);
+                Feature feat = FeatureJSONReader.read(new FileReader(f), null);
 
                 ArtifactId aid = feat.getId();
                 // Only attach features that have the same GAV, they will differ in classifier

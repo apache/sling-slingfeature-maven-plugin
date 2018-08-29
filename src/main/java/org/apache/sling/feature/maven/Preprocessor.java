@@ -16,15 +16,6 @@
  */
 package org.apache.sling.feature.maven;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.Artifact;
@@ -36,8 +27,16 @@ import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.io.json.FeatureJSONReader.SubstituteVariables;
 import org.codehaus.plexus.logging.Logger;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The processor processes all feature projects.
@@ -193,7 +192,7 @@ public class Preprocessor {
 
                 // We should pass in an "id" to FeatureJSONReader.read and later on check the id (again, need to handle ref files)
                 try (final FileReader reader = new FileReader(file)) {
-                    final Feature feature = FeatureJSONReader.read(reader, id, file.getAbsolutePath(), SubstituteVariables.RESOLVE);
+                    final Feature feature = FeatureJSONReader.read(reader, id, file.getAbsolutePath());
 
                     this.checkFeatureId(id, feature);
 
@@ -368,7 +367,7 @@ public class Preprocessor {
         if ( config.getInlinedFeature() != null ) {
             logger.debug("Reading inlined model from project " + project.getId());
             try (final Reader reader = new StringReader(config.getInlinedFeature())) {
-                feature = FeatureJSONReader.read(reader, id, null, SubstituteVariables.RESOLVE);
+                feature = FeatureJSONReader.read(reader, id, null);
             } catch ( final IOException io) {
                 throw new RuntimeException("Unable to read inlined feature", io);
             }
@@ -379,7 +378,7 @@ public class Preprocessor {
             }
             logger.debug("Reading feature " + featureFile + " in project " + project.getId());
             try (final FileReader reader = new FileReader(featureFile)) {
-                feature = FeatureJSONReader.read(reader, id, featureFile.getAbsolutePath(), SubstituteVariables.RESOLVE);
+                feature = FeatureJSONReader.read(reader, id, featureFile.getAbsolutePath());
             } catch ( final IOException io) {
                 throw new RuntimeException("Unable to read feature " + featureFile, io);
             }
@@ -502,7 +501,7 @@ public class Preprocessor {
                     // "external" dependency, we can already resolve it
                     final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
                     try (final FileReader r = new FileReader(featureFile)) {
-                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath(), SubstituteVariables.RESOLVE);
+                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
                     } catch ( final IOException ioe) {
                         env.logger.error("Unable to read feature file from " + featureFile, ioe);
                     }

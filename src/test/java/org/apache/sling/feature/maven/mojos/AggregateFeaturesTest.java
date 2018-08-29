@@ -132,7 +132,7 @@ public class AggregateFeaturesTest {
 
         File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
         try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null, FeatureJSONReader.SubstituteVariables.NONE);
+            Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
 
             assertEquals("org.foo", id.getGroupId());
@@ -196,7 +196,7 @@ public class AggregateFeaturesTest {
 
         File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
         try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null, FeatureJSONReader.SubstituteVariables.NONE);
+            Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
 
             assertEquals("org.foo", id.getGroupId());
@@ -288,7 +288,7 @@ public class AggregateFeaturesTest {
 
         File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/mynewfeature.json");
         try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null, FeatureJSONReader.SubstituteVariables.NONE);
+            Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
             assertEquals("mygroup", id.getGroupId());
             assertEquals("myart", id.getArtifactId());

@@ -90,12 +90,13 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 .map(Include::new)
                 .collect(Collectors.toList()));
 
-        Feature result = FeatureBuilder.assemble(newFeature, new BuilderContext(new FeatureProvider() {
+        BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
             @Override
             public Feature provide(ArtifactId id) {
                 return featureMap.get(id);
             }
-        }));
+        }); //.add(handlers)
+        Feature result = FeatureBuilder.assemble(newFeature, builderContext);
 
         File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);
         aggregatedFeaturesDir.mkdirs();
@@ -174,7 +175,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     private void readFeatureFromFile(File f, Map<ArtifactId, Feature> featureMap) throws IOException {
         String content = new String(Files.readAllBytes(f.toPath()));
         content = Substitution.replaceMavenVars(project, content);
-        Feature feat = FeatureJSONReader.read(new StringReader(content), null, FeatureJSONReader.SubstituteVariables.NONE);
+        Feature feat = FeatureJSONReader.read(new StringReader(content), null);
         featureMap.put(feat.getId(), feat);
     }
 

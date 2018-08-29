@@ -32,7 +32,6 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
-import org.apache.sling.feature.io.json.FeatureJSONReader.SubstituteVariables;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.io.IOException;
@@ -96,7 +95,7 @@ public abstract class ProjectHelper {
                 result = null;
             } else {
                 try ( final StringReader r = new StringReader(text) ) {
-                    result = FeatureJSONReader.read(r, project.getId(), SubstituteVariables.RESOLVE);
+                    result = FeatureJSONReader.read(r, project.getId());
                     project.setContextValue(cacheKey, result);
                 } catch ( final IOException ioe) {
                     throw new RuntimeException(ioe.getMessage(), ioe);
@@ -125,7 +124,7 @@ public abstract class ProjectHelper {
                         throw new RuntimeException("Unable to get feature from internal store.");
                     }
                     try ( final StringReader r = new StringReader(text) ) {
-                        final Feature feature = FeatureJSONReader.read(r, project.getId(), SubstituteVariables.RESOLVE);
+                        final Feature feature = FeatureJSONReader.read(r, project.getId());
                         result.add(feature);
                     } catch ( final IOException ioe) {
                         throw new RuntimeException(ioe.getMessage(), ioe);
