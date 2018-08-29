@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -108,10 +109,74 @@ public class AggregateFeaturesTest {
     @Test
     public void testAggregateFeaturesFromDirectory() throws Exception {
         File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir2").getFile());
+
+        FeatureConfig fc = new FeatureConfig();
+        fc.setLocation(featuresDir.getAbsolutePath());
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "aggregated";
+        af.features = Collections.singletonList(fc);
+        af.project = mockProj;
+
+        af.execute();
+
+        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
+        try (Reader fr = new FileReader(expectedFile)) {
+            Feature genFeat = FeatureJSONReader.read(fr, null, FeatureJSONReader.SubstituteVariables.NONE);
+            ArtifactId id = genFeat.getId();
+
+            assertEquals("org.foo", id.getGroupId());
+            assertEquals("org.foo.bar", id.getArtifactId());
+            assertEquals("1.2.3-SNAPSHOT", id.getVersion());
+            assertEquals("slingfeature", id.getType());
+            assertEquals("aggregated", id.getClassifier());
+
+            Set<ArtifactId> expectedBundles = new HashSet<>();
+            expectedBundles.add(
+                    new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null));
+            expectedBundles.add(
+                    new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null));
+            Set<ArtifactId> actualBundles = new HashSet<>();
+            for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
+                actualBundles.add(art.getId());
+            }
+            assertEquals(expectedBundles, actualBundles);
+
+            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+            expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
+            Dictionary<String, Object> dict = new Hashtable<>();
+            dict.put("foo", 123L);
+            dict.put("bar", Boolean.TRUE);
+            expectedConfigs.put("another.pid", dict);
+
+            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+                actualConfigs.put(conf.getPid(), conf.getProperties());
+            }
+            assertEquals(expectedConfigs, actualConfigs);
+        }
+    }
+
+    @Test
+    public void testAggregateFeaturesFromDirectoryWithIncludesExcludes() throws Exception {
+        File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.location = featuresDir.getAbsolutePath();
+        fc.setLocation(featuresDir.getAbsolutePath());
+        fc.setIncludes("*.json");
+        fc.setExcludes("*_v*");
+        fc.setExcludes("test_w.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());

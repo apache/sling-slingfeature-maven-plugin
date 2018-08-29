@@ -140,9 +140,35 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     }
 
     private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap) throws IOException {
+        nextFile:
         for (File f : new File(fc.location).listFiles()) {
+            boolean matchesIncludes = fc.includes.size() == 0;
+            for (String inc : fc.includes) {
+                inc = convertGlobToRegex(inc);
+                if (f.getName().matches(inc)) {
+                    matchesIncludes = true;
+                    break;
+                }
+            }
+
+            if (!matchesIncludes)
+                continue nextFile;
+
+            for (String exc : fc.excludes) {
+                exc = convertGlobToRegex(exc);
+                if (f.getName().matches(exc)) {
+                    continue nextFile;
+                }
+            }
+
             readFeatureFromFile(f, featureMap);
         }
+    }
+
+    private String convertGlobToRegex(String glob) {
+        glob = glob.replace(".", "[.]");
+        glob = glob.replace("*", ".*");
+        return glob;
     }
 
     private void readFeatureFromFile(File f, Map<ArtifactId, Feature> featureMap) throws IOException {

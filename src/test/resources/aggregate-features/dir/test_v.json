@@ -1,0 +1,6 @@
+{
+  "id":"test:v:9.9.9",
+  "bundles":[
+    "org.apache.sling:someotherbundle:0.9"
+  ]
+}
