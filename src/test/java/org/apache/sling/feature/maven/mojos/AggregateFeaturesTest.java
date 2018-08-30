@@ -22,6 +22,7 @@ import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.model.Build;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.ArtifactId;
@@ -54,6 +55,8 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AggregateFeaturesTest {
     private Path tempDir;
@@ -181,6 +184,8 @@ public class AggregateFeaturesTest {
         FeatureConfig fc = new FeatureConfig();
         fc.setLocation(featuresDir.getAbsolutePath());
         fc.setIncludes("*.json");
+        fc.setIncludes("*.foobar");
+        fc.setIncludes("test_z.feature");
         fc.setExcludes("*_v*");
         fc.setExcludes("test_w.json");
 
@@ -233,6 +238,68 @@ public class AggregateFeaturesTest {
                 actualConfigs.put(conf.getPid(), conf.getProperties());
             }
             assertEquals(expectedConfigs, actualConfigs);
+        }
+    }
+
+    @Test
+    public void testNonMatchingDirectoryIncludes() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir").getFile());
+
+        FeatureConfig fc = new FeatureConfig();
+        fc.setLocation(featuresDir.getAbsolutePath());
+        fc.setIncludes("doesnotexist.json");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "aggregated";
+        af.features = Collections.singletonList(fc);
+        af.project = mockProj;
+
+        try {
+            af.execute();
+            fail("Should have thrown an exception because doesnotexist.json is not a file");
+        } catch (MojoExecutionException mee) {
+            assertTrue(mee.getCause().getMessage().contains("Non-wildcard include doesnotexist.json not found"));
+        }
+    }
+
+    @Test
+    public void testNonMatchingDirectoryExcludes() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir").getFile());
+
+        FeatureConfig fc = new FeatureConfig();
+        fc.setLocation(featuresDir.getAbsolutePath());
+        fc.setExcludes("doesnotexist.json");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "aggregated";
+        af.features = Collections.singletonList(fc);
+        af.project = mockProj;
+
+        try {
+            af.execute();
+            fail("Should have thrown an exception because doesnotexist.json is not a file");
+        } catch (MojoExecutionException mee) {
+            assertTrue(mee.getCause().getMessage().contains("Non-wildcard exclude doesnotexist.json not found"));
         }
     }
 

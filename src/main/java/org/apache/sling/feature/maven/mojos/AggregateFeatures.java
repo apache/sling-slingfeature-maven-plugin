@@ -47,6 +47,7 @@ import java.nio.file.Files;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -85,7 +86,11 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        Map<ArtifactId, Feature> featureMap = readFeatures(features);
+        File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);
+        aggregatedFeaturesDir.mkdirs();
+        Map<ArtifactId, Feature> contextFeatures = readFeaturesFromDirectory(aggregatedFeaturesDir);
+
+        Map<ArtifactId, Feature> featureMap = readFeatures(features, contextFeatures);
 
         ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                 project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);
@@ -98,16 +103,28 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
             @Override
             public Feature provide(ArtifactId id) {
-                return featureMap.get(id);
+                Feature f = featureMap.get(id);
+                if (f != null)
+                    return f;
+
+                // Check for the feature in the local context
+                f = contextFeatures.get(id);
+                if (f != null)
+                    return f;
+
+                // Finally, look the feature up via Maven's dependency mechanism
+                try {
+                    return readFeatureFromMavenArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(),
+                            id.getType(), id.getClassifier());
+                } catch (IOException e) {
+                    throw new RuntimeException("Cannot find feature: " + id, e);
+                }
             }
         }).add(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                 ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
                 .toArray(FeatureExtensionHandler[]::new));
 
         Feature result = FeatureBuilder.assemble(newFeature, builderContext);
-
-        File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);
-        aggregatedFeaturesDir.mkdirs();
 
         try (FileWriter fileWriter = new FileWriter(new File(aggregatedFeaturesDir, classifier + ".json"))) {
             FeatureJSONWriter.write(fileWriter, result);
@@ -116,7 +133,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         }
     }
 
-    private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs) throws MojoExecutionException {
+    private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs, Map<ArtifactId, Feature> contextFeatures) throws MojoExecutionException {
         Map<ArtifactId, Feature> featureMap = new HashMap<>();
 
         try {
@@ -124,7 +141,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 if (fc.location != null) {
                     readFeaturesFromDirectory(fc, featureMap);
                 } else if (fc.artifactId != null) {
-                    readFeaturesFromArtifact(fc, featureMap);
+                    readFeatureFromMavenArtifact(fc, featureMap, contextFeatures);
                 }
             }
         } catch (IOException e) {
@@ -134,9 +151,32 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         return featureMap;
     }
 
-    private void readFeaturesFromArtifact(FeatureConfig fc, Map<ArtifactId, Feature> featureMap) throws IOException {
+    private void readFeatureFromMavenArtifact(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,
+            Map<ArtifactId, Feature> contextFeatures) throws IOException {
+        ArtifactId id = new ArtifactId(fc.groupId, fc.artifactId, fc.version, fc.classifier, fc.type);
+        Feature f = contextFeatures.get(id);
+        if (f != null) {
+            featureMap.put(id, f);
+        } else {
+            f = readFeatureFromMavenArtifact(id);
+            if (f != null) {
+                featureMap.put(id, f);
+            }
+        }
+    }
+
+    private Feature readFeatureFromMavenArtifact(ArtifactId id) throws IOException {
+        return readFeatureFromMavenArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), id.getType(), id.getClassifier());
+    }
+
+    private Feature readFeatureFromMavenArtifact(String groupId, String artifactId, String version, String type, String classifier) throws IOException {
+        File artFile = resolveMavenArtifact(groupId, artifactId, version, type, classifier);
+        return readFeatureFromFile(artFile);
+    }
+
+    private File resolveMavenArtifact(String groupId, String artifactId, String version, String type, String classifier) {
         Artifact art = repoSystem.createArtifactWithClassifier(
-                fc.groupId, fc.artifactId, fc.version, fc.type, fc.classifier);
+                groupId, artifactId, version, type, classifier);
 
         ArtifactResolutionRequest resReq = new ArtifactResolutionRequest()
             .setArtifact(art)
@@ -145,17 +185,33 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         artifactResolver.resolve(resReq);
 
         File artFile = art.getFile();
-        readFeatureFromFile(artFile, featureMap);
+        return artFile;
     }
 
     private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap) throws IOException {
+        Map<String,String> includes = new HashMap<>();
+        Map<String,String> excludes = new HashMap<>();
+
+        for (String inc : fc.includes) {
+            includes.put(inc, convertGlobToRegex(inc));
+        }
+        for (String exc : fc.excludes) {
+            excludes.put(exc, convertGlobToRegex(exc));
+        }
+
         nextFile:
         for (File f : new File(fc.location).listFiles()) {
-            boolean matchesIncludes = fc.includes.size() == 0;
-            for (String inc : fc.includes) {
-                inc = convertGlobToRegex(inc);
+            // First check that it is allowed as part of the includes
+            boolean matchesIncludes = includes.size() == 0;
+
+            for (Iterator<String> it = includes.values().iterator(); it.hasNext(); ) {
+                String inc = it.next();
                 if (f.getName().matches(inc)) {
                     matchesIncludes = true;
+                    if (!isGlob(inc)) {
+                        // Not a glob
+                        it.remove();
+                    }
                     break;
                 }
             }
@@ -163,15 +219,51 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             if (!matchesIncludes)
                 continue nextFile;
 
-            for (String exc : fc.excludes) {
-                exc = convertGlobToRegex(exc);
+            // Ensure there is no exclusion for it
+            for (Iterator<String> it = excludes.values().iterator(); it.hasNext(); ) {
+                String exc = it.next();
                 if (f.getName().matches(exc)) {
+                    if (!isGlob(exc)) {
+                        // Not a glob
+                        it.remove();
+                    }
                     continue nextFile;
                 }
             }
 
-            readFeatureFromFile(f, featureMap);
+            Feature feat = readFeatureFromFile(f);
+            featureMap.put(feat.getId(), feat);
         }
+
+        // If there are any non-glob includes/excludes left, fail as the plugin is then incorrectly configured
+        for (Map.Entry<String,String> i : includes.entrySet()) {
+            if (!isGlob(i.getValue())) {
+                throw new IOException("Non-wildcard include " + i.getKey() + " not found.");
+            }
+        }
+        for (Map.Entry<String,String> e : excludes.entrySet()) {
+            if (!isGlob(e.getValue())) {
+                throw new IOException("Non-wildcard exclude " + e.getKey() + " not found.");
+            }
+        }
+    }
+
+    private boolean isGlob(String name) {
+        return name.contains("*");
+    }
+
+    private Map<ArtifactId, Feature> readFeaturesFromDirectory(File directory) throws MojoExecutionException {
+        Map<ArtifactId, Feature> m = new HashMap<>();
+        FeatureConfig fc = new FeatureConfig();
+        fc.setLocation(directory.getAbsolutePath());
+
+        try {
+            readFeaturesFromDirectory(fc, m);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Problem reading feature", e);
+        }
+
+        return m;
     }
 
     private String convertGlobToRegex(String glob) {
@@ -180,11 +272,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         return glob;
     }
 
-    private void readFeatureFromFile(File f, Map<ArtifactId, Feature> featureMap) throws IOException {
+    private Feature readFeatureFromFile(File f) throws IOException {
         String content = new String(Files.readAllBytes(f.toPath()));
         content = Substitution.replaceMavenVars(project, content);
-        Feature feat = FeatureJSONReader.read(new StringReader(content), null);
-        featureMap.put(feat.getId(), feat);
+        return FeatureJSONReader.read(new StringReader(content), null);
     }
 
     public static class FeatureConfig {
