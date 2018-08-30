@@ -57,10 +57,12 @@ import static org.junit.Assert.assertSame;
 
 public class AggregateFeaturesTest {
     private Path tempDir;
+    private static Map<String, ArtifactId> pluginCallbacks;
 
     @Before
     public void setup() throws Exception {
         tempDir = Files.createTempDirectory(getClass().getSimpleName());
+        pluginCallbacks = new HashMap<>();
     }
 
     @After
@@ -70,6 +72,10 @@ public class AggregateFeaturesTest {
             .sorted(Comparator.reverseOrder())
             .map(Path::toFile)
             .forEach(File::delete);
+    }
+
+    public static void addPluginCallback(String plugin, ArtifactId artifactId) {
+        pluginCallbacks.put(plugin, artifactId);
     }
 
     @Test
@@ -306,6 +312,40 @@ public class AggregateFeaturesTest {
             }
             assertEquals("Expected only one bundle", 1, numFound);
         }
+    }
+
+    @Test
+    public void testPluginHandling() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir3").getFile());
+
+        FeatureConfig fc = new FeatureConfig();
+        fc.setLocation(featuresDir.getAbsolutePath());
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "aggregated";
+        af.features = Collections.singletonList(fc);
+        af.project = mockProj;
+
+        assertEquals("Precondition", 0, pluginCallbacks.size());
+        af.execute();
+
+        ArtifactId id = new ArtifactId("org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", "slingfeature");
+        assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension1"));
+        assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension2"));
+        assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension3"));
+        assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension1"));
+        assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension2"));
+        assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension3"));
     }
 
     private RepositorySystem createMockRepo() {

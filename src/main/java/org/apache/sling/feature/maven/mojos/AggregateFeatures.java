@@ -33,6 +33,7 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.Include;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
+import org.apache.sling.feature.builder.FeatureExtensionHandler;
 import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
@@ -48,8 +49,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 /**
  * Aggregate multiple features into a single one.
@@ -95,7 +100,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             public Feature provide(ArtifactId id) {
                 return featureMap.get(id);
             }
-        }); //.add(handlers)
+        }).add(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
+                .toArray(FeatureExtensionHandler[]::new));
+
         Feature result = FeatureBuilder.assemble(newFeature, builderContext);
 
         File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);

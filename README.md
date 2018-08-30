@@ -17,7 +17,7 @@ This goal processed feature files to substitute Maven variable placeholders in f
 Attach feature files to the projects produced artifacts
 
 ### aggregate-features
-Produce an assembled feature from a list of features.
+Produce an aggregated feature from a list of features.
 
 Sample configuration:
 
@@ -58,6 +58,31 @@ Sample configuration:
 
 All features found in both the directories as well as the artifact sections of the configuration are aggregated into a single feature. 
 
-The generated feature will have the same `groupId`, `artifactId` and `version` as the pom in which 
+The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which 
 the aggregation is configured. It will have type `slingfeature` and as classifier the one specified 
 in the configuration.
+
+#### Extension merging
+
+Merging of extensions is specific to the extension being merged. Handlers can be provided to implement the logic of extension merging. A handler needs to implement the `org.apache.sling.feature.builder.FeatureExtensionHandler` and is looked up via the Java ServiceLoader mechanism.
+
+To provide additional handlers to the `slingfeature-maven-plugin`, list the artifacts in the `<dependencies>` 
+section of the plugin configuration:
+
+```
+  <plugin>
+    <groupId>org.apache.sling</groupId>
+    <artifactId>slingfeature-maven-plugin</artifactId>
+    <version>0.2.0-SNAPSHOT</version>
+    <executions>
+      ...
+    </executions>
+    <dependencies>
+      <dependency>
+        <groupId>org.apache.sling</groupId>
+        <artifactId>my-feature-extension-handler</artifactId>
+        <version>1.0.0</version>
+      </dependency>
+    </dependencies>
+  </plugin>  
+```
