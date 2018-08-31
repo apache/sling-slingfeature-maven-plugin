@@ -1,0 +1,8 @@
+{
+  "id":"test:w:9.9.9",
+  "configurations": {
+    "some.pid": {
+      "x": "z"
+    }
+  }
+}

@@ -30,7 +30,6 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.Include;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureExtensionHandler;
@@ -44,17 +43,16 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
-import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 /**
@@ -92,14 +90,6 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
         Map<ArtifactId, Feature> featureMap = readFeatures(features, contextFeatures);
 
-        ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
-                project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);
-        Feature newFeature = new Feature(newFeatureID);
-        newFeature.getIncludes().addAll(
-                featureMap.keySet().stream()
-                .map(Include::new)
-                .collect(Collectors.toList()));
-
         BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
             @Override
             public Feature provide(ArtifactId id) {
@@ -124,7 +114,9 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
                 .toArray(FeatureExtensionHandler[]::new));
 
-        Feature result = FeatureBuilder.assemble(newFeature, builderContext);
+        ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
+                project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);
+        Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
         try (FileWriter fileWriter = new FileWriter(new File(aggregatedFeaturesDir, classifier + ".json"))) {
             FeatureJSONWriter.write(fileWriter, result);
@@ -134,7 +126,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     }
 
     private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs, Map<ArtifactId, Feature> contextFeatures) throws MojoExecutionException {
-        Map<ArtifactId, Feature> featureMap = new HashMap<>();
+        Map<ArtifactId, Feature> featureMap = new LinkedHashMap<>();
 
         try {
             for (FeatureConfig fc : featureConfigs) {
@@ -189,6 +181,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     }
 
     private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap) throws IOException {
+        Map<String,Feature> readFeatures = new HashMap<>();
         Map<String,String> includes = new HashMap<>();
         Map<String,String> excludes = new HashMap<>();
 
@@ -202,7 +195,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         nextFile:
         for (File f : new File(fc.location).listFiles()) {
             // First check that it is allowed as part of the includes
-            boolean matchesIncludes = includes.size() == 0;
+            boolean matchesIncludes = fc.includes.size() == 0;
 
             for (Iterator<String> it = includes.values().iterator(); it.hasNext(); ) {
                 String inc = it.next();
@@ -232,8 +225,19 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             }
 
             Feature feat = readFeatureFromFile(f);
-            featureMap.put(feat.getId(), feat);
+            readFeatures.put(f.getName(), feat);
         }
+
+        // Ordering:
+        // put the read features in the main featureMap, order the non-globbed ones as specified in the plugin
+        for (String inc : fc.includes) {
+            Feature feat = readFeatures.remove(inc);
+            if (feat != null) {
+                featureMap.put(feat.getId(), feat);
+            }
+        }
+        // Put all the remaining features on the map
+        readFeatures.values().stream().forEach(f -> featureMap.put(f.getId(), f));
 
         // If there are any non-glob includes/excludes left, fail as the plugin is then incorrectly configured
         for (Map.Entry<String,String> i : includes.entrySet()) {
@@ -281,8 +285,8 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     public static class FeatureConfig {
         // If the configuration is a directory
         String location;
-        Set<String> includes = new HashSet<>();
-        Set<String> excludes = new HashSet<>();
+        List<String> includes = new ArrayList<>();
+        List<String> excludes = new ArrayList<>();
 
         // If the configuration is an artifact
         String groupId;

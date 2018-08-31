@@ -1,0 +1,11 @@
+{
+  "id":"test:u:9.9.9",
+  "configurations": {
+    "u.pid": {
+      "u": "u"
+    },
+    "y.pid": {
+      "y": "u"
+    }
+  }
+}

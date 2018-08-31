@@ -104,8 +104,8 @@ public class AggregateFeaturesTest {
         fc.setType("slingfeature");
         fc.setClassifier("clf1");
 
-        assertEquals(new HashSet<>(Arrays.asList("i1", "i2")), fc.includes);
-        assertEquals(Collections.singleton("e1"), fc.excludes);
+        assertEquals(Arrays.asList("i1", "i2"), fc.includes);
+        assertEquals(Collections.singletonList("e1"), fc.excludes);
 
         assertEquals("loc1", fc.location);
         assertEquals("gid1", fc.groupId);
@@ -300,6 +300,69 @@ public class AggregateFeaturesTest {
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
             assertTrue(mee.getCause().getMessage().contains("Non-wildcard exclude doesnotexist.json not found"));
+        }
+    }
+
+    @Test
+    public void testIncludeOrdering() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir4").getFile());
+
+        FeatureConfig fc1 = new FeatureConfig();
+        fc1.setLocation(featuresDir.getAbsolutePath());
+        fc1.setIncludes("test_x.json");
+
+        FeatureConfig fc2 = new FeatureConfig();
+        fc2.setLocation(featuresDir.getAbsolutePath());
+        fc2.setIncludes("test_u.json");
+        fc2.setIncludes("test_y.json");
+        fc2.setIncludes("test_v.json");
+        fc2.setIncludes("test_z.json");
+
+        FeatureConfig fc3 = new FeatureConfig();
+        fc3.setLocation(featuresDir.getAbsolutePath());
+        fc3.setIncludes("test_t.json");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("g");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("a");
+        Mockito.when(mockProj.getVersion()).thenReturn("999");
+
+        AggregateFeatures af = new AggregateFeatures();
+        af.classifier = "agg";
+        af.features = Arrays.asList(fc1, fc2, fc3);
+        af.project = mockProj;
+
+        af.execute();
+
+        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/agg.json");
+        try (Reader fr = new FileReader(expectedFile)) {
+            Feature genFeat = FeatureJSONReader.read(fr, null);
+            ArtifactId id = genFeat.getId();
+
+            assertEquals("g", id.getGroupId());
+            assertEquals("a", id.getArtifactId());
+            assertEquals("999", id.getVersion());
+            assertEquals("slingfeature", id.getType());
+            assertEquals("agg", id.getClassifier());
+
+            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+            expectedConfigs.put("t.pid", new Hashtable<>(Collections.singletonMap("t", "t")));
+            expectedConfigs.put("u.pid", new Hashtable<>(Collections.singletonMap("u", "u")));
+            expectedConfigs.put("v.pid", new Hashtable<>(Collections.singletonMap("v", "v")));
+            expectedConfigs.put("x.pid", new Hashtable<>(Collections.singletonMap("x", "x")));
+            expectedConfigs.put("y.pid", new Hashtable<>(Collections.singletonMap("y", "y")));
+            expectedConfigs.put("z.pid", new Hashtable<>(Collections.singletonMap("z", "z")));
+
+            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+                actualConfigs.put(conf.getPid(), conf.getProperties());
+            }
+            assertEquals(expectedConfigs, actualConfigs);
         }
     }
 

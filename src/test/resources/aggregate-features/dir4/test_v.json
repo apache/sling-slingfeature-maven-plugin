@@ -1,0 +1,11 @@
+{
+  "id":"test:v:9.9.9",
+  "configurations": {
+    "v.pid": {
+      "v": "v"
+    },
+    "z.pid": {
+      "z": "v"
+    }
+  }
+}
