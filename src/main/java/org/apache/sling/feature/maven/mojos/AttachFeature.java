@@ -37,7 +37,7 @@ import java.io.Writer;
 /**
  * Attach the feature as a project artifact.
  */
-@Mojo(name = "attach-feature",
+@Mojo(name = "attach-features",
       defaultPhase = LifecyclePhase.PACKAGE,
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true

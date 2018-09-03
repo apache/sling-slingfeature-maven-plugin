@@ -22,7 +22,7 @@
             <pluginExecutionFilter>
                 <goals>
                     <goal>process-resources</goal>
-                    <goal>attach-feature</goal>
+                    <goal>attach-features</goal>
                     <goal>aggregate-features</goal>
                 </goals>
             </pluginExecutionFilter>

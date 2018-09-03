@@ -13,9 +13,6 @@ Maven Plugin for OSGi Applications
 ### generate-resources
 This goal processed feature files to substitute Maven variable placeholders in feature files such as `${project.groupId}`, `${project.artifactId}` and `${project.version}`
 
-### attach-feature
-Attach feature files to the projects produced artifacts
-
 ### aggregate-features
 Produce an aggregated feature from a list of features.
 
@@ -86,3 +83,8 @@ section of the plugin configuration:
     </dependencies>
   </plugin>  
 ```
+
+### attach-features
+Attach feature files found in the project to the projects produced artifacts. This includes features 
+found in `src/main/features` as well as features produce with the `aggregate-features` goal.
+
