@@ -30,6 +30,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.KeyValueMap;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureExtensionHandler;
@@ -70,6 +71,12 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     @Parameter(required = true)
     List<FeatureConfig> features;
 
+    @Parameter(required = false)
+    Map<String,String> variables;
+
+    @Parameter(required = false)
+    Map<String,String> frameworkProperties;
+
     @Parameter(property = "project.remoteArtifactRepositories", readonly = true, required = true)
     List<ArtifactRepository> remoteRepositories;
 
@@ -90,6 +97,12 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
         Map<ArtifactId, Feature> featureMap = readFeatures(features, contextFeatures);
 
+        KeyValueMap variableOverrides = new KeyValueMap();
+        if (variables != null) {
+            for (Map.Entry<String, String> entry : variables.entrySet()) {
+                variableOverrides.put(entry.getKey(), entry.getValue());
+            }
+        }
         BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
             @Override
             public Feature provide(ArtifactId id) {
@@ -110,9 +123,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                     throw new RuntimeException("Cannot find feature: " + id, e);
                 }
             }
-        }).add(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+        }, variableOverrides, frameworkProperties)
+            .add(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                 ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
-                .toArray(FeatureExtensionHandler[]::new));
+            .toArray(FeatureExtensionHandler[]::new));
 
         ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                 project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);

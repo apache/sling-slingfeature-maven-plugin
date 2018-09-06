@@ -47,6 +47,15 @@ Sample configuration:
               <classifier>someclassifier</classifier>
             </artifact>
           </features>
+          <variables>
+            <!-- Feature variables can be specified/overridden here -->
+            <https.port>8443</https.port>
+            <some.variable/> <!-- set some.variable to null -->
+          </variables>
+          <frameworkProperties>
+            <!-- Framework property overrides go here -->
+            <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
+          </frameworkProperties>
         </configuration>
       </execution>
     </executions>
@@ -58,6 +67,12 @@ All features found in both the directories as well as the artifact sections of t
 The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which 
 the aggregation is configured. It will have type `slingfeature` and as classifier the one specified 
 in the configuration.
+
+Variables and framework properties can be overridden using the `<variables>` and 
+`<fraweworkProperties>` sections. If multiple definitions of the same variables are found
+in the feature that are to be aggregated and the values for these variables are different,
+they *must* be overridden, otherwise the aggregation will generate an error.
+
 
 #### Extension merging
 
