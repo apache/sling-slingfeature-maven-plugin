@@ -29,6 +29,7 @@
     <description>
         Maven Plugin for OSGi Applications
     </description>
+    <url>https://sling.apache.org/components/slingfeature-maven-plugin/</url>
 
     <properties>
         <sling.java.version>8</sling.java.version>
@@ -43,14 +44,6 @@
         <url>http://svn.apache.org/viewvc/sling/trunk/tooling/maven/osgifeature-maven-plugin</url>
     </scm>
     -->
-
-    <!-- Support for publishing the mvn site. -->
-    <distributionManagement>
-        <site>
-            <id>apache.website</id>
-            <url>scm:svn:https://svn.apache.org/repos/infra/websites/production/sling/content/components/${maven.site.path}</url>
-        </site>
-    </distributionManagement>
 
     <build>
         <plugins>
