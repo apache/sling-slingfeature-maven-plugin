@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Properties;
 
 class Substitution {
     static File substituteMavenVars(MavenProject project, File f, File processedFeaturesDir) throws IOException {
@@ -43,9 +44,22 @@ class Substitution {
 
     static String replaceMavenVars(MavenProject project, String s) {
         // There must be a better way than enumerating all these?
-        s = s.replaceAll("\\Q${project.groupId}\\E", project.getGroupId());
-        s = s.replaceAll("\\Q${project.artifactId}\\E", project.getArtifactId());
-        s = s.replaceAll("\\Q${project.version}\\E", project.getVersion());
+        s = replaceAll(s, "project.groupId", project.getGroupId());
+        s = replaceAll(s, "project.artifactId", project.getArtifactId());
+        s = replaceAll(s, "project.version", project.getVersion());
+
+
+        Properties props = project.getProperties();
+        if (props != null) {
+            for (String key : props.stringPropertyNames()) {
+                s = replaceAll(s, key, props.getProperty(key));
+            }
+        }
+
         return s;
+    }
+
+    private static String replaceAll(String s, String key, String value) {
+        return s.replaceAll("\\Q${" + key + "}\\E", value);
     }
 }
