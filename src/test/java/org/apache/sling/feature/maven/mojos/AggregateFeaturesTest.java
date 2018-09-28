@@ -16,35 +16,16 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.model.Build;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.DefaultMavenProjectHelper;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.ArtifactId;
@@ -57,6 +38,29 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+
+import java.io.File;
+import java.io.FileReader;
+import java.io.Reader;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AggregateFeaturesTest {
     private Path tempDir;
@@ -126,30 +130,43 @@ public class AggregateFeaturesTest {
         assertTrue(fc.isArtifact());
     }
 
-    //@Test
+    @Test
     public void testAggregateFeaturesFromDirectory() throws Exception {
         File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir2").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getName(), feat);
+        }
 
         FeatureConfig fc = new FeatureConfig();
+        fc.setIncludes("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
+        Artifact parentArtifact = createMockArtifact();
         MavenProject mockProj = Mockito.mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
 
         AggregateFeatures af = new AggregateFeatures();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FEATURE_PROCESSED_LOCATION + "/aggregated.json");
+        File expectedFile = new File(tempDir.toFile(), "/aggregated.json");
         try (Reader fr = new FileReader(expectedFile)) {
             Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
@@ -481,6 +498,15 @@ public class AggregateFeaturesTest {
         assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension3"));
     }
 
+    private Artifact createMockArtifact() {
+        Artifact parentArtifact = Mockito.mock(Artifact.class);
+        Mockito.when(parentArtifact.getGroupId()).thenReturn("gid");
+        Mockito.when(parentArtifact.getArtifactId()).thenReturn("aid");
+        Mockito.when(parentArtifact.getVersionRange()).thenReturn(VersionRange.createFromVersion("123"));
+        Mockito.when(parentArtifact.getType()).thenReturn("foo");
+        return parentArtifact;
+    }
+
     private RepositorySystem createMockRepo() {
         RepositorySystem repo = Mockito.mock(RepositorySystem.class);
         Mockito.when(repo.createArtifactWithClassifier(
@@ -500,5 +526,11 @@ public class AggregateFeaturesTest {
                 }
             });
         return repo;
+    }
+
+    private void setPrivateField(Object obj, String name, Object value) throws Exception {
+        Field f = obj.getClass().getDeclaredField(name);
+        f.setAccessible(true);
+        f.set(obj, value);
     }
 }
