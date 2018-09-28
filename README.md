@@ -8,13 +8,15 @@ This module is part of the [Apache Sling](https://sling.apache.org) project.
 
 Maven Plugin for OSGi Applications
 
+# Global Configuration
+
+* features : The directory containing the feature files. The default is `src/main/features` and all files ending with `.json` are read including all sub directories.
+
 ## Supported goals
 
-### generate-resources
-This goal processed feature files to substitute Maven variable placeholders in feature files such as `${project.groupId}`, `${project.artifactId}` and `${project.version}`
-
 ### aggregate-features
-Produce an aggregated feature from a list of features.
+
+Produce an aggregated feature from a list of features. The list of features is either specified by include/exclude patterns based on the configured features directory of the project or Maven coordinates of features.
 
 Sample configuration:
 
@@ -26,15 +28,13 @@ Sample configuration:
     <executions>
       <execution>
         <id>merge-features</id>
-        <phase>generate-resources</phase>
         <goals>
           <goal>aggregate-features</goal>
         </goals>
         <configuration>
-          <classifier>my-aggregated-feature</classifier>
+          <aggregateClassifier>my-aggregated-feature</aggregateClassifier>
           <aggregates>
             <directory>
-              <location>${basedir}/src/main/my-features</location>
               <includes>*.json</includes>
               <excludes>exclude-me.json</excludes>
               <excludes>exclude-me-too.json</excludes>
@@ -62,13 +62,11 @@ Sample configuration:
   </plugin>  
 ```
 
-All features found in both the directories as well as the artifact sections of the configuration are aggregated into a single feature. 
+All features found in the directory as well as the artifact sections of the configuration are aggregated into a single feature.
 
-The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which 
-the aggregation is configured. It will have type `slingfeature` and as classifier the one specified 
-in the configuration.
+The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which the aggregation is configured. It will have type `slingfeature` and as classifier the one specified in the configuration named `aggregateClassifier`.
 
-Variables and framework properties can be overridden using the `<variables>` and 
+Variables and framework properties can be overridden using the `<variables>` and
 `<fraweworkProperties>` sections. If multiple definitions of the same variables are found
 in the feature that are to be aggregated and the values for these variables are different,
 they *must* be overridden, otherwise the aggregation will generate an error.
@@ -78,7 +76,7 @@ they *must* be overridden, otherwise the aggregation will generate an error.
 
 Merging of extensions is specific to the extension being merged. Handlers can be provided to implement the logic of extension merging. A handler needs to implement the `org.apache.sling.feature.builder.FeatureExtensionHandler` and is looked up via the Java ServiceLoader mechanism.
 
-To provide additional handlers to the `slingfeature-maven-plugin`, list the artifacts in the `<dependencies>` 
+To provide additional handlers to the `slingfeature-maven-plugin`, list the artifacts in the `<dependencies>`
 section of the plugin configuration:
 
 ```
@@ -100,6 +98,5 @@ section of the plugin configuration:
 ```
 
 ### attach-features
-Attach feature files found in the project to the projects produced artifacts. This includes features 
+Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal.
-

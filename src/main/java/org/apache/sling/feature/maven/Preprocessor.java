@@ -43,6 +43,9 @@ import org.codehaus.plexus.logging.Logger;
 
 /**
  * The processor processes all feature projects.
+ *
+ * TODO - we should check that only one feature has no classifier
+ *        and that the classifiers are unique within the read set
  */
 public class Preprocessor {
 

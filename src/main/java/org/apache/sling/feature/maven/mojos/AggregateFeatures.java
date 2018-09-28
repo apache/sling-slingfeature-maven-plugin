@@ -25,13 +25,13 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.StringTokenizer;
 import java.util.stream.StreamSupport;
 
 import org.apache.maven.artifact.Artifact;
@@ -58,9 +58,13 @@ import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.Substitution;
+import org.codehaus.plexus.util.AbstractScanner;
 
 /**
  * Aggregate multiple features into a single one.
+ *
+ * TODO - check that classifier is not clashing with an already used classifier from the read
+ * files. We should also check if this mojo is configured several times, that different classifiers are configured.
  */
 @Mojo(name = "aggregate-features",
     defaultPhase = LifecyclePhase.PACKAGE,
@@ -73,7 +77,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     List<FeatureConfig> aggregates;
 
     @Parameter(required = true)
-    String classifier;
+    String aggregateClassifier;
 
     @Parameter(required = false)
     Map<String,String> variables;
@@ -95,13 +99,16 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        // get map of all project features
         final Map<String, Feature> projectFeatures = ProjectHelper.getFeatures(this.project);
-        Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
+        // ..and hash them by artifact id
+        final Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
         for(final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
             contextFeatures.put(entry.getValue().getId(), entry.getValue());
         }
 
-        Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
+        // get the map of features for this aggregate
+        final Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
 
         KeyValueMap variableOverrides = new KeyValueMap();
         if (variables != null) {
@@ -135,11 +142,11 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             .toArray(FeatureExtensionHandler[]::new));
 
         ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
-                project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);
+                project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
         Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
         // write the feature
-        final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + classifier + ".json");
+        final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + aggregateClassifier + ".json");
         outputFile.getParentFile().mkdirs();
 
         try ( final Writer writer = new FileWriter(outputFile)) {
@@ -150,19 +157,22 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
         // attach it as an additional artifact
         projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
-                classifier, outputFile);
+                aggregateClassifier, outputFile);
     }
 
     private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs,
-            Map<String, Feature> contextFeatures) throws MojoExecutionException {
-        Map<ArtifactId, Feature> featureMap = new LinkedHashMap<>();
+            Map<String, Feature> contextFeatures)
+    throws MojoExecutionException {
+        final Map<ArtifactId, Feature> featureMap = new LinkedHashMap<>();
 
         try {
-            for (FeatureConfig fc : featureConfigs) {
-                if (fc.location != null) {
+            for (final FeatureConfig fc : featureConfigs) {
+                if (fc.isDirectory()) {
                     readFeaturesFromDirectory(fc, featureMap, contextFeatures);
-                } else if (fc.artifactId != null) {
+                } else if (fc.isArtifact()) {
                     readFeatureFromMavenArtifact(fc, featureMap, contextFeatures);
+                } else {
+                    throw new MojoExecutionException("Invalid aggregate configuration: " + fc);
                 }
             }
         } catch (IOException e) {
@@ -172,6 +182,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         return featureMap;
     }
 
+    // TODO this only works for projects not being part of the reactor build
     private void readFeatureFromMavenArtifact(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,
             Map<String, Feature> contextFeatures) throws IOException {
         ArtifactId id = new ArtifactId(fc.groupId, fc.artifactId, fc.version, fc.classifier, fc.type);
@@ -215,100 +226,19 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         return artFile;
     }
 
-    private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,  Map<String, Feature> contextFeatures) throws IOException {
-        if ( fc.location.startsWith("/") || fc.location.startsWith(".") ) {
-            throw new IOException("Invalid location: " + fc.location);
+    private void readFeaturesFromDirectory(FeatureConfig fc,
+            Map<ArtifactId, Feature> featureMap,
+            Map<String, Feature> contextFeatures) throws IOException {
+        final FeatureScanner scanner = new FeatureScanner(contextFeatures);
+        if ( fc.includes.isEmpty() ) {
+            scanner.setIncludes(fc.includes.toArray(new String[fc.includes.size()]));
         }
-
-        final File f = new File(this.project.getBasedir(), fc.location.replace('/', File.separatorChar).replace('\\', File.separatorChar));
-        final String prefix = f.getAbsolutePath().concat(File.separator);
-        final Map<String, Feature> candidates = new LinkedHashMap<>();
-        for(final Map.Entry<String, Feature> entry : contextFeatures.entrySet()) {
-            if ( entry.getKey().startsWith(prefix) ) {
-                candidates.put(entry.getKey(), entry.getValue());
-            }
+        if ( fc.excludes.isEmpty() ) {
+            scanner.setExcludes(fc.excludes.toArray(new String[fc.excludes.size()]));
         }
+        scanner.scan();
 
-        Map<String,String> includes = new HashMap<>();
-        Map<String,String> excludes = new HashMap<>();
-
-        for (String inc : fc.includes) {
-            includes.put(inc, convertGlobToRegex(inc));
-        }
-        for (String exc : fc.excludes) {
-            excludes.put(exc, convertGlobToRegex(exc));
-        }
-        Map<String,Feature> readFeatures = new HashMap<>();
-
-        nextFile:
-        for (Map.Entry<String, Feature> entry : candidates.entrySet()) {
-            final String fileName = new File(entry.getKey()).getName();
-
-            // First check that it is allowed as part of the includes
-            boolean matchesIncludes = fc.includes.size() == 0;
-
-            for (Iterator<String> it = includes.values().iterator(); it.hasNext(); ) {
-                String inc = it.next();
-                if (fileName.matches(inc)) {
-                    matchesIncludes = true;
-                    if (!isGlob(inc)) {
-                        // Not a glob
-                        it.remove();
-                    }
-                    break;
-                }
-            }
-
-            if (!matchesIncludes)
-                continue nextFile;
-
-            // Ensure there is no exclusion for it
-            for (Iterator<String> it = excludes.values().iterator(); it.hasNext(); ) {
-                String exc = it.next();
-                if (fileName.matches(exc)) {
-                    if (!isGlob(exc)) {
-                        // Not a glob
-                        it.remove();
-                    }
-                    continue nextFile;
-                }
-            }
-
-            readFeatures.put(entry.getKey(), entry.getValue());
-        }
-
-        // Ordering:
-        // put the read features in the main featureMap, order the non-globbed ones as specified in the plugin
-        for (String inc : fc.includes) {
-            Feature feat = readFeatures.remove(inc);
-            if (feat != null) {
-                featureMap.put(feat.getId(), feat);
-            }
-        }
-        // Put all the remaining features on the map
-        readFeatures.values().stream().forEach(v -> featureMap.put(v.getId(), v));
-
-        // If there are any non-glob includes/excludes left, fail as the plugin is then incorrectly configured
-        for (Map.Entry<String,String> i : includes.entrySet()) {
-            if (!isGlob(i.getValue())) {
-                throw new IOException("Non-wildcard include " + i.getKey() + " not found.");
-            }
-        }
-        for (Map.Entry<String,String> e : excludes.entrySet()) {
-            if (!isGlob(e.getValue())) {
-                throw new IOException("Non-wildcard exclude " + e.getKey() + " not found.");
-            }
-        }
-    }
-
-    private boolean isGlob(String name) {
-        return name.contains("*");
-    }
-
-    private String convertGlobToRegex(String glob) {
-        glob = glob.replace(".", "[.]");
-        glob = glob.replace("*", ".*");
-        return glob;
+        featureMap.putAll(scanner.getIncluded());
     }
 
     private Feature readFeatureFromFile(File f) throws IOException {
@@ -319,7 +249,6 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
     public static class FeatureConfig {
         // If the configuration is a directory
-        String location;
         List<String> includes = new ArrayList<>();
         List<String> excludes = new ArrayList<>();
 
@@ -330,8 +259,20 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         String type;
         String classifier;
 
-        public void setLocation(String loc) {
-            location = loc;
+        public boolean isDirectory() {
+            return (!this.includes.isEmpty() || !this.excludes.isEmpty())
+                 && groupId == null
+                 && artifactId == null
+                 && version == null
+                 && type == null
+                 && classifier == null;
+        }
+
+        public boolean isArtifact() {
+            return this.includes.isEmpty() && this.excludes.isEmpty()
+                    && this.groupId != null
+                    && this.artifactId != null
+                    && this.version != null;
         }
 
         public void setIncludes(String i) {
@@ -364,9 +305,67 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
         @Override
         public String toString() {
-            return "FeatureConfig [location=" + location + ", includes=" + includes + ", excludes=" + excludes + ", groupId="
+            return "FeatureConfig [includes=" + includes + ", excludes=" + excludes + ", groupId="
                     + groupId + ", artifactId=" + artifactId + ", version=" + version + ", type=" + type + ", classifier="
                     + classifier + "]";
+        }
+    }
+
+    public static class FeatureScanner extends AbstractScanner  {
+
+        private final Map<String, Feature> features;
+
+        private final Map<ArtifactId, Feature> included = new LinkedHashMap<>();
+
+        public FeatureScanner(final Map<String, Feature> features) {
+            this.features = features;
+        }
+
+
+        @Override
+        public void scan() {
+            setupDefaultFilters();
+            setupMatchPatterns();
+
+            for ( Map.Entry<String, Feature> entry : features.entrySet() ) {
+                final String name = entry.getKey();
+                final String[] tokenizedName =  tokenizePathToString( name, File.separator );
+                if ( isIncluded( name, tokenizedName ) ) {
+                   if ( !isExcluded( name, tokenizedName ) ) {
+                       included.put( entry.getValue().getId(), entry.getValue() );
+                   }
+                }
+            }
+        }
+
+        static String[] tokenizePathToString( String path, String separator )
+        {
+            List<String> ret = new ArrayList<>();
+            StringTokenizer st = new StringTokenizer( path, separator );
+            while ( st.hasMoreTokens() )
+            {
+                ret.add( st.nextToken() );
+            }
+            return ret.toArray( new String[ret.size()] );
+        }
+
+        public Map<ArtifactId, Feature> getIncluded() {
+            return this.included;
+        }
+
+        @Override
+        public String[] getIncludedFiles() {
+            return null;
+        }
+
+        @Override
+        public String[] getIncludedDirectories() {
+            return null;
+        }
+
+        @Override
+        public File getBasedir() {
+            return null;
         }
     }
 }

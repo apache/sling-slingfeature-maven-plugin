@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -52,6 +53,7 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.mojos.AggregateFeatures.FeatureConfig;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -81,23 +83,24 @@ public class AggregateFeaturesTest {
         pluginCallbacks.put(plugin, artifactId);
     }
 
-    //@Test
+    @Test
     public void testFeatureConfig() {
         FeatureConfig fc = new FeatureConfig();
 
         assertEquals(0, fc.includes.size());
         assertEquals(0, fc.excludes.size());
-        assertNull(fc.location);
         assertNull(fc.groupId);
         assertNull(fc.artifactId);
         assertNull(fc.version);
         assertNull(fc.type);
         assertNull(fc.classifier);
 
-        fc.setLocation("loc1");
         fc.setIncludes("i1");
         fc.setIncludes("i2");
         fc.setExcludes("e1");
+
+        assertTrue(fc.isDirectory());
+        assertFalse(fc.isArtifact());
         fc.setGroupId("gid1");
         fc.setArtifactId("aid1");
         fc.setVersion("1.2.3");
@@ -107,12 +110,20 @@ public class AggregateFeaturesTest {
         assertEquals(Arrays.asList("i1", "i2"), fc.includes);
         assertEquals(Collections.singletonList("e1"), fc.excludes);
 
-        assertEquals("loc1", fc.location);
         assertEquals("gid1", fc.groupId);
         assertEquals("aid1", fc.artifactId);
         assertEquals("1.2.3", fc.version);
         assertEquals("slingfeature", fc.type);
         assertEquals("clf1", fc.classifier);
+
+        assertFalse(fc.isDirectory());
+        assertFalse(fc.isArtifact());
+
+        fc.includes.clear();
+        fc.excludes.clear();
+
+        assertFalse(fc.isDirectory());
+        assertTrue(fc.isArtifact());
     }
 
     //@Test
@@ -121,7 +132,6 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir2").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(featuresDir.getAbsolutePath());
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -133,7 +143,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "aggregated";
+        af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
 
@@ -182,7 +192,6 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(featuresDir.getAbsolutePath());
         fc.setIncludes("*.json");
         fc.setIncludes("*.foobar");
         fc.setIncludes("test_z.feature");
@@ -199,7 +208,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "aggregated";
+        af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
 
@@ -247,7 +256,6 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(featuresDir.getAbsolutePath());
         fc.setIncludes("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
@@ -260,7 +268,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "aggregated";
+        af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
 
@@ -278,7 +286,6 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(featuresDir.getAbsolutePath());
         fc.setExcludes("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
@@ -291,7 +298,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "aggregated";
+        af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
 
@@ -309,18 +316,15 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir4").getFile());
 
         FeatureConfig fc1 = new FeatureConfig();
-        fc1.setLocation(featuresDir.getAbsolutePath());
         fc1.setIncludes("test_x.json");
 
         FeatureConfig fc2 = new FeatureConfig();
-        fc2.setLocation(featuresDir.getAbsolutePath());
         fc2.setIncludes("test_u.json");
         fc2.setIncludes("test_y.json");
         fc2.setIncludes("test_v.json");
         fc2.setIncludes("test_z.json");
 
         FeatureConfig fc3 = new FeatureConfig();
-        fc3.setLocation(featuresDir.getAbsolutePath());
         fc3.setIncludes("test_t.json");
 
         Build mockBuild = Mockito.mock(Build.class);
@@ -333,7 +337,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("999");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "agg";
+        af.aggregateClassifier = "agg";
         af.aggregates = Arrays.asList(fc1, fc2, fc3);
         af.project = mockProj;
 
@@ -390,7 +394,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("42");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "mynewfeature";
+        af.aggregateClassifier = "mynewfeature";
         af.aggregates = Collections.singletonList(fc);
         af.repoSystem = mockRepo;
         af.localRepository = Mockito.mock(ArtifactRepository.class);
@@ -450,7 +454,6 @@ public class AggregateFeaturesTest {
                 getClass().getResource("/aggregate-features/dir3").getFile());
 
         FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(featuresDir.getAbsolutePath());
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -462,7 +465,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
 
         AggregateFeatures af = new AggregateFeatures();
-        af.classifier = "aggregated";
+        af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
 
