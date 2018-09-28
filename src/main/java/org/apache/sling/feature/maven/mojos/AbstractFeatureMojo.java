@@ -35,15 +35,19 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * Directory containing feature files
      * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_FEATURES)
-    private String features;
+    @Parameter(name = FeatureProjectConfig.CFG_FEATURES,
+            required = true,
+            defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_DIR)
+    protected File features;
 
     /**
      * Directory containing test feature files
      * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES)
-    private String testFeatures;
+    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES,
+            required = true,
+            defaultValue = FeatureProjectConfig.DEFAULT_TEST_FEATURE_DIR)
+    private File testFeatures;
 
     /**
      * If set to {@code true} the artifacts from the feature are not as dependencies to the project.

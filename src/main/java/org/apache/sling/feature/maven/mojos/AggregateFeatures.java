@@ -229,7 +229,8 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     private void readFeaturesFromDirectory(FeatureConfig fc,
             Map<ArtifactId, Feature> featureMap,
             Map<String, Feature> contextFeatures) throws IOException {
-        final FeatureScanner scanner = new FeatureScanner(contextFeatures);
+        final String prefix = this.features.getAbsolutePath().concat(File.separator);
+        final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
         if ( !fc.includes.isEmpty() ) {
             scanner.setIncludes(fc.includes.toArray(new String[fc.includes.size()]));
         }
@@ -317,8 +318,11 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
         private final Map<ArtifactId, Feature> included = new LinkedHashMap<>();
 
-        public FeatureScanner(final Map<String, Feature> features) {
+        private final String prefix;
+
+        public FeatureScanner(final Map<String, Feature> features, final String prefix) {
             this.features = features;
+            this.prefix = prefix;
         }
 
 
@@ -328,7 +332,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             setupMatchPatterns();
 
             for ( Map.Entry<String, Feature> entry : features.entrySet() ) {
-                final String name = entry.getKey();
+                final String name = entry.getKey().substring(prefix.length());
                 final String[] tokenizedName =  tokenizePathToString( name, File.separator );
                 if ( isIncluded( name, tokenizedName ) ) {
                    if ( !isExcluded( name, tokenizedName ) ) {
