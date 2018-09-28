@@ -23,7 +23,9 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.maven.model.Dependency;
@@ -86,7 +88,7 @@ public class Preprocessor {
         env.logger.debug("Processing " + config.getName() + " in project " + info.project.getId());
 
         // read project features
-        final List<Feature> features = readProjectFeatures(env.logger, info.project, config);
+        final Map<String, Feature> features = readProjectFeatures(env.logger, info.project, config);
         if ( config.isTestConfig() ) {
             info.testFeatures = features;
         } else {
@@ -119,14 +121,14 @@ public class Preprocessor {
         }
 
         // assemble features
-        final List<Feature> assembledFeatures = new ArrayList<>();
-        for(final Feature f : (config.isTestConfig() ? info.testFeatures : info.features)) {
-            final Feature assembledFeature = FeatureBuilder.assemble(f, new BuilderContext(this.createFeatureProvider(env,
+        final Map<String, Feature> assembledFeatures = new LinkedHashMap<>();
+        for(final Map.Entry<String, Feature> entry : (config.isTestConfig() ? info.testFeatures : info.features).entrySet()) {
+            final Feature assembledFeature = FeatureBuilder.assemble(entry.getValue(), new BuilderContext(this.createFeatureProvider(env,
                 info,
                 config.isTestConfig(),
                 config.isSkipAddDependencies(),
                 config.getScope(), null)));
-            assembledFeatures.add(assembledFeature);
+            assembledFeatures.put(entry.getKey(), assembledFeature);
         }
         if ( config.isTestConfig() ) {
             info.assembledTestFeatures = assembledFeatures;
@@ -137,7 +139,7 @@ public class Preprocessor {
         if ( config.isSkipAddDependencies() ) {
             env.logger.debug("Not adding artifacts from features as dependencies");
         } else {
-            for(final Feature f : assembledFeatures) {
+            for(final Feature f : assembledFeatures.values()) {
                 addDependenciesFromFeature(env, info, f, config.getScope());
             }
         }
@@ -210,14 +212,14 @@ public class Preprocessor {
      * @param config The configuration
      * @return The feature or {@code null}
      */
-    protected List<Feature> readProjectFeatures(
+    protected Map<String, Feature> readProjectFeatures(
             final Logger logger,
             final MavenProject project,
             final FeatureProjectConfig config) {
         // feature files first:
         final File dir = new File(project.getBasedir(), config.getFeaturesDir());
         if ( dir.exists() ) {
-            final List<Feature> featureList = new ArrayList<>();
+            final Map<String, Feature> featureMap = new LinkedHashMap<>();
             final List<File> files = new ArrayList<>();
             scan(files, dir);
 
@@ -243,17 +245,17 @@ public class Preprocessor {
 
                     this.setProjectInfo(project, feature);
                     this.postProcessReadFeature(feature);
-                    featureList.add(feature);
+                    featureMap.put(file.getAbsolutePath(), feature);
 
                 } catch ( final IOException io) {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
             }
 
-            return featureList;
+            return featureMap;
         } else {
             logger.debug("Feature directory " + config.getFeaturesDir() + " does not exist in project " + project.getId());
-            return Collections.emptyList();
+            return Collections.emptyMap();
         }
     }
 
@@ -333,7 +335,7 @@ public class Preprocessor {
                         process(env, depInfo, FeatureProjectConfig.getMainConfig(depInfo));
                     }
                     Feature found = null;
-                    for(final Feature f : (isTest ? depInfo.assembledTestFeatures : depInfo.assembledFeatures)) {
+                    for(final Feature f : (isTest ? depInfo.assembledTestFeatures : depInfo.assembledFeatures).values()) {
                         if ( f.getId().equals(id) ) {
                             found = f;
                             break;

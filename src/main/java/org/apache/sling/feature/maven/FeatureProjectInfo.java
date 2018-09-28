@@ -16,7 +16,7 @@
  */
 package org.apache.sling.feature.maven;
 
-import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
@@ -30,10 +30,10 @@ public class FeatureProjectInfo {
     public boolean featureDone = false;
     public boolean testFeatureDone = false;
 
-    public List<Feature> features;
-    public List<Feature> assembledFeatures;
+    public Map<String, Feature> features;
+    public Map<String, Feature> assembledFeatures;
 
-    public List<Feature> testFeatures;
-    public List<Feature> assembledTestFeatures;
+    public Map<String, Feature> testFeatures;
+    public Map<String, Feature> assembledTestFeatures;
 }
 

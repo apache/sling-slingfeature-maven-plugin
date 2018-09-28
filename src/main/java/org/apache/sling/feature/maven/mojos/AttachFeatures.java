@@ -20,7 +20,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.List;
+import java.util.Collection;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -72,12 +72,12 @@ public class AttachFeatures extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        final Feature main = this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project));
+        final Feature main = this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values());
         if ( main != null ) {
             attach(main, FeatureConstants.CLASSIFIER_FEATURE);
         }
 
-        final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project));
+        final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
         if ( test != null ) {
             attach(test, FeatureConstants.CLASSIFIER_TEST_FEATURE);
         }
@@ -88,7 +88,7 @@ public class AttachFeatures extends AbstractFeatureMojo {
      * @return
      * @throws MojoExecutionException
      */
-    Feature attachClassifierFeatures(final List<Feature> features) throws MojoExecutionException {
+    Feature attachClassifierFeatures(final Collection<Feature> features) throws MojoExecutionException {
         // Find all features that have a classifier and attach each of them
         Feature main = null;
         for (final Feature f : features) {

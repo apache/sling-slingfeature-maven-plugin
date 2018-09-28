@@ -19,10 +19,10 @@ package org.apache.sling.feature.maven;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -53,15 +53,16 @@ public abstract class ProjectHelper {
     private static final String ASSEMBLED_FEATURE_JSON = Feature.class.getName() + "/assembledmain.json";
     private static final String ASSEMBLED_TEST_FEATURE_JSON = Feature.class.getName() + "/assembledtest.json";
 
-    private static void store(final MavenProject project, final String key, final List<Feature> features) {
+    private static void store(final MavenProject project, final String key, final Map<String, Feature> features) {
         if ( features != null && !features.isEmpty()) {
             project.setContextValue(key, features.size());
             // we have to serialize as the dependency lifecycle participant uses a different class loader (!)
             int index = 0;
-            for(final Feature f : features) {
+            for(final Map.Entry<String, Feature> entry : features.entrySet()) {
                 try ( final StringWriter w1 = new StringWriter() ) {
-                    FeatureJSONWriter.write(w1, f);
+                    FeatureJSONWriter.write(w1, entry.getValue());
                     project.setContextValue(key + "_" + String.valueOf(index), w1.toString());
+                    project.setContextValue(key + "_" + String.valueOf(index) + "f", entry.getKey());
                     index++;
                 } catch ( final IOException ioe) {
                     throw new RuntimeException(ioe.getMessage(), ioe);
@@ -71,26 +72,30 @@ public abstract class ProjectHelper {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<Feature> getFeatures(final MavenProject project, final String key) {
+    private static Map<String, Feature> getFeatures(final MavenProject project, final String key) {
         final String cacheKey = key + "-cache";
-        List<Feature> result = null;
+        Map<String, Feature> result = null;
         try {
-            result = (List<Feature>) project.getContextValue(cacheKey);
+            result = (Map<String, Feature>) project.getContextValue(cacheKey);
         } catch ( final Exception e) {
             // if we get a class cast exception, we read again
         }
         if ( result == null ) {
             final Integer size = (Integer)project.getContextValue(key);
             if ( size != null ) {
-                result = new ArrayList<>();
+                result = new LinkedHashMap<>();
                 for(int i=0; i<size;i++) {
                     final String text = (String)project.getContextValue(key + "_" + String.valueOf(i));
                     if ( text == null ) {
                         throw new RuntimeException("Unable to get feature from internal store.");
                     }
+                    final String file = (String)project.getContextValue(key + "_" + String.valueOf(i) + "f");
+                    if ( file == null ) {
+                        throw new RuntimeException("Unable to get feature from internal store.");
+                    }
                     try ( final StringReader r = new StringReader(text) ) {
                         final Feature feature = FeatureJSONReader.read(r, project.getId());
-                        result.add(feature);
+                        result.put(file, feature);
                     } catch ( final IOException ioe) {
                         throw new RuntimeException(ioe.getMessage(), ioe);
                     }
@@ -98,7 +103,7 @@ public abstract class ProjectHelper {
                 project.setContextValue(cacheKey, result);
             }
         }
-        return result != null ? result : Collections.emptyList();
+        return result != null ? result : Collections.emptyMap();
     }
 
     /**
@@ -118,7 +123,7 @@ public abstract class ProjectHelper {
      * @param project The maven projet
      * @return The assembled features or {@code null}
      */
-    public static List<Feature> getAssembledFeatures(final MavenProject project) {
+    public static Map<String, Feature> getAssembledFeatures(final MavenProject project) {
         return getFeatures(project, ASSEMBLED_FEATURE_JSON);
     }
 
@@ -127,7 +132,7 @@ public abstract class ProjectHelper {
      * @param project The maven projet
      * @return The raw features or {@code null}
      */
-    public static List<Feature> getFeatures(final MavenProject project) {
+    public static Map<String, Feature> getFeatures(final MavenProject project) {
         return getFeatures(project, RAW_FEATURE_JSON);
     }
 
@@ -136,7 +141,7 @@ public abstract class ProjectHelper {
      * @param project The maven projet
      * @return The assembled features or {@code null}
      */
-    public static List<Feature> getAssembledTestFeatures(final MavenProject project) {
+    public static Map<String, Feature> getAssembledTestFeatures(final MavenProject project) {
         return getFeatures(project, ASSEMBLED_TEST_FEATURE_JSON);
     }
 
@@ -145,7 +150,7 @@ public abstract class ProjectHelper {
      * @param project The maven projet
      * @return The raw features or {@code null}
      */
-    public static List<Feature> getTestFeatures(final MavenProject project) {
+    public static Map<String, Feature> getTestFeatures(final MavenProject project) {
         return getFeatures(project, RAW_TEST_FEATURE_JSON);
     }
 

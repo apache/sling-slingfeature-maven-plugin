@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,6 +56,7 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
+import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.Substitution;
 
 /**
@@ -66,11 +68,12 @@ import org.apache.sling.feature.maven.Substitution;
     threadSafe = true
 )
 public class AggregateFeatures extends AbstractFeatureMojo {
-    @Parameter(required = true)
-    String classifier;
 
     @Parameter(required = true)
-    List<FeatureConfig> features;
+    List<FeatureConfig> aggregates;
+
+    @Parameter(required = true)
+    String classifier;
 
     @Parameter(required = false)
     Map<String,String> variables;
@@ -90,15 +93,15 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     @Component
     ArtifactResolver artifactResolver;
 
-    public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FEATURE_PROCESSED_LOCATION);
-        aggregatedFeaturesDir.mkdirs();
-        Map<ArtifactId, Feature> contextFeatures = readFeaturesFromDirectory(aggregatedFeaturesDir);
+        final Map<String, Feature> projectFeatures = ProjectHelper.getFeatures(this.project);
+        Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
+        for(final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
+            contextFeatures.put(entry.getValue().getId(), entry.getValue());
+        }
 
-        Map<ArtifactId, Feature> featureMap = readFeatures(features, contextFeatures);
+        Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
 
         KeyValueMap variableOverrides = new KeyValueMap();
         if (variables != null) {
@@ -135,20 +138,29 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 project.getVersion(), classifier, FeatureConstants.PACKAGING_FEATURE);
         Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
-        try (FileWriter fileWriter = new FileWriter(new File(aggregatedFeaturesDir, classifier + ".json"))) {
-            FeatureJSONWriter.write(fileWriter, result);
-        } catch (IOException e) {
-            throw new MojoExecutionException("Problem writing assembled feature", e);
+        // write the feature
+        final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + classifier + ".json");
+        outputFile.getParentFile().mkdirs();
+
+        try ( final Writer writer = new FileWriter(outputFile)) {
+            FeatureJSONWriter.write(writer, result);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("Unable to write feature to " + outputFile, e);
         }
+
+        // attach it as an additional artifact
+        projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
+                classifier, outputFile);
     }
 
-    private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs, Map<ArtifactId, Feature> contextFeatures) throws MojoExecutionException {
+    private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs,
+            Map<String, Feature> contextFeatures) throws MojoExecutionException {
         Map<ArtifactId, Feature> featureMap = new LinkedHashMap<>();
 
         try {
             for (FeatureConfig fc : featureConfigs) {
                 if (fc.location != null) {
-                    readFeaturesFromDirectory(fc, featureMap);
+                    readFeaturesFromDirectory(fc, featureMap, contextFeatures);
                 } else if (fc.artifactId != null) {
                     readFeatureFromMavenArtifact(fc, featureMap, contextFeatures);
                 }
@@ -161,9 +173,15 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     }
 
     private void readFeatureFromMavenArtifact(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,
-            Map<ArtifactId, Feature> contextFeatures) throws IOException {
+            Map<String, Feature> contextFeatures) throws IOException {
         ArtifactId id = new ArtifactId(fc.groupId, fc.artifactId, fc.version, fc.classifier, fc.type);
-        Feature f = contextFeatures.get(id);
+        Feature f = null;
+        for(final Feature c : contextFeatures.values()) {
+            if ( c.getId().equals(id)) {
+                f = c;
+                break;
+            }
+        }
         if (f != null) {
             featureMap.put(id, f);
         } else {
@@ -197,8 +215,20 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         return artFile;
     }
 
-    private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap) throws IOException {
-        Map<String,Feature> readFeatures = new HashMap<>();
+    private void readFeaturesFromDirectory(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,  Map<String, Feature> contextFeatures) throws IOException {
+        if ( fc.location.startsWith("/") || fc.location.startsWith(".") ) {
+            throw new IOException("Invalid location: " + fc.location);
+        }
+
+        final File f = new File(this.project.getBasedir(), fc.location.replace('/', File.separatorChar).replace('\\', File.separatorChar));
+        final String prefix = f.getAbsolutePath().concat(File.separator);
+        final Map<String, Feature> candidates = new LinkedHashMap<>();
+        for(final Map.Entry<String, Feature> entry : contextFeatures.entrySet()) {
+            if ( entry.getKey().startsWith(prefix) ) {
+                candidates.put(entry.getKey(), entry.getValue());
+            }
+        }
+
         Map<String,String> includes = new HashMap<>();
         Map<String,String> excludes = new HashMap<>();
 
@@ -208,15 +238,18 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         for (String exc : fc.excludes) {
             excludes.put(exc, convertGlobToRegex(exc));
         }
+        Map<String,Feature> readFeatures = new HashMap<>();
 
         nextFile:
-        for (File f : new File(fc.location).listFiles()) {
+        for (Map.Entry<String, Feature> entry : candidates.entrySet()) {
+            final String fileName = new File(entry.getKey()).getName();
+
             // First check that it is allowed as part of the includes
             boolean matchesIncludes = fc.includes.size() == 0;
 
             for (Iterator<String> it = includes.values().iterator(); it.hasNext(); ) {
                 String inc = it.next();
-                if (f.getName().matches(inc)) {
+                if (fileName.matches(inc)) {
                     matchesIncludes = true;
                     if (!isGlob(inc)) {
                         // Not a glob
@@ -232,7 +265,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             // Ensure there is no exclusion for it
             for (Iterator<String> it = excludes.values().iterator(); it.hasNext(); ) {
                 String exc = it.next();
-                if (f.getName().matches(exc)) {
+                if (fileName.matches(exc)) {
                     if (!isGlob(exc)) {
                         // Not a glob
                         it.remove();
@@ -241,8 +274,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 }
             }
 
-            Feature feat = readFeatureFromFile(f);
-            readFeatures.put(f.getName(), feat);
+            readFeatures.put(entry.getKey(), entry.getValue());
         }
 
         // Ordering:
@@ -254,7 +286,7 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             }
         }
         // Put all the remaining features on the map
-        readFeatures.values().stream().forEach(f -> featureMap.put(f.getId(), f));
+        readFeatures.values().stream().forEach(v -> featureMap.put(v.getId(), v));
 
         // If there are any non-glob includes/excludes left, fail as the plugin is then incorrectly configured
         for (Map.Entry<String,String> i : includes.entrySet()) {
@@ -271,20 +303,6 @@ public class AggregateFeatures extends AbstractFeatureMojo {
 
     private boolean isGlob(String name) {
         return name.contains("*");
-    }
-
-    private Map<ArtifactId, Feature> readFeaturesFromDirectory(File directory) throws MojoExecutionException {
-        Map<ArtifactId, Feature> m = new HashMap<>();
-        FeatureConfig fc = new FeatureConfig();
-        fc.setLocation(directory.getAbsolutePath());
-
-        try {
-            readFeaturesFromDirectory(fc, m);
-        } catch (IOException e) {
-            throw new MojoExecutionException("Problem reading feature", e);
-        }
-
-        return m;
     }
 
     private String convertGlobToRegex(String glob) {
