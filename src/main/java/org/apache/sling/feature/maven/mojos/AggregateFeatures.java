@@ -230,10 +230,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             Map<ArtifactId, Feature> featureMap,
             Map<String, Feature> contextFeatures) throws IOException {
         final FeatureScanner scanner = new FeatureScanner(contextFeatures);
-        if ( fc.includes.isEmpty() ) {
+        if ( !fc.includes.isEmpty() ) {
             scanner.setIncludes(fc.includes.toArray(new String[fc.includes.size()]));
         }
-        if ( fc.excludes.isEmpty() ) {
+        if ( !fc.excludes.isEmpty() ) {
             scanner.setExcludes(fc.excludes.toArray(new String[fc.excludes.size()]));
         }
         scanner.scan();
