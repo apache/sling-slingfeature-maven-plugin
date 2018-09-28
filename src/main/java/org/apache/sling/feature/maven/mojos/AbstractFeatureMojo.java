@@ -33,7 +33,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * Directory containing feature files
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name = FeatureProjectConfig.CFG_FEATURES,
             required = true,
@@ -42,7 +41,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * Directory containing test feature files
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES,
             required = true,
@@ -51,7 +49,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * If set to {@code true} the artifacts from the feature are not as dependencies to the project.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_FEATURE_DEPENDENCIES,
             defaultValue="false")
@@ -59,7 +56,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * If set to {@code true} the artifacts from the test feature are not as dependencies to the project.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES,
             defaultValue="true")
@@ -67,7 +63,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * If set to {@code true} the main jar artifact is not added to the feature.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_FEATURE,
             defaultValue="false")
@@ -75,7 +70,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * If set to {@code true} the main jar artifact is not added to the test feature.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_TEST_FEATURE,
             defaultValue="false")
@@ -83,7 +77,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
      * The start level for the attached jar/bundle.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
     @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
     private int jarStartOrder;

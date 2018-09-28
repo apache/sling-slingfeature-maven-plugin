@@ -59,9 +59,6 @@ import org.codehaus.plexus.util.AbstractScanner;
 
 /**
  * Aggregate multiple features into a single one.
- *
- * TODO - check that classifier is not clashing with an already used classifier from the read
- * files. We should also check if this mojo is configured several times, that different classifiers are configured.
  */
 @Mojo(name = "aggregate-features",
     defaultPhase = LifecyclePhase.GENERATE_RESOURCES,
@@ -69,6 +66,8 @@ import org.codehaus.plexus.util.AbstractScanner;
     threadSafe = true
 )
 public class AggregateFeatures extends AbstractFeatureMojo {
+
+    private static final String PREFIX = ":aggregate:";
 
     @Parameter(required = true)
     List<FeatureConfig> aggregates;
@@ -98,9 +97,16 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         // get map of all project features
         final Map<String, Feature> projectFeatures = ProjectHelper.getFeatures(this.project);
+        final String key = PREFIX + aggregateClassifier;
+        if ( projectFeatures.containsKey(key) ) {
+            throw new MojoExecutionException("Duplicate aggregated feature definition for classifier " + aggregateClassifier);
+        }
         // ..and hash them by artifact id
         final Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
         for(final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
+            if ( aggregateClassifier.equals(entry.getValue().getId().getClassifier())) {
+                throw new MojoExecutionException("Aggregated feature definition is using same classifier as project feature " + aggregateClassifier);
+            }
             contextFeatures.put(entry.getValue().getId(), entry.getValue());
         }
 
@@ -143,7 +149,6 @@ public class AggregateFeatures extends AbstractFeatureMojo {
         Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
         // Add feature to map of features
-        final String key = ":aggregate:" + aggregateClassifier;
         projectFeatures.put(key, result);
         ProjectHelper.getAssembledFeatures(this.project).put(key, result);
     }
@@ -320,6 +325,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             setupMatchPatterns();
 
             for ( Map.Entry<String, Feature> entry : features.entrySet() ) {
+                // skip aggregates
+                if ( entry.getKey().startsWith(PREFIX) ) {
+                    continue;
+                }
                 final String name = entry.getKey().substring(prefix.length());
                 final String[] tokenizedName =  tokenizePathToString( name, File.separator );
                 if ( isIncluded( name, tokenizedName ) ) {

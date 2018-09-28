@@ -23,9 +23,11 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.maven.model.Dependency;
@@ -43,9 +45,6 @@ import org.codehaus.plexus.logging.Logger;
 
 /**
  * The processor processes all feature projects.
- *
- * TODO - we should check that only one feature has no classifier
- *        and that the classifiers are unique within the read set
  */
 public class Preprocessor {
 
@@ -61,6 +60,21 @@ public class Preprocessor {
                 throw new RuntimeException("Feature project has no feature defined: " + finfo.project.getId());
             }
 
+            final Set<String> classifiers = new HashSet<>();
+            boolean foundEmpty = false;
+            for(final Feature f : finfo.features.values()) {
+                if ( f.getId().getClassifier() == null ) {
+                    if ( foundEmpty ) {
+                        throw new RuntimeException("More than one feature file without classifier in project " + finfo.project.getId());
+                    }
+                    foundEmpty = true;
+                } else {
+                    if ( classifiers.contains(f.getId().getClassifier()) ) {
+                        throw new RuntimeException("Duplicate feature classifier " + f.getId().getClassifier() + " used in project " + finfo.project.getId());
+                    }
+                    classifiers.add(f.getId().getClassifier());
+                }
+            }
             ProjectHelper.storeProjectInfo(finfo);
         }
     }
