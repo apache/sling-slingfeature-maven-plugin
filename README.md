@@ -32,7 +32,7 @@ Sample configuration:
         </goals>
         <configuration>
           <classifier>my-aggregated-feature</classifier>
-          <features>
+          <aggregates>
             <directory>
               <location>${basedir}/src/main/my-features</location>
               <includes>*.json</includes>
@@ -46,7 +46,7 @@ Sample configuration:
               <type>slingfeature</type>
               <classifier>someclassifier</classifier>
             </artifact>
-          </features>
+          </aggregates>
           <variables>
             <!-- Feature variables can be specified/overridden here -->
             <https.port>8443</https.port>
