@@ -18,6 +18,7 @@ package org.apache.sling.feature.maven.mojos;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -156,6 +157,8 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
 
         AggregateFeatures af = new AggregateFeatures();
         af.aggregateClassifier = "aggregated";
@@ -166,41 +169,39 @@ public class AggregateFeaturesTest {
         af.features = featuresDir;
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), "/aggregated.json");
-        try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null);
-            ArtifactId id = genFeat.getId();
+        Feature genFeat = featureMap.get(":aggregate:aggregated");
+        assertNotNull(genFeat);
+        ArtifactId id = genFeat.getId();
 
-            assertEquals("org.foo", id.getGroupId());
-            assertEquals("org.foo.bar", id.getArtifactId());
-            assertEquals("1.2.3-SNAPSHOT", id.getVersion());
-            assertEquals("slingfeature", id.getType());
-            assertEquals("aggregated", id.getClassifier());
+        assertEquals("org.foo", id.getGroupId());
+        assertEquals("org.foo.bar", id.getArtifactId());
+        assertEquals("1.2.3-SNAPSHOT", id.getVersion());
+        assertEquals("slingfeature", id.getType());
+        assertEquals("aggregated", id.getClassifier());
 
-            Set<ArtifactId> expectedBundles = new HashSet<>();
-            expectedBundles.add(
-                    new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null));
-            expectedBundles.add(
-                    new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null));
-            Set<ArtifactId> actualBundles = new HashSet<>();
-            for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
-                actualBundles.add(art.getId());
-            }
-            assertEquals(expectedBundles, actualBundles);
-
-            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
-            expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
-            Dictionary<String, Object> dict = new Hashtable<>();
-            dict.put("foo", 123L);
-            dict.put("bar", Boolean.TRUE);
-            expectedConfigs.put("another.pid", dict);
-
-            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
-            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
-                actualConfigs.put(conf.getPid(), conf.getProperties());
-            }
-            assertEquals(expectedConfigs, actualConfigs);
+        Set<ArtifactId> expectedBundles = new HashSet<>();
+        expectedBundles.add(
+                new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null));
+        expectedBundles.add(
+                new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null));
+        Set<ArtifactId> actualBundles = new HashSet<>();
+        for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
+            actualBundles.add(art.getId());
         }
+        assertEquals(expectedBundles, actualBundles);
+
+        Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+        expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
+        Dictionary<String, Object> dict = new Hashtable<>();
+        dict.put("foo", 123L);
+        dict.put("bar", Boolean.TRUE);
+        expectedConfigs.put("another.pid", dict);
+
+        Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+        for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+            actualConfigs.put(conf.getPid(), conf.getProperties());
+        }
+        assertEquals(expectedConfigs, actualConfigs);
     }
 
     @Test
@@ -233,6 +234,8 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
 
         AggregateFeatures af = new AggregateFeatures();
         af.aggregateClassifier = "aggregated";
@@ -244,40 +247,38 @@ public class AggregateFeaturesTest {
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), "/aggregated.json");
-        try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null);
-            ArtifactId id = genFeat.getId();
+        Feature genFeat = featureMap.get(":aggregate:aggregated");
+        assertNotNull(genFeat);
+        ArtifactId id = genFeat.getId();
 
-            assertEquals("org.foo", id.getGroupId());
-            assertEquals("org.foo.bar", id.getArtifactId());
-            assertEquals("1.2.3-SNAPSHOT", id.getVersion());
-            assertEquals("slingfeature", id.getType());
-            assertEquals("aggregated", id.getClassifier());
+        assertEquals("org.foo", id.getGroupId());
+        assertEquals("org.foo.bar", id.getArtifactId());
+        assertEquals("1.2.3-SNAPSHOT", id.getVersion());
+        assertEquals("slingfeature", id.getType());
+        assertEquals("aggregated", id.getClassifier());
 
-            int numBundlesFound = 0;
-            for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
-                numBundlesFound++;
+        int numBundlesFound = 0;
+        for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
+            numBundlesFound++;
 
-                ArtifactId expectedBundleCoords =
-                        new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null);
-                assertEquals(expectedBundleCoords, art.getId());
-            }
-            assertEquals("Expected only one bundle", 1, numBundlesFound);
-
-            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
-            expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
-            Dictionary<String, Object> dict = new Hashtable<>();
-            dict.put("foo", 123L);
-            dict.put("bar", Boolean.TRUE);
-            expectedConfigs.put("another.pid", dict);
-
-            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
-            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
-                actualConfigs.put(conf.getPid(), conf.getProperties());
-            }
-            assertEquals(expectedConfigs, actualConfigs);
+            ArtifactId expectedBundleCoords =
+                    new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null);
+            assertEquals(expectedBundleCoords, art.getId());
         }
+        assertEquals("Expected only one bundle", 1, numBundlesFound);
+
+        Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+        expectedConfigs.put("some.pid", new Hashtable<>(Collections.singletonMap("x", "y")));
+        Dictionary<String, Object> dict = new Hashtable<>();
+        dict.put("foo", 123L);
+        dict.put("bar", Boolean.TRUE);
+        expectedConfigs.put("another.pid", dict);
+
+        Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+        for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+            actualConfigs.put(conf.getPid(), conf.getProperties());
+        }
+        assertEquals(expectedConfigs, actualConfigs);
     }
 
     //@Test

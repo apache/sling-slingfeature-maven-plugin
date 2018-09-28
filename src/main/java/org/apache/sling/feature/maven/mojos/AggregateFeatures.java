@@ -17,10 +17,8 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
-import java.io.Writer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,7 +52,6 @@ import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureExtensionHandler;
 import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.Substitution;
@@ -67,7 +64,7 @@ import org.codehaus.plexus.util.AbstractScanner;
  * files. We should also check if this mojo is configured several times, that different classifiers are configured.
  */
 @Mojo(name = "aggregate-features",
-    defaultPhase = LifecyclePhase.PACKAGE,
+    defaultPhase = LifecyclePhase.GENERATE_RESOURCES,
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
@@ -145,19 +142,10 @@ public class AggregateFeatures extends AbstractFeatureMojo {
                 project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
         Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
-        // write the feature
-        final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + aggregateClassifier + ".json");
-        outputFile.getParentFile().mkdirs();
-
-        try ( final Writer writer = new FileWriter(outputFile)) {
-            FeatureJSONWriter.write(writer, result);
-        } catch (final IOException e) {
-            throw new MojoExecutionException("Unable to write feature to " + outputFile, e);
-        }
-
-        // attach it as an additional artifact
-        projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
-                aggregateClassifier, outputFile);
+        // Add feature to map of features
+        final String key = ":aggregate:" + aggregateClassifier;
+        projectFeatures.put(key, result);
+        ProjectHelper.getAssembledFeatures(this.project).put(key, result);
     }
 
     private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs,
