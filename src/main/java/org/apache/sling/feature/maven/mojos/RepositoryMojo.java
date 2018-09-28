@@ -67,12 +67,6 @@ public class RepositoryMojo extends AbstractFeatureMojo {
     @Component
     private ArtifactResolver resolver;
 
-    /**
-     * This is the name of the final model as written to the target directory.
-     */
-    @Parameter(defaultValue="slingstart.txt")
-    private String repositoryModelName;
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final File artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
