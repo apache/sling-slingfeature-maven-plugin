@@ -27,69 +27,12 @@
           <lifecycle>
             <id>default</id>
             <phases>
-              <package>org.apache.sling:slingstart-maven-plugin:attach-slingfeature</package>
+              <package>org.apache.sling:slingfeature-maven-plugin:attach-features</package>
               <install>org.apache.maven.plugins:maven-install-plugin:install</install>
               <deploy>org.apache.maven.plugins:maven-deploy-plugin:deploy</deploy>
             </phases>
           </lifecycle>
         </lifecycles>
-      </configuration>
-    </component>
-    <component>
-      <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
-      <role-hint>osgifeature</role-hint>
-      <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
-      <configuration>
-        <lifecycles>
-          <lifecycle>
-            <id>default</id>
-            <phases>
-              <package>org.apache.sling:slingstart-maven-plugin:attach-slingfeature</package>
-              <install>org.apache.maven.plugins:maven-install-plugin:install</install>
-              <deploy>org.apache.maven.plugins:maven-deploy-plugin:deploy</deploy>
-            </phases>
-          </lifecycle>
-        </lifecycles>
-      </configuration>
-    </component>
-    <component>
-      <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
-      <role-hint>osgiapp</role-hint>
-      <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
-      <configuration>
-        <lifecycles>
-          <lifecycle>
-            <id>default</id>
-            <phases>
-              <process-resources>org.apache.maven.plugins:maven-resources-plugin:resources</process-resources>
-              <compile>org.apache.maven.plugins:maven-compiler-plugin:compile</compile>
-              <process-test-resources>
-                  org.apache.maven.plugins:maven-resources-plugin:testResources,
-              </process-test-resources>
-              <test-compile>org.apache.maven.plugins:maven-compiler-plugin:testCompile</test-compile>
-              <test>org.apache.maven.plugins:maven-surefire-plugin:test</test>
-              <prepare-package>org.apache.sling:slingstart-maven-plugin:prepare-package</prepare-package>              
-              <package>
-                  org.apache.sling:slingstart-maven-plugin:attach-slingfeature,
-                  org.apache.sling:slingstart-maven-plugin:package
-              </package>
-              <install>org.apache.maven.plugins:maven-install-plugin:install</install>
-              <deploy>org.apache.maven.plugins:maven-deploy-plugin:deploy</deploy>
-            </phases>
-          </lifecycle>
-        </lifecycles>
-      </configuration>
-    </component>
-    <component>
-      <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
-      <role-hint>osgifeature</role-hint>
-      <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
-      <configuration>
-        <type>osgifeature</type>
-        <includesDependencies>false</includesDependencies>
-        <language>json</language>
-        <extension>json</extension>
-        <addedToClasspath>false</addedToClasspath>
       </configuration>
     </component>
     <component>
@@ -101,30 +44,6 @@
         <includesDependencies>false</includesDependencies>
         <language>json</language>
         <extension>slingfeature</extension>
-        <addedToClasspath>false</addedToClasspath>
-      </configuration>
-    </component>
-    <component>
-      <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
-      <role-hint>osgiapp</role-hint>
-      <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
-      <configuration>
-        <type>osgiapp</type>
-        <includesDependencies>false</includesDependencies>
-        <language>java</language>
-        <extension>jar</extension>
-        <addedToClasspath>false</addedToClasspath>
-      </configuration>
-    </component>
-    <component>
-      <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
-      <role-hint>osgijar</role-hint>
-      <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
-      <configuration>
-        <type>osgijar</type>
-        <includesDependencies>false</includesDependencies>
-        <language>java</language>
-        <extension>zip</extension>
         <addedToClasspath>false</addedToClasspath>
       </configuration>
     </component>

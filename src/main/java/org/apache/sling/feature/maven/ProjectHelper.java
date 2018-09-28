@@ -16,6 +16,15 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
@@ -34,14 +43,6 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 public abstract class ProjectHelper {
 
     /** Read feature. */
@@ -51,18 +52,6 @@ public abstract class ProjectHelper {
     /** Assembled feature. */
     private static final String ASSEMBLED_FEATURE_JSON = Feature.class.getName() + "/assembledmain.json";
     private static final String ASSEMBLED_TEST_FEATURE_JSON = Feature.class.getName() + "/assembledtest.json";
-
-    private static void store(final MavenProject project, final String key, final Feature feature) {
-        if ( feature != null ) {
-            // we have to serialize as the dependency lifecycle participant uses a different class loader (!)
-            try ( final StringWriter w1 = new StringWriter() ) {
-                FeatureJSONWriter.write(w1, feature);
-                project.setContextValue(key, w1.toString());
-            } catch ( final IOException ioe) {
-                throw new RuntimeException(ioe.getMessage(), ioe);
-            }
-        }
-    }
 
     private static void store(final MavenProject project, final String key, final List<Feature> features) {
         if ( features != null && !features.isEmpty()) {
@@ -79,30 +68,6 @@ public abstract class ProjectHelper {
                 }
             }
         }
-    }
-
-    private static Feature getFeature(final MavenProject project, final String key) {
-        final String cacheKey = key + "-cache";
-        Feature result = null;
-        try {
-            result = (Feature) project.getContextValue(cacheKey);
-        } catch ( final Exception e) {
-            // if we get a class cast exception, we read again
-        }
-        if ( result == null ) {
-            final String text = (String)project.getContextValue(key);
-            if ( text == null ) {
-                result = null;
-            } else {
-                try ( final StringReader r = new StringReader(text) ) {
-                    result = FeatureJSONReader.read(r, project.getId());
-                    project.setContextValue(cacheKey, result);
-                } catch ( final IOException ioe) {
-                    throw new RuntimeException(ioe.getMessage(), ioe);
-                }
-            }
-        }
-        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -133,7 +98,7 @@ public abstract class ProjectHelper {
                 project.setContextValue(cacheKey, result);
             }
         }
-        return result;
+        return result != null ? result : Collections.emptyList();
     }
 
     /**
@@ -142,54 +107,6 @@ public abstract class ProjectHelper {
      * @param info The project info
      */
     public static void storeProjectInfo(final FeatureProjectInfo info) {
-        store(info.project, RAW_FEATURE_JSON, info.feature);
-        store(info.project, RAW_TEST_FEATURE_JSON, info.testFeature);
-        store(info.project, ASSEMBLED_FEATURE_JSON, info.assembledFeature);
-        store(info.project, ASSEMBLED_TEST_FEATURE_JSON, info.assembledTestFeature);
-    }
-
-    /**
-     * Get the assembled feature from the project
-     * @param project The maven projet
-     * @return The assembled feature or {@code null}
-     */
-    public static Feature getAssembledFeature(final MavenProject project) {
-        return getFeature(project, ASSEMBLED_FEATURE_JSON);
-    }
-
-    /**
-     * Get the raw feature from the project
-     * @param project The maven projet
-     * @return The raw feature or {@code null}
-     */
-    public static Feature getFeature(final MavenProject project) {
-        return getFeature(project, RAW_FEATURE_JSON);
-    }
-
-    /**
-     * Get the assembled test feature from the project
-     * @param project The maven projet
-     * @return The assembled feature or {@code null}
-     */
-    public static Feature getAssembledTestFeature(final MavenProject project) {
-        return getFeature(project, ASSEMBLED_TEST_FEATURE_JSON);
-    }
-
-    /**
-     * Get the raw test feature from the project
-     * @param project The maven projet
-     * @return The raw feature or {@code null}
-     */
-    public static Feature getTestFeature(final MavenProject project) {
-        return getFeature(project, RAW_TEST_FEATURE_JSON);
-    }
-
-    /**
-     * Store all relevant information about the project for plugins to be
-     * retrieved
-     * @param info The project info
-     */
-    public static void storeProjectInfo(final ApplicationProjectInfo info) {
         store(info.project, RAW_FEATURE_JSON, info.features);
         store(info.project, RAW_TEST_FEATURE_JSON, info.testFeatures);
         store(info.project, ASSEMBLED_FEATURE_JSON, info.assembledFeatures);

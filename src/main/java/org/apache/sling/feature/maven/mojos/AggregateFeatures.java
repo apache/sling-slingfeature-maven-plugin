@@ -16,6 +16,23 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ServiceLoader;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.StreamSupport;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
@@ -38,23 +55,7 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.StringReader;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
+import org.apache.sling.feature.maven.Substitution;
 
 /**
  * Aggregate multiple features into a single one.
@@ -89,9 +90,11 @@ public class AggregateFeatures extends AbstractFeatureMojo {
     @Component
     ArtifactResolver artifactResolver;
 
+    public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FeatureConstants.FEATURE_PROCESSED_LOCATION);
+        File aggregatedFeaturesDir = new File(project.getBuild().getDirectory(), FEATURE_PROCESSED_LOCATION);
         aggregatedFeaturesDir.mkdirs();
         Map<ArtifactId, Feature> contextFeatures = readFeaturesFromDirectory(aggregatedFeaturesDir);
 

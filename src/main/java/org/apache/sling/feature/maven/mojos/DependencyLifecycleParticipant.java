@@ -23,12 +23,9 @@ import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
-import org.apache.sling.feature.maven.ApplicationProjectInfo;
 import org.apache.sling.feature.maven.Environment;
-import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.FeatureProjectInfo;
 import org.apache.sling.feature.maven.Preprocessor;
-import org.apache.sling.feature.maven.ProjectInfo;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
@@ -72,12 +69,7 @@ public class DependencyLifecycleParticipant extends AbstractMavenLifecyclePartic
             Plugin plugin = project.getPlugin(PLUGIN_ID);
             if (plugin != null) {
                 logger.debug("Found project " + project.getId() + " using " + PLUGIN_ID);
-                final ProjectInfo info;
-                if ( FeatureConstants.PACKAGING_APPLICATION.equals(project.getPackaging()) ) {
-                    info = new ApplicationProjectInfo();
-                } else {
-                    info = new FeatureProjectInfo();
-                }
+                final FeatureProjectInfo info = new FeatureProjectInfo();
                 info.plugin = plugin;
                 info.project = project;
                 env.modelProjects.put(project.getGroupId() + ":" + project.getArtifactId(), info);

@@ -16,6 +16,8 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Component;
@@ -24,42 +26,24 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
 
-import java.io.File;
-
 /**
  * Base class for all mojos.
  */
 public abstract class AbstractFeatureMojo extends AbstractMojo {
 
     /**
-     * The feature file..
+     * Directory containing feature files
      * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_FEATURE_FILE,
-            defaultValue="${basedir}/" + FeatureProjectConfig.DEFAULT_FEATURE_FILE)
-    private File featureFile;
+    @Parameter(name = FeatureProjectConfig.CFG_FEATURES)
+    private String features;
 
     /**
-     * The test feature file..
+     * Directory containing test feature files
      * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURE_FILE,
-            defaultValue="${basedir}/" + FeatureProjectConfig.DEFAULT_TEST_FEATURE_FILE)
-    private File testFeatureFile;
-
-    /**
-     * Inlined model.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
-     */
-    @Parameter(name = FeatureProjectConfig.CFG_FEATURE_INLINED)
-    private String feature;
-
-    /**
-     * Inlined test model.
-     * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
-     */
-    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURE_INLINED)
-    private String testFeature;
+    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES)
+    private String testFeatures;
 
     /**
      * If set to {@code true} the artifacts from the feature are not as dependencies to the project.
@@ -97,9 +81,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * The start level for the attached jar/bundle.
      * This parameter is evaluated in the {@link DependencyLifecycleParticipant}.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_JAR_START_LEVEL,
-            defaultValue=FeatureProjectConfig.DEFAULT_START_LEVEL)
-    private int jarStartLevel;
+    @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
+    private int jarStartOrder;
 
     @Parameter(property = "project", readonly = true, required = true)
     protected MavenProject project;

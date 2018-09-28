@@ -16,12 +16,29 @@
  */
 package org.apache.sling.feature.maven;
 
-import org.apache.maven.model.Plugin;
+import java.util.Properties;
+
 import org.apache.maven.project.MavenProject;
 
-public class ProjectInfo {
+public class Substitution {
+    public static String replaceMavenVars(MavenProject project, String s) {
+        // There must be a better way than enumerating all these?
+        s = replaceAll(s, "project.groupId", project.getGroupId());
+        s = replaceAll(s, "project.artifactId", project.getArtifactId());
+        s = replaceAll(s, "project.version", project.getVersion());
 
-    public MavenProject project;
-    public Plugin       plugin;
+
+        Properties props = project.getProperties();
+        if (props != null) {
+            for (String key : props.stringPropertyNames()) {
+                s = replaceAll(s, key, props.getProperty(key));
+            }
+        }
+
+        return s;
+    }
+
+    private static String replaceAll(String s, String key, String value) {
+        return s.replaceAll("\\Q${" + key + "}\\E", value);
+    }
 }
-

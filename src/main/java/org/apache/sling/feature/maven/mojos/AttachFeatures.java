@@ -16,23 +16,21 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
 
 /**
  * Attach the feature as a project artifact.
@@ -42,16 +40,15 @@ import java.io.Writer;
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
-public class AttachFeature extends AbstractFeatureMojo {
+public class AttachFeatures extends AbstractFeatureMojo {
 
     private void attach(final Feature feature,
-            final String artifactName,
             final String classifier)
     throws MojoExecutionException {
         if ( feature != null ) {
 
             // write the feature
-            final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + artifactName);
+            final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + classifier + ".json");
             outputFile.getParentFile().mkdirs();
 
             try ( final Writer writer = new FileWriter(outputFile)) {
@@ -65,7 +62,6 @@ public class AttachFeature extends AbstractFeatureMojo {
                  && (FeatureConstants.CLASSIFIER_FEATURE.equals(classifier))) {
                 project.getArtifact().setFile(outputFile);
             } else {
-                // TODO do we need to check that the feature's GAV matches the project's GAV?
 
                 // otherwise attach it as an additional artifact
                 projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
@@ -76,43 +72,37 @@ public class AttachFeature extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        attach(ProjectHelper.getFeature(this.project), FeatureConstants.FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_FEATURE);
-        attach(ProjectHelper.getTestFeature(this.project), FeatureConstants.TEST_FEATURE_ARTIFACT_NAME, FeatureConstants.CLASSIFIER_TEST_FEATURE);
+        final Feature main = this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project));
+        if ( main != null ) {
+            attach(main, FeatureConstants.CLASSIFIER_FEATURE);
+        }
 
-        attachClassifierFeatures();
+        final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project));
+        if ( test != null ) {
+            attach(test, FeatureConstants.CLASSIFIER_TEST_FEATURE);
+        }
     }
 
-    void attachClassifierFeatures() throws MojoExecutionException {
+    /**
+     * Attach classifier features and return the main non classifier feature
+     * @return
+     * @throws MojoExecutionException
+     */
+    Feature attachClassifierFeatures(final List<Feature> features) throws MojoExecutionException {
         // Find all features that have a classifier and attach each of them
-        String processedFeatures = project.getBuild().getDirectory() + FeatureConstants.FEATURE_PROCESSED_LOCATION;
-
-        File featuresDir = new File(processedFeatures);
-        if (!featuresDir.isDirectory()) {
-            featuresDir = new File(project.getBasedir(), "src/main/features");
-            if (!featuresDir.isDirectory()) {
-                return;
+        Feature main = null;
+        for (final Feature f : features) {
+            if (f.getId().getClassifier() == null ) {
+                if ( main == null ) {
+                    main = f;
+                } else {
+                    // TODO we should check this already in the Preprocessor
+                    throw new MojoExecutionException("Project has more than one feature without a classifier.");
+                }
+            } else {
+                attach(f, f.getId().getClassifier());
             }
         }
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            try {
-                Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-
-                ArtifactId aid = feat.getId();
-                // Only attach features that have the same GAV, they will differ in classifier
-                if (!aid.getGroupId().equals(project.getGroupId()))
-                    continue;
-                if (!aid.getArtifactId().equals(project.getArtifactId()))
-                    continue;
-                if (!aid.getVersion().equals(project.getVersion()))
-                    continue;
-
-                String classifier = aid.getClassifier();
-                if (classifier == null || classifier.length() == 0)
-                    continue;
-                projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, classifier, f);
-            } catch (IOException e) {
-                throw new MojoExecutionException("Unable to attach embedded features", e);
-            }
-        }
+        return main;
     }
 }

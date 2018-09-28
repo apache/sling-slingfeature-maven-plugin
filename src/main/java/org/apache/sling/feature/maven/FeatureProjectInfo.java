@@ -16,17 +16,24 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.util.List;
+
+import org.apache.maven.model.Plugin;
+import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.Feature;
 
-public class FeatureProjectInfo extends ProjectInfo {
+public class FeatureProjectInfo {
+
+    public MavenProject project;
+    public Plugin       plugin;
 
     public boolean featureDone = false;
     public boolean testFeatureDone = false;
 
-    public Feature feature;
-    public Feature assembledFeature;
+    public List<Feature> features;
+    public List<Feature> assembledFeatures;
 
-    public Feature testFeature;
-    public Feature assembledTestFeature;
+    public List<Feature> testFeatures;
+    public List<Feature> assembledTestFeatures;
 }
 

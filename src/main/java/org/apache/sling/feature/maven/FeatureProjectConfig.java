@@ -20,33 +20,26 @@ import org.apache.maven.artifact.Artifact;
 
 public class FeatureProjectConfig {
 
+    public static final String CFG_FEATURES = "features";
+
+    public static final String CFG_TEST_FEATURES = "testFeatures";
+
     public static final String CFG_SKIP_ADD_FEATURE_DEPENDENCIES = "skipAddFeatureDependencies";
 
     public static final String CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES = "skipAddTestFeatureDependencies";
-
-    public static final String CFG_FEATURE_FILE = "featureFile";
-
-    public static final String CFG_TEST_FEATURE_FILE = "testFeatureFile";
-
-    public static final String CFG_FEATURE_INLINED = "feature";
-
-    public static final String CFG_TEST_FEATURE_INLINED = "testFeature";
 
     public static final String CFG_SKIP_ADD_JAR_TO_FEATURE = "skipAddJarToFeature";
 
     public static final String CFG_SKIP_ADD_JAR_TO_TEST_FEATURE = "skipAddJarToTestFeature";
 
-    public static final String CFG_JAR_START_LEVEL = "jarStartLevel";
+    public static final String CFG_JAR_START_ORDER = "jarStartOrder";
 
-    public static final String DEFAULT_FEATURE_FILE = "src/main/osgi/feature.json";
 
-    public static final String DEFAULT_TEST_FEATURE_FILE = "src/test/osgi/feature.json";
+    public static final String DEFAULT_FEATURE_DIR = "src/main/features";
 
-    public static final String DEFAULT_START_LEVEL = "20";
+    public static final String DEFAULT_TEST_FEATURE_DIR = "src/test/osgi/features";
 
-    private final String inlinedFeature;
-
-    private final String featureFileName;
+    private final String featuresDirName;
 
     private final boolean skipAddDep;
 
@@ -56,7 +49,7 @@ public class FeatureProjectConfig {
 
     private final boolean isTest;
 
-    private final String jarStartLevel;
+    private final String jarStartOrder;
 
     private final boolean skipAddJar;
 
@@ -70,47 +63,39 @@ public class FeatureProjectConfig {
 
     private FeatureProjectConfig(final FeatureProjectInfo info, final boolean test) {
         this.isTest = test;
-        final String inlineCfgName;
-        final String fileCfgName;
-        final String defaultFile;
+        final String featuresDirCfgName;
+        final String defaultDir;
         final String skipAddDepCfgName;
         final String defaultSkipValue;
         if ( test ) {
-            inlineCfgName = CFG_TEST_FEATURE_INLINED;
-            fileCfgName = CFG_TEST_FEATURE_FILE;
-            defaultFile = DEFAULT_TEST_FEATURE_FILE;
+            featuresDirCfgName = CFG_TEST_FEATURES;
+            defaultDir = DEFAULT_TEST_FEATURE_DIR;
             this.scope = Artifact.SCOPE_TEST;
             skipAddDepCfgName = CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES;
             defaultSkipValue = "true";
             this.name = "test feature";
             this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_TEST_FEATURE, "true"));
         } else {
-            inlineCfgName = CFG_FEATURE_INLINED;
-            fileCfgName = CFG_TEST_FEATURE_FILE;
-            defaultFile = DEFAULT_FEATURE_FILE;
+            featuresDirCfgName = CFG_FEATURES;
+            defaultDir = DEFAULT_FEATURE_DIR;
             this.scope = Artifact.SCOPE_PROVIDED;
             skipAddDepCfgName = CFG_SKIP_ADD_FEATURE_DEPENDENCIES;
             defaultSkipValue = "false";
             this.name = "feature";
             this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_FEATURE, "true"));
         }
-        this.inlinedFeature = ProjectHelper.getConfigValue(info.plugin, inlineCfgName, null);
-        this.featureFileName = ProjectHelper.getConfigValue(info.plugin, fileCfgName, defaultFile);
+        this.featuresDirName = ProjectHelper.getConfigValue(info.plugin, featuresDirCfgName, defaultDir);
         final String skipCfg = ProjectHelper.getConfigValue(info.plugin, skipAddDepCfgName, defaultSkipValue);
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
-        this.jarStartLevel = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_LEVEL, DEFAULT_START_LEVEL);
+        this.jarStartOrder = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_ORDER, null);
     }
 
     public String getName() {
         return this.name;
     }
 
-    public String getInlinedFeature() {
-        return this.inlinedFeature;
-    }
-
-    public String getFeatureFileName() {
-        return this.featureFileName;
+    public String getFeaturesDir() {
+        return this.featuresDirName;
     }
 
     public boolean isSkipAddDependencies() {
@@ -125,14 +110,12 @@ public class FeatureProjectConfig {
         return this.isTest;
     }
 
-    public String getJarStartLevel() {
-        return this.jarStartLevel;
+    public String getJarStartOrder() {
+        return this.jarStartOrder;
     }
 
     public boolean isSkipAddJarToFeature() {
         return this.skipAddJar;
     }
-
-
 }
 

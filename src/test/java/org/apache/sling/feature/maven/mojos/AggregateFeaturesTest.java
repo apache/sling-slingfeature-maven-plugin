@@ -16,26 +16,11 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
-import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.model.Build;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.repository.RepositorySystem;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.maven.FeatureConstants;
-import org.apache.sling.feature.maven.mojos.AggregateFeatures.FeatureConfig;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
@@ -52,11 +37,25 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
+import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.model.Build;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.repository.RepositorySystem;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.mojos.AggregateFeatures.FeatureConfig;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 public class AggregateFeaturesTest {
     private Path tempDir;
@@ -139,7 +138,7 @@ public class AggregateFeaturesTest {
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
+        File expectedFile = new File(tempDir.toFile(), AggregateFeatures.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
         try (Reader fr = new FileReader(expectedFile)) {
             Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
@@ -205,7 +204,7 @@ public class AggregateFeaturesTest {
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
+        File expectedFile = new File(tempDir.toFile(), AggregateFeatures.FEATURE_PROCESSED_LOCATION + "/aggregated.json");
         try (Reader fr = new FileReader(expectedFile)) {
             Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
@@ -339,7 +338,7 @@ public class AggregateFeaturesTest {
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/agg.json");
+        File expectedFile = new File(tempDir.toFile(), AggregateFeatures.FEATURE_PROCESSED_LOCATION + "/agg.json");
         try (Reader fr = new FileReader(expectedFile)) {
             Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();
@@ -422,7 +421,7 @@ public class AggregateFeaturesTest {
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FeatureConstants.FEATURE_PROCESSED_LOCATION + "/mynewfeature.json");
+        File expectedFile = new File(tempDir.toFile(), AggregateFeatures.FEATURE_PROCESSED_LOCATION + "/mynewfeature.json");
         try (Reader fr = new FileReader(expectedFile)) {
             Feature genFeat = FeatureJSONReader.read(fr, null);
             ArtifactId id = genFeat.getId();

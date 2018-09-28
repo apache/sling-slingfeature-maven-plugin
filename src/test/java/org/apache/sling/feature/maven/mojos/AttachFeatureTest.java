@@ -16,20 +16,34 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.junit.Test;
 import org.mockito.Mockito;
-
-import java.io.File;
 
 public class AttachFeatureTest {
     @Test
     public void testAttachArtifacts() throws Exception {
         File feat_a = new File(getClass().getResource("/attach-resources/features/processed/test_a.json").toURI());
         File feat_d = new File(getClass().getResource("/attach-resources/features/processed/test_d.json").toURI());
+
+        final List<Feature> features = new ArrayList<>();
+        try ( final FileReader r = new FileReader(feat_a) ) {
+            features.add(FeatureJSONReader.read(r, feat_a.getAbsolutePath()));
+        }
+        try ( final FileReader r = new FileReader(feat_d) ) {
+            features.add(FeatureJSONReader.read(r, feat_d.getAbsolutePath()));
+        }
+
         File featuresDir = feat_a.getParentFile().getParentFile().getParentFile();
 
         Build build = new Build();
@@ -41,15 +55,15 @@ public class AttachFeatureTest {
         project.setVersion("1.0.1");
         project.setBuild(build);
 
-        AttachFeature af = new AttachFeature();
+        AttachFeatures af = new AttachFeatures();
         af.project = project;
 
         MavenProjectHelper helper = Mockito.mock(MavenProjectHelper.class);
         af.projectHelper = helper;
 
-        af.attachClassifierFeatures();
-        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", feat_a);
-        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", feat_d);
+        af.attachClassifierFeatures(features);
+        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", new File(featuresDir, "testa.json"));
+        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", new File(featuresDir, "testd.json"));
         Mockito.verifyNoMoreInteractions(helper);
     }
 }

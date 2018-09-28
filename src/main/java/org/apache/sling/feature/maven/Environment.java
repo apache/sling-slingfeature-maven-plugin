@@ -16,13 +16,13 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.codehaus.plexus.logging.Logger;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class Environment {
 
@@ -30,6 +30,6 @@ public class Environment {
     public ArtifactResolver resolver;
     public MavenSession session;
     public Logger logger;
-    public final Map<String, ProjectInfo> modelProjects = new HashMap<>();
+    public final Map<String, FeatureProjectInfo> modelProjects = new HashMap<>();
 }
 
