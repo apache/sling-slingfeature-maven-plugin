@@ -504,26 +504,42 @@ public class AggregateFeaturesTest {
         assertEquals("Expected only one bundle", 1, numFound);
     }
 
-    //@Test
+    @Test
     public void testPluginHandling() throws Exception {
         File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir3").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
 
         FeatureConfig fc = new FeatureConfig();
+        fc.setIncludes("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
+        Artifact parentArtifact = createMockArtifact();
         MavenProject mockProj = Mockito.mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
 
         AggregateFeatures af = new AggregateFeatures();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
+        af.features = featuresDir;
 
         assertEquals("Precondition", 0, pluginCallbacks.size());
         af.execute();
