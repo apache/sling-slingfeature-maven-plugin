@@ -245,6 +245,18 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                 featureMap.putAll(scanner.getIncluded());
             }
         }
+        if ( !fc.excludes.isEmpty() ) {
+            for(final String exclude : fc.excludes) {
+                if ( !exclude.contains("*") ) {
+                    final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
+                    scanner.setIncludes(new String[] {exclude});
+                    scanner.scan();
+                    if ( scanner.getIncluded().isEmpty() ) {
+                        throw new IOException("Non pattern exclude " + exclude + " not found.");
+                    }
+                }
+            }
+        }
     }
 
     private Feature readFeatureFromFile(File f) throws IOException {
