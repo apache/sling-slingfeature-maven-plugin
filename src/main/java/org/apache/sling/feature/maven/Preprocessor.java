@@ -24,10 +24,10 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.apache.maven.model.Dependency;
@@ -138,7 +138,7 @@ public class Preprocessor {
         }
 
         // assemble features
-        final Map<String, Feature> assembledFeatures = new LinkedHashMap<>();
+        final Map<String, Feature> assembledFeatures = new TreeMap<>();
         for(final Map.Entry<String, Feature> entry : (config.isTestConfig() ? info.testFeatures : info.features).entrySet()) {
             final Feature assembledFeature = FeatureBuilder.assemble(entry.getValue(), new BuilderContext(this.createFeatureProvider(env,
                 info,
@@ -236,7 +236,7 @@ public class Preprocessor {
         // feature files first:
         final File dir = new File(project.getBasedir(), config.getFeaturesDir());
         if ( dir.exists() ) {
-            final Map<String, Feature> featureMap = new LinkedHashMap<>();
+            final Map<String, Feature> featureMap = new TreeMap<>();
             final List<File> files = new ArrayList<>();
             scan(files, dir);
 

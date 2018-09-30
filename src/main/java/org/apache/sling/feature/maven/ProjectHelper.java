@@ -21,9 +21,9 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
@@ -83,7 +83,7 @@ public abstract class ProjectHelper {
         if ( result == null ) {
             final Integer size = (Integer)project.getContextValue(key);
             if ( size != null ) {
-                result = new LinkedHashMap<>();
+                result = new TreeMap<>();
                 for(int i=0; i<size;i++) {
                     final String text = (String)project.getContextValue(key + "_" + String.valueOf(i));
                     if ( text == null ) {
