@@ -40,7 +40,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
-public class AttachFeatures extends AbstractFeatureMojo {
+public class AttachFeaturesMojo extends AbstractFeatureMojo {
 
     private void attach(final Feature feature,
             final String classifier)

@@ -19,7 +19,7 @@ package org.apache.sling.feature.maven.mojos.plugins;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.FeatureExtensionHandler;
-import org.apache.sling.feature.maven.mojos.AggregateFeaturesTest;
+import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojoTest;
 
 public class TestPlugin1 implements FeatureExtensionHandler {
     @Override
@@ -33,6 +33,6 @@ public class TestPlugin1 implements FeatureExtensionHandler {
 
     @Override
     public void postProcess(Feature feature, Extension extension) {
-        AggregateFeaturesTest.addPluginCallback("TestPlugin1 - " +extension.getName(), feature.getId());
+        AggregateFeaturesMojoTest.addPluginCallback("TestPlugin1 - " +extension.getName(), feature.getId());
     }
 }

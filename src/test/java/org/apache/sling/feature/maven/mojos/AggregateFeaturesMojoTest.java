@@ -53,7 +53,7 @@ import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.maven.mojos.AggregateFeatures.FeatureConfig;
+import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojo.FeatureConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,7 +61,7 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-public class AggregateFeaturesTest {
+public class AggregateFeaturesMojoTest {
     private Path tempDir;
     private static Map<String, ArtifactId> pluginCallbacks;
 
@@ -158,7 +158,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
@@ -216,7 +216,7 @@ public class AggregateFeaturesTest {
         FeatureConfig fc = new FeatureConfig();
         fc.setIncludes("*.json");
         fc.setIncludes("*.foobar");
-        fc.setIncludes("test_z.feature");
+//        fc.setIncludes("test_z.feature");
         fc.setExcludes("*_v*");
         fc.setExcludes("test_w.json");
 
@@ -235,7 +235,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
@@ -382,7 +382,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getArtifactId()).thenReturn("a");
         Mockito.when(mockProj.getVersion()).thenReturn("999");
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "agg";
         af.aggregates = Arrays.asList(fc1, fc2, fc3);
         af.project = mockProj;
@@ -449,7 +449,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "mynewfeature";
         af.aggregates = Collections.singletonList(fc);
         af.repoSystem = mockRepo;
@@ -533,7 +533,7 @@ public class AggregateFeaturesTest {
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;

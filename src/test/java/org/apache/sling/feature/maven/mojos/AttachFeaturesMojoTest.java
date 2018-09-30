@@ -30,7 +30,7 @@ import org.apache.sling.feature.maven.FeatureConstants;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-public class AttachFeatureTest {
+public class AttachFeaturesMojoTest {
     @Test
     public void testAttachArtifacts() throws Exception {
         File feat_a = new File(getClass().getResource("/attach-resources/features/processed/test_a.json").toURI());
@@ -55,7 +55,7 @@ public class AttachFeatureTest {
         project.setVersion("1.0.1");
         project.setBuild(build);
 
-        AttachFeatures af = new AttachFeatures();
+        AttachFeaturesMojo af = new AttachFeaturesMojo();
         af.project = project;
 
         MavenProjectHelper helper = Mockito.mock(MavenProjectHelper.class);

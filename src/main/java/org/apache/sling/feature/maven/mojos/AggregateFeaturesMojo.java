@@ -65,7 +65,7 @@ import org.codehaus.plexus.util.AbstractScanner;
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
-public class AggregateFeatures extends AbstractFeatureMojo {
+public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
     private static final String PREFIX = ":aggregate:";
 
@@ -223,16 +223,28 @@ public class AggregateFeatures extends AbstractFeatureMojo {
             Map<ArtifactId, Feature> featureMap,
             Map<String, Feature> contextFeatures) throws IOException {
         final String prefix = this.features.getAbsolutePath().concat(File.separator);
-        final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
-        if ( !fc.includes.isEmpty() ) {
-            scanner.setIncludes(fc.includes.toArray(new String[fc.includes.size()]));
-        }
-        if ( !fc.excludes.isEmpty() ) {
-            scanner.setExcludes(fc.excludes.toArray(new String[fc.excludes.size()]));
-        }
-        scanner.scan();
+        if ( fc.includes.isEmpty() ) {
+            final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
+            if ( !fc.excludes.isEmpty() ) {
+                scanner.setExcludes(fc.excludes.toArray(new String[fc.excludes.size()]));
+            }
+            scanner.scan();
+            featureMap.putAll(scanner.getIncluded());
+        } else {
+            for(final String include : fc.includes) {
+                final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
+                if ( !fc.excludes.isEmpty() ) {
+                    scanner.setExcludes(fc.excludes.toArray(new String[fc.excludes.size()]));
+                }
+                scanner.setIncludes(new String[] {include});
+                scanner.scan();
 
-        featureMap.putAll(scanner.getIncluded());
+                if ( !include.contains("*") && scanner.getIncluded().isEmpty() ) {
+                    throw new IOException("Non pattern include " + include + " not found.");
+                }
+                featureMap.putAll(scanner.getIncluded());
+            }
+        }
     }
 
     private Feature readFeatureFromFile(File f) throws IOException {
