@@ -62,7 +62,9 @@ Sample configuration:
   </plugin>  
 ```
 
-All features found in the directory as well as the artifact sections of the configuration are aggregated into a single feature.
+All features found in the directory as well as the artifact sections of the plugin configuration are aggregated into a single feature. Includes are processed in the way they appear in the configuration. If an include contains a pattern which includes more than one feature, than the features are included based on their full alphabetical file path. The features are aggregated in the order they are included.
+
+If an include or an exclude is not using a pattern but directly specifying a file, this file must exists. Otherwise the build fails.
 
 The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which the aggregation is configured. It will have type `slingfeature` and as classifier the one specified in the configuration named `aggregateClassifier`.
 
