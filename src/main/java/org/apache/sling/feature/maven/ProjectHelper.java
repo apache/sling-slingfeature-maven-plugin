@@ -77,8 +77,13 @@ public abstract class ProjectHelper {
         Map<String, Feature> result = null;
         try {
             result = (Map<String, Feature>) project.getContextValue(cacheKey);
+            if (!result.isEmpty() ) {
+                final Feature f = result.values().iterator().next();
+                f.getId();
+            }
         } catch ( final Exception e) {
             // if we get a class cast exception, we read again
+            result = null;
         }
         if ( result == null ) {
             final Integer size = (Integer)project.getContextValue(key);
