@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
@@ -162,15 +163,18 @@ public class Preprocessor {
         }
     }
 
-    private void scan(final List<File> files, final File dir) {
-        for(final File f : dir.listFiles()) {
-            if ( !f.getName().startsWith(".") ) {
-                if ( f.isDirectory() ) {
-                    scan(files, f);
-                } else if ( f.getName().endsWith(".json") ) {
-                    files.add(f);
-                }
-            }
+    private void scan(final List<File> files, final File dir, final String includes, final String excludes) {
+        final DirectoryScanner scanner = new DirectoryScanner();
+        scanner.setBasedir(dir);
+        if ( includes != null ) {
+            scanner.setIncludes(includes.split(","));
+        }
+        if ( excludes != null ) {
+            scanner.setExcludes(excludes.split(","));
+        }
+        scanner.scan();
+        for(final String f : scanner.getIncludedFiles()) {
+            files.add(new File(dir, f));
         }
     }
 
@@ -238,7 +242,7 @@ public class Preprocessor {
         if ( dir.exists() ) {
             final Map<String, Feature> featureMap = new TreeMap<>();
             final List<File> files = new ArrayList<>();
-            scan(files, dir);
+            scan(files, dir, config.getIncludes(), config.getExcludes());
 
             for(final File file : files) {
                 final StringBuilder sb = new StringBuilder();

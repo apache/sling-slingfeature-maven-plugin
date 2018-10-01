@@ -22,7 +22,15 @@ public class FeatureProjectConfig {
 
     public static final String CFG_FEATURES = "features";
 
+    public static final String CFG_FEATURES_INCLUDES = "featuresIncludes";
+
+    public static final String CFG_FEATURES_EXCLUDES = "featuresExcludes";
+
     public static final String CFG_TEST_FEATURES = "testFeatures";
+
+    public static final String CFG_TEST_FEATURES_INCLUDES = "testFeaturesIncludes";
+
+    public static final String CFG_TEST_FEATURES_EXCLUDES = "testFeaturesExcludes";
 
     public static final String CFG_SKIP_ADD_FEATURE_DEPENDENCIES = "skipAddFeatureDependencies";
 
@@ -37,9 +45,15 @@ public class FeatureProjectConfig {
 
     public static final String DEFAULT_FEATURE_DIR = "src/main/features";
 
-    public static final String DEFAULT_TEST_FEATURE_DIR = "src/test/osgi/features";
+    public static final String DEFAULT_FEATURE_INCLUDES = "**/*.json";
+
+    public static final String DEFAULT_TEST_FEATURE_DIR = "src/test/features";
 
     private final String featuresDirName;
+
+    private final String includes;
+
+    private final String excludes;
 
     private final boolean skipAddDep;
 
@@ -67,11 +81,15 @@ public class FeatureProjectConfig {
         final String defaultDir;
         final String skipAddDepCfgName;
         final String defaultSkipValue;
+        final String incCfgName;
+        final String exCfgName;
         if ( test ) {
             featuresDirCfgName = CFG_TEST_FEATURES;
             defaultDir = DEFAULT_TEST_FEATURE_DIR;
             this.scope = Artifact.SCOPE_TEST;
             skipAddDepCfgName = CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES;
+            incCfgName = CFG_TEST_FEATURES_INCLUDES;
+            exCfgName = CFG_TEST_FEATURES_EXCLUDES;
             defaultSkipValue = "true";
             this.name = "test feature";
             this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_TEST_FEATURE, "true"));
@@ -80,11 +98,15 @@ public class FeatureProjectConfig {
             defaultDir = DEFAULT_FEATURE_DIR;
             this.scope = Artifact.SCOPE_PROVIDED;
             skipAddDepCfgName = CFG_SKIP_ADD_FEATURE_DEPENDENCIES;
+            incCfgName = CFG_FEATURES_INCLUDES;
+            exCfgName = CFG_FEATURES_EXCLUDES;
             defaultSkipValue = "false";
             this.name = "feature";
             this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_FEATURE, "true"));
         }
         this.featuresDirName = ProjectHelper.getConfigValue(info.plugin, featuresDirCfgName, defaultDir);
+        this.includes = ProjectHelper.getConfigValue(info.plugin, incCfgName, null);
+        this.excludes = ProjectHelper.getConfigValue(info.plugin, exCfgName, null);
         final String skipCfg = ProjectHelper.getConfigValue(info.plugin, skipAddDepCfgName, defaultSkipValue);
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
         this.jarStartOrder = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_ORDER, null);
@@ -96,6 +118,14 @@ public class FeatureProjectConfig {
 
     public String getFeaturesDir() {
         return this.featuresDirName;
+    }
+
+    public String getIncludes() {
+        return this.includes;
+    }
+
+    public String getExcludes() {
+        return this.excludes;
     }
 
     public boolean isSkipAddDependencies() {

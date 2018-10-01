@@ -40,12 +40,38 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     protected File features;
 
     /**
+     * Comma separated list of includes
+     */
+    @Parameter(name = FeatureProjectConfig.CFG_FEATURES_INCLUDES,
+            defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
+    private String featuresIncludes;
+
+    /**
+     * Comma separated list of excludes
+     */
+    @Parameter(name = FeatureProjectConfig.CFG_FEATURES_EXCLUDES)
+    private String featuresExcludes;
+
+    /**
      * Directory containing test feature files
      */
     @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES,
             required = true,
             defaultValue = FeatureProjectConfig.DEFAULT_TEST_FEATURE_DIR)
     private File testFeatures;
+
+    /**
+     * Comma separated list of includes
+     */
+    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES_INCLUDES,
+            defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
+    private String testFeaturesIncludes;
+
+    /**
+     * Comma separated list of excludes
+     */
+    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES_EXCLUDES)
+    private String testFeaturesExcludes;
 
     /**
      * If set to {@code true} the artifacts from the feature are not as dependencies to the project.
