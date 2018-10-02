@@ -112,7 +112,9 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
         // get the map of features for this aggregate
         final Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
-
+        if ( featureMap.isEmpty() ) {
+            throw new MojoExecutionException("No features found for aggregate with classifier " + aggregateClassifier);
+        }
         KeyValueMap variableOverrides = new KeyValueMap();
         if (variables != null) {
             for (Map.Entry<String, String> entry : variables.entrySet()) {
