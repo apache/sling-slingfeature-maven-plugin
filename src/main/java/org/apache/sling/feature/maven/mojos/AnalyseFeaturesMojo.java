@@ -60,21 +60,46 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
                 return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile();
             }
         };
+
+        boolean failed = false;
+
         try {
+            getLog().debug("Setting up the Scanner...");
             final Scanner scanner = new Scanner(am);
+            getLog().debug("Scanner successfully set up");
+
+            getLog().debug("Setting up the Analyser...");
             final Analyser analyser = new Analyser(scanner);
+            getLog().debug("Analyser successfully set up");
+
+            getLog().debug("Retrieving Feature files...");
             final Collection<Feature> features = ProjectHelper.getAssembledFeatures(this.project).values();
+
+            if (features.isEmpty()) {
+                getLog().debug("There are no assciated Feature files to current ptoject, plugin execution will be interrupted");
+                return;
+            } else {
+                getLog().debug("Starting Features analysis...");
+            }
+
             for(final Feature f : features) {
                 try {
+                    getLog().debug("Analyzing Feature " + f.getId() + "...");
                     analyser.analyse(f);
-                } catch (Exception e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                    getLog().debug("Feature " + f.getId() + " succesfully passed all analysis");
+                } catch (Throwable t) {
+                    failed = true;
+                    getLog().error("An error occurred while analyzing Feature '" + f.getId() + "', read the log for details");
                 }
             }
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            throw new MojoExecutionException("A fatal error occurred while setting up the Scanner and related Analyzer, see error cause:", e);
+        } finally {
+            getLog().debug("Features analysis complete");
+        }
+
+        if (failed) {
+            throw new MojoFailureException("One or more features Analyzer detected Feature error(s), please read the plugin log for more datils");
         }
     }
 }
