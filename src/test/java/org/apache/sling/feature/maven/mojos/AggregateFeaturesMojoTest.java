@@ -16,29 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.Reader;
-import java.lang.reflect.Field;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -47,6 +24,7 @@ import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.model.Build;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.DefaultMavenProjectHelper;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
@@ -60,6 +38,29 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
+
+import java.io.File;
+import java.io.FileReader;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Map;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
@@ -216,7 +217,6 @@ public class AggregateFeaturesMojoTest {
         FeatureConfig fc = new FeatureConfig();
         fc.setIncludes("*.json");
         fc.setIncludes("*.foobar");
-//        fc.setIncludes("test_z.feature");
         fc.setExcludes("*_v*");
         fc.setExcludes("test_w.json");
 
@@ -279,7 +279,6 @@ public class AggregateFeaturesMojoTest {
         assertEquals(expectedConfigs, actualConfigs);
     }
 
-    /* This functonality is no longer supported
     @Test
     public void testNonMatchingDirectoryIncludes() throws Exception {
         File featuresDir = new File(
@@ -309,7 +308,7 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
@@ -321,14 +320,20 @@ public class AggregateFeaturesMojoTest {
             af.execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
-            assertTrue(mee.getCause().getMessage().contains("Non-wildcard include doesnotexist.json not found"));
+            assertTrue(mee.getCause().getMessage().contains("Non pattern include doesnotexist.json not found"));
         }
     }
 
-    //@Test
+    @Test
     public void testNonMatchingDirectoryExcludes() throws Exception {
         File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
 
         FeatureConfig fc = new FeatureConfig();
         fc.setExcludes("doesnotexist.json");
@@ -336,30 +341,44 @@ public class AggregateFeaturesMojoTest {
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
+        Artifact parentArtifact = createMockArtifact();
         MavenProject mockProj = Mockito.mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
 
-        AggregateFeatures af = new AggregateFeatures();
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
+        af.features = featuresDir;
 
         try {
             af.execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
-            assertTrue(mee.getCause().getMessage().contains("Non-wildcard exclude doesnotexist.json not found"));
+            assertTrue(mee.getCause().getMessage().contains("Non pattern exclude doesnotexist.json not found"));
         }
     }
-    */
 
-    //@Test
+    @Test
     public void testIncludeOrdering() throws Exception {
         File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir4").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
 
         FeatureConfig fc1 = new FeatureConfig();
         fc1.setIncludes("test_x.json");
@@ -376,44 +395,51 @@ public class AggregateFeaturesMojoTest {
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
+        Artifact parentArtifact = createMockArtifact();
         MavenProject mockProj = Mockito.mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("g");
         Mockito.when(mockProj.getArtifactId()).thenReturn("a");
         Mockito.when(mockProj.getVersion()).thenReturn("999");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregateClassifier = "agg";
         af.aggregates = Arrays.asList(fc1, fc2, fc3);
         af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
+        af.features = featuresDir;
 
         af.execute();
 
-        File expectedFile = new File(tempDir.toFile(), FEATURE_PROCESSED_LOCATION + "/agg.json");
-        try (Reader fr = new FileReader(expectedFile)) {
-            Feature genFeat = FeatureJSONReader.read(fr, null);
-            ArtifactId id = genFeat.getId();
+        Feature genFeat = featureMap.get(":aggregate:agg");
+        ArtifactId id = genFeat.getId();
 
-            assertEquals("g", id.getGroupId());
-            assertEquals("a", id.getArtifactId());
-            assertEquals("999", id.getVersion());
-            assertEquals("slingfeature", id.getType());
-            assertEquals("agg", id.getClassifier());
+        assertEquals("g", id.getGroupId());
+        assertEquals("a", id.getArtifactId());
+        assertEquals("999", id.getVersion());
+        assertEquals("slingfeature", id.getType());
+        assertEquals("agg", id.getClassifier());
 
-            Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
-            expectedConfigs.put("t.pid", new Hashtable<>(Collections.singletonMap("t", "t")));
-            expectedConfigs.put("u.pid", new Hashtable<>(Collections.singletonMap("u", "u")));
-            expectedConfigs.put("v.pid", new Hashtable<>(Collections.singletonMap("v", "v")));
-            expectedConfigs.put("x.pid", new Hashtable<>(Collections.singletonMap("x", "x")));
-            expectedConfigs.put("y.pid", new Hashtable<>(Collections.singletonMap("y", "y")));
-            expectedConfigs.put("z.pid", new Hashtable<>(Collections.singletonMap("z", "z")));
+        Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
+        expectedConfigs.put("t.pid", new Hashtable<>(Collections.singletonMap("t", "t")));
+        expectedConfigs.put("u.pid", new Hashtable<>(Collections.singletonMap("u", "u")));
+        expectedConfigs.put("v.pid", new Hashtable<>(Collections.singletonMap("v", "v")));
+        expectedConfigs.put("x.pid", new Hashtable<>(Collections.singletonMap("x", "x")));
+        expectedConfigs.put("y.pid", new Hashtable<>(Collections.singletonMap("y", "y")));
+        expectedConfigs.put("z.pid", new Hashtable<>(Collections.singletonMap("z", "z")));
 
-            Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
-            for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
-                actualConfigs.put(conf.getPid(), conf.getProperties());
-            }
-            assertEquals(expectedConfigs, actualConfigs);
+        Map<String, Dictionary<String, Object>> actualConfigs = new HashMap<>();
+        for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
+            actualConfigs.put(conf.getPid(), conf.getProperties());
         }
+        assertEquals(expectedConfigs, actualConfigs);
     }
 
     @Test
