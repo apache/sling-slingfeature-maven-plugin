@@ -180,7 +180,9 @@ public abstract class ProjectHelper {
         for(final PluginExecution exec : plugin.getExecutions()) {
             final Xpp3Dom cfg = (Xpp3Dom)exec.getConfiguration();
             final Xpp3Dom pluginNode = (cfg == null ? null : cfg.getChild(name));
-            if ( pluginNode != null ) {
+            if ( pluginNode != null
+                    && pluginNode.getValue() != null
+                    && !pluginNode.getValue().isEmpty() ) {
                 values.add(pluginNode.getValue());
             }
         }
