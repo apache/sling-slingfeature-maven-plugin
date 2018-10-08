@@ -19,6 +19,7 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Set;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
@@ -27,6 +28,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
@@ -51,6 +53,12 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
     @Component
     ArtifactResolver artifactResolver;
 
+    @Parameter
+    Set<String> includeTasks;
+
+    @Parameter
+    Set<String> excludeTasks;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final ArtifactProvider am = new ArtifactProvider() {
@@ -69,7 +77,7 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
             getLog().debug("Scanner successfully set up");
 
             getLog().debug("Setting up the Analyser...");
-            final Analyser analyser = new Analyser(scanner);
+            final Analyser analyser = new Analyser(scanner, includeTasks, excludeTasks);
             getLog().debug("Analyser successfully set up");
 
             getLog().debug("Retrieving Feature files...");
