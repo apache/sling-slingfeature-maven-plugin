@@ -39,7 +39,7 @@ import org.apache.sling.feature.scanner.spi.ArtifactProvider;
  * Analyse the feature.
  */
 @Mojo(name = "analyse-features",
-      defaultPhase = LifecyclePhase.VERIFY,
+      defaultPhase = LifecyclePhase.VALIDATE,
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
