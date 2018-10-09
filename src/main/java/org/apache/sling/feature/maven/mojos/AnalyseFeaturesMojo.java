@@ -97,7 +97,7 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
                     getLog().debug("Feature " + f.getId() + " succesfully passed all analysis");
                 } catch (Throwable t) {
                     failed = true;
-                    getLog().error("An error occurred while analyzing Feature '" + f.getId() + "', read the log for details");
+                    getLog().error("An error occurred while analyzing Feature '" + f.getId() + "', read the log for details:", t);
                 }
             }
         } catch (IOException e) {
