@@ -59,6 +59,12 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
     @Parameter
     Set<String> excludeTasks;
 
+    @Parameter
+    Set<String> includeFeatures;
+
+    @Parameter
+    Set<String> excludeFeatures;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final ArtifactProvider am = new ArtifactProvider() {
@@ -90,7 +96,16 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
                 getLog().debug("Starting Features analysis...");
             }
 
-            for(final Feature f : features) {
+            for (final Feature f : features) {
+                String featureId = f.getId().toMvnId();
+                boolean included = includeFeatures != null ? includeFeatures.contains(featureId) : true;
+                boolean excluded = excludeFeatures != null ? excludeFeatures.contains(featureId) : false;
+
+                if (!included || excluded) {
+                    getLog().debug("Feature '" + featureId + "' will not be included in the Analysis");
+                    continue;
+                }
+
                 try {
                     getLog().debug("Analyzing Feature " + f.getId() + "...");
                     analyser.analyse(f);
