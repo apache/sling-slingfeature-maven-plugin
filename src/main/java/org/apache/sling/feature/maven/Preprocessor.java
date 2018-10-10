@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -30,8 +29,10 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.filtering.DefaultMavenReaderFilter;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
@@ -49,11 +50,15 @@ import org.codehaus.plexus.logging.Logger;
  */
 public class Preprocessor {
 
+    private final DefaultMavenReaderFilter readerFilter = new DefaultMavenReaderFilter();
+
     /**
      * Process the provided projects.
      * @param env The environment with all maven settings and projects
      */
     public void process(final Environment env) {
+        readerFilter.enableLogging(env.logger);
+
         for(final FeatureProjectInfo finfo : env.modelProjects.values()) {
             process(env, finfo, FeatureProjectConfig.getMainConfig(finfo));
             process(env, finfo, FeatureProjectConfig.getTestConfig(finfo));
@@ -106,7 +111,7 @@ public class Preprocessor {
         env.logger.debug("Processing " + config.getName() + " in project " + info.project.getId());
 
         // read project features
-        final Map<String, Feature> features = readProjectFeatures(env.logger, info.project, config);
+        final Map<String, Feature> features = readProjectFeatures(env.logger, info.project, config, env.session);
         if ( config.isTestConfig() ) {
             info.testFeatures = features;
         } else {
@@ -236,7 +241,8 @@ public class Preprocessor {
     protected Map<String, Feature> readProjectFeatures(
             final Logger logger,
             final MavenProject project,
-            final FeatureProjectConfig config) {
+            final FeatureProjectConfig config,
+            final MavenSession session) {
         // feature files first:
         final File dir = new File(project.getBasedir(), config.getFeaturesDir());
         if ( dir.exists() ) {
@@ -245,21 +251,7 @@ public class Preprocessor {
             scan(files, dir, config.getIncludes(), config.getExcludes());
 
             for(final File file : files) {
-                final StringBuilder sb = new StringBuilder();
-                try (final Reader reader = new FileReader(file)) {
-                    final char[] buf = new char[4096];
-                    int l = 0;
-
-                    while (( l = reader.read(buf)) > 0 ) {
-                        sb.append(buf, 0, l);
-                    }
-                } catch ( final IOException io) {
-                    throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
-                }
-
-                final String json = Substitution.replaceMavenVars(project, sb.toString());
-
-                try (final Reader reader = new StringReader(json)) {
+                try (final Reader reader = readerFilter.filter(new FileReader(file), true, project, Collections.emptyList(), true, session)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
                     this.checkFeatureId(project, feature);
@@ -268,7 +260,7 @@ public class Preprocessor {
                     this.postProcessReadFeature(feature);
                     featureMap.put(file.getAbsolutePath(), feature);
 
-                } catch ( final IOException io) {
+                } catch ( final Exception io) {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
             }

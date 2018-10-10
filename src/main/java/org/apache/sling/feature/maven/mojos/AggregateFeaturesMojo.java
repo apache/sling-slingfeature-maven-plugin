@@ -17,11 +17,11 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringReader;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +36,7 @@ import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -44,6 +45,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.repository.RepositorySystem;
+import org.apache.maven.shared.filtering.MavenFilteringException;
+import org.apache.maven.shared.filtering.MavenReaderFilter;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.KeyValueMap;
@@ -54,7 +57,6 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
-import org.apache.sling.feature.maven.Substitution;
 import org.codehaus.plexus.util.AbstractScanner;
 
 /**
@@ -92,6 +94,12 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
     @Component
     ArtifactResolver artifactResolver;
+
+    @Component
+    MavenReaderFilter readerFilter;
+
+    @Parameter(defaultValue = "${session}", readonly = true)
+    MavenSession session;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -262,9 +270,19 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     }
 
     private Feature readFeatureFromFile(File f) throws IOException {
-        String content = new String(Files.readAllBytes(f.toPath()));
-        content = Substitution.replaceMavenVars(project, content);
-        return FeatureJSONReader.read(new StringReader(content), null);
+        try {
+            return FeatureJSONReader.read(readerFilter.filter(new FileReader(f),
+                                                              true,
+                                                              project,
+                                                              Collections.emptyList(),
+                                                              true,
+                                                              session),
+                    null);
+        } catch (MavenFilteringException e) {
+            throw new IOException("An error occurred while interpolating variables in feature file '"
+                    + f
+                    + "', see cause exception:", e);
+        }
     }
 
     public static class FeatureConfig {
