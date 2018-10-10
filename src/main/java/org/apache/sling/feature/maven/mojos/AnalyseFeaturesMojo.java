@@ -30,6 +30,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.analyser.Analyser;
@@ -78,13 +79,13 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
         boolean failed = false;
 
         try {
-            getLog().debug("Setting up the Scanner...");
+            getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
             final Scanner scanner = new Scanner(am);
-            getLog().debug("Scanner successfully set up");
+            getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
 
-            getLog().debug("Setting up the Analyser...");
+            getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a("...").toString());
             final Analyser analyser = new Analyser(scanner, includeTasks, excludeTasks);
-            getLog().debug("Analyser successfully set up");
+            getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
 
             getLog().debug("Retrieving Feature files...");
             final Collection<Feature> features = ProjectHelper.getAssembledFeatures(this.project).values();
@@ -102,17 +103,17 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
                 boolean excluded = excludeFeatures != null ? excludeFeatures.contains(featureId) : false;
 
                 if (!included || excluded) {
-                    getLog().debug("Feature '" + featureId + "' will not be included in the Analysis");
+                    getLog().debug(MessageUtils.buffer().a("Feature '").strong(featureId).a("' will not be included in the Analysis").toString());
                     continue;
                 }
 
                 try {
-                    getLog().debug("Analyzing Feature " + f.getId() + "...");
+                    getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(featureId).a(" ...").toString());
                     analyser.analyse(f);
-                    getLog().debug("Feature " + f.getId() + " succesfully passed all analysis");
+                    getLog().debug(MessageUtils.buffer().a("Feature ").debug(featureId).a(" succesfully passed all analysis").toString());
                 } catch (Throwable t) {
                     failed = true;
-                    getLog().error("An error occurred while analyzing Feature '" + f.getId() + "', read the log for details:", t);
+                    getLog().error(MessageUtils.buffer().a("An error occurred while analyzing Feature ").error(featureId).a(", read the log for details:").toString(), t);
                 }
             }
         } catch (IOException e) {
