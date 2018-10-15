@@ -21,11 +21,15 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
+import org.apache.maven.model.License;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
@@ -42,10 +46,27 @@ import org.apache.sling.feature.maven.ProjectHelper;
     )
 public class AttachFeaturesMojo extends AbstractFeatureMojo {
 
+    @Parameter(defaultValue = "false")
+    private boolean addPomMetadata;
+
     private void attach(final Feature feature,
             final String classifier)
     throws MojoExecutionException {
         if ( feature != null ) {
+
+            if (addPomMetadata) {
+                addPomMetadata(project.getName(), title -> feature.setTitle(title));
+                addPomMetadata(project.getDescription(), description -> feature.setDescription(description));
+
+                if (project.getOrganization() != null) {
+                    addPomMetadata(project.getOrganization().getName(), vendor -> feature.setVendor(vendor));
+                }
+
+                if (project.getLicenses() != null && !project.getLicenses().isEmpty()) {
+                    License license = project.getLicenses().iterator().next();
+                    addPomMetadata(license.getName(), licenseName -> feature.setLicense(licenseName));
+                }
+            }
 
             // write the feature
             final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + classifier + ".json");
@@ -104,5 +125,11 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
             }
         }
         return main;
+    }
+
+    private static void addPomMetadata(String value, Consumer<String> setter) {
+        if (value != null && !value.isEmpty()) {
+            setter.accept(value);
+        }
     }
 }
