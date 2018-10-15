@@ -23,7 +23,7 @@ import java.util.*;
          String[] values = {
             "\"title\":\"Apache Sling Features Maven plugin test\"",
             "\"description\":\"This is just an Apache Sling Features Maven plugin test to verify added metadata\"",
-            "\"vendor\":\"The Apache Software Foundation\"",
+            "\"vendor\":\"The Apache Sling Team\"",
             "\"license\":\"Apache License, Version 2.0\""
         };
          for (String value : values) {

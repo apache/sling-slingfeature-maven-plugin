@@ -55,16 +55,16 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
         if ( feature != null ) {
 
             if (addPomMetadata) {
-                addPomMetadata(project.getName(), title -> feature.setTitle(title));
-                addPomMetadata(project.getDescription(), description -> feature.setDescription(description));
+                addPomMetadata(feature.getTitle(), project.getName(), title -> feature.setTitle(title));
+                addPomMetadata(feature.getDescription(), project.getDescription(), description -> feature.setDescription(description));
 
                 if (project.getOrganization() != null) {
-                    addPomMetadata(project.getOrganization().getName(), vendor -> feature.setVendor(vendor));
+                    addPomMetadata(feature.getVendor(), project.getOrganization().getName(), vendor -> feature.setVendor(vendor));
                 }
 
                 if (project.getLicenses() != null && !project.getLicenses().isEmpty()) {
                     License license = project.getLicenses().iterator().next();
-                    addPomMetadata(license.getName(), licenseName -> feature.setLicense(licenseName));
+                    addPomMetadata(feature.getLicense(), license.getName(), licenseName -> feature.setLicense(licenseName));
                 }
             }
 
@@ -127,8 +127,8 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
         return main;
     }
 
-    private static void addPomMetadata(String value, Consumer<String> setter) {
-        if (value != null && !value.isEmpty()) {
+    private static void addPomMetadata(String originalValue, String value, Consumer<String> setter) {
+        if ((originalValue == null || originalValue.isEmpty()) && value != null && !value.isEmpty()) {
             setter.accept(value);
         }
     }
