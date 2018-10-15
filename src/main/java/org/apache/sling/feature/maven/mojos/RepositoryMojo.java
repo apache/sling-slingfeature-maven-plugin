@@ -84,10 +84,7 @@ public class RepositoryMojo extends AbstractFeatureMojo {
         final File artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
         this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
 
-        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getFeatures(this.project);
-        features.putAll(ProjectHelper.getAssembledFeatures(this.project));
-
-        final Set<ArtifactId> includedIds = new HashSet<>();
+        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
 
         if (includes != null && !includes.isEmpty()) {
             for (Include include : includes) {
