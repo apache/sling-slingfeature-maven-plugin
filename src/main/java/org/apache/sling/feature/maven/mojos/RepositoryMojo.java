@@ -22,7 +22,10 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
@@ -35,6 +38,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
@@ -59,6 +63,12 @@ public class RepositoryMojo extends AbstractFeatureMojo {
     @Parameter(defaultValue = "artifacts")
     private String repositoryDir;
 
+    @Parameter
+    private List<Include> includes;
+
+    @Parameter
+    private List<Include> embed;
+
     @Component
     private ArtifactHandlerManager artifactHandlerManager;
 
@@ -76,19 +86,41 @@ public class RepositoryMojo extends AbstractFeatureMojo {
 
         final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
 
-        for(final Feature f : features.values()) {
-            processFeature(artifactDir, f);
+        if (includes != null && !includes.isEmpty()) {
+            for (Include include : includes) {
+                boolean found = false;
+                for (Feature f : features.values()) {
+                    if (f.getId().equals(include.getID())) {
+                        processFeature(artifactDir, f);
+                        found = true;
+                    }
+                }
+                if (!found) {
+                    processRemoteFeature(artifactDir, include.getID());
+                }
+            }
+        }
+        else {
+            for (final Feature f : features.values())
+            {
+                processFeature(artifactDir, f);
+            }
+        }
+        if (embed != null) {
+            for (Include include : embed) {
+                copyArtifactToRepository(include.getID(), artifactDir);
+            }
         }
     }
 
     private void processFeature(final File artifactDir, final Feature f) throws MojoExecutionException {
         for(final org.apache.sling.feature.Artifact artifact : f.getBundles()) {
-            copyArtifactToRepository(artifact, artifactDir);
+            copyArtifactToRepository(artifact.getId(), artifactDir);
         }
         for(final Extension ext : f.getExtensions()) {
             if ( ext.getType() == ExtensionType.ARTIFACTS ) {
                 for(final org.apache.sling.feature.Artifact artifact : ext.getArtifacts()) {
-                    copyArtifactToRepository(artifact, artifactDir);
+                    copyArtifactToRepository(artifact.getId(), artifactDir);
                 }
             }
         }
@@ -101,18 +133,22 @@ public class RepositoryMojo extends AbstractFeatureMojo {
             throw new MojoExecutionException("Unable to write feature file ", e);
         }
         if ( f.getInclude() != null ) {
-            final Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
-                    this.mavenSession,
-                    this.artifactHandlerManager,
-                    this.resolver,
-                    f.getInclude().getId());
+            processRemoteFeature(artifactDir, f.getInclude().getId());
+        }
+    }
 
-            try (final Reader reader = new FileReader(source.getFile()) ) {
-                final Feature inc = FeatureJSONReader.read(reader, f.getId().toMvnId());
-                processFeature(artifactDir, inc);
-            } catch (final IOException e) {
-                throw new MojoExecutionException("Unable to read feature file ", e);
-            }
+    private void processRemoteFeature(final File artifactDir, final ArtifactId id) throws MojoExecutionException {
+        final Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
+            this.mavenSession,
+            this.artifactHandlerManager,
+            this.resolver,
+            id);
+
+        try (final Reader reader = new FileReader(source.getFile()) ) {
+            final Feature inc = FeatureJSONReader.read(reader, id.toMvnId());
+            processFeature(artifactDir, inc);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("Unable to read feature file ", e);
         }
     }
 
@@ -155,10 +191,10 @@ public class RepositoryMojo extends AbstractFeatureMojo {
      * Copy a single artifact to the repository
      * @throws MojoExecutionException
      */
-    private void copyArtifactToRepository(final org.apache.sling.feature.Artifact artifact,
+    private void copyArtifactToRepository(final ArtifactId artifactId,
             final File artifactDir)
     throws MojoExecutionException {
-        final File artifactFile = getRepositoryFile(artifactDir, artifact.getId());
+        final File artifactFile = getRepositoryFile(artifactDir, artifactId);
         // TODO - we could overwrite snapshots?
         if ( artifactFile.exists() ) {
             return;
@@ -167,12 +203,45 @@ public class RepositoryMojo extends AbstractFeatureMojo {
                 this.mavenSession,
                 this.artifactHandlerManager,
                 this.resolver,
-                artifact.getId());
+                artifactId);
 
         try {
             FileUtils.copyFile(source.getFile(), artifactFile);
         } catch (IOException e) {
             throw new MojoExecutionException("Unable to copy artifact from " + source.getFile(), e);
+        }
+    }
+
+    public static class Include {
+        String groupId;
+        String artifactId;
+        String version;
+        String type;
+        String classifier;
+
+        public void setGroupId(String gid) {
+            groupId = gid;
+        }
+
+        public void setArtifactId(String aid) {
+            artifactId = aid;
+        }
+
+        public void setVersion(String ver) {
+            version = ver;
+        }
+
+        public void setType(String t) {
+            type = t;
+        }
+
+        public void setClassifier(String clf) {
+            classifier = clf;
+        }
+
+        public ArtifactId getID()
+        {
+            return new ArtifactId(groupId, artifactId, version, classifier, type);
         }
     }
 }
