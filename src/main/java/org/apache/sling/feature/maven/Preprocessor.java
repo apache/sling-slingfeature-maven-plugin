@@ -200,9 +200,7 @@ public class Preprocessor {
                 continue;
             }
 
-            env.logger.debug("- adding dependency " + a.toMvnId());
-            final Dependency dep = ProjectHelper.toDependency(a, scope);
-            info.project.getDependencies().add(dep);
+            this.addDependency(env.logger, info.project, a, scope);
         }
         for(final Extension ext : assembledFeature.getExtensions()) {
             if ( ext.getType() != ExtensionType.ARTIFACTS ) {
@@ -217,9 +215,7 @@ public class Preprocessor {
                     env.logger.debug("- skipping dependency " + a.toMvnId());
                     continue;
                 }
-                env.logger.debug("- adding dependency " + a.toMvnId());
-                final Dependency dep = ProjectHelper.toDependency(a, scope);
-                info.project.getDependencies().add(dep);
+                this.addDependency(env.logger, info.project, a, scope);
             }
         }
     }
@@ -333,56 +329,108 @@ public class Preprocessor {
             final List<Feature> projectFeatures) {
         return new FeatureProvider() {
 
+        	private final Set<ArtifactId> processing = new HashSet<>();
+        	
             @Override
             public Feature provide(final ArtifactId id) {
-
-                final Dependency dep = ProjectHelper.toDependency(id, dependencyScope);
-                if ( !skipAddDependencies ) {
-
-                    env.logger.debug("- adding feature dependency " + id.toMvnId());
-                    info.project.getDependencies().add(dep);
+                if ( processing.contains(id) ) {
+                    env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive dependency list including project " + info.project);
+                    return null;
                 }
-
-                // if it's a project from the current reactor build, we can't resolve it right now
-                final String key = id.getGroupId() + ":" + id.getArtifactId();
-                final FeatureProjectInfo depProjectInfo = env.modelProjects.get(key);
-                if ( depProjectInfo != null ) {
-                    env.logger.debug("Found reactor " + id.getType() + " dependency to project: " + id);
-                    // check if it is a feature project
-                    final FeatureProjectInfo depInfo = depProjectInfo;
-                    if ( isTest ) {
-                        process(env, depInfo, FeatureProjectConfig.getTestConfig(depInfo));
-                    } else {
-                        process(env, depInfo, FeatureProjectConfig.getMainConfig(depInfo));
-                    }
-                    Feature found = null;
-                    for(final Feature f : (isTest ? depInfo.assembledTestFeatures : depInfo.assembledFeatures).values()) {
-                        if ( f.getId().equals(id) ) {
-                            found = f;
-                            break;
-                        }
-                    }
-
-                    if ( isTest && found == null ) {
-                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive test feature dependency list including project " + info.project);
-                    } else if ( !isTest && found == null ) {
-                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive feature dependency list including project " + info.project);
-                    }
-                    return found;
-                } else {
-                    env.logger.debug("Found external " + id.getType() + " dependency: " + id);
-
-                    // "external" dependency, we can already resolve it
-                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
-                    try (final FileReader r = new FileReader(featureFile)) {
-                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
-                    } catch ( final IOException ioe) {
-                        env.logger.error("Unable to read feature file from " + featureFile, ioe);
-                    }
+                processing.add(id);
+                try {
+	                if ( !skipAddDependencies ) {
+	
+	                    addDependency(env.logger, info.project, id, dependencyScope);
+	                }
+	
+	                // if it's a project from the current reactor build, we can't resolve it right now
+	                final String key = id.getGroupId() + ":" + id.getArtifactId();
+	                final FeatureProjectInfo depProjectInfo = env.modelProjects.get(key);
+	                if ( depProjectInfo != null ) {
+	                    env.logger.debug("Found reactor " + id.getType() + " dependency to project: " + id);
+	                    // check if it is a feature project
+	                    final FeatureProjectInfo depInfo = depProjectInfo;
+	                    if ( isTest ) {
+	                        process(env, depInfo, FeatureProjectConfig.getTestConfig(depInfo));
+	                    } else {
+	                        process(env, depInfo, FeatureProjectConfig.getMainConfig(depInfo));
+	                    }
+	                    Feature found = findFeature(isTest ? depInfo.assembledTestFeatures : depInfo.assembledFeatures, id);
+	                    if ( found == null ) {
+	                    	if ( isTest ) {
+	                    		found = findFeature(depInfo.features, id);
+	                    	}
+	                    	if ( found == null ) {
+	                    		found = findFeature(isTest ? depInfo.testFeatures : depInfo.features, id);
+	                    		if ( found == null && isTest ) {
+	                    			found = findFeature(depInfo.features, id);
+	                    		}
+	                    		if ( found != null ) {
+	                                found = FeatureBuilder.assemble(found, new BuilderContext(this));
+	                    		}
+	                    	}
+	                    }
+	
+	                    if ( isTest && found == null ) {
+	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive test feature dependency list including project " + info.project);
+	                    } else if ( !isTest && found == null ) {
+	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive feature dependency list including project " + info.project);
+	                    }
+	                    return found;
+	                } else {
+	                    env.logger.debug("Found external " + id.getType() + " dependency: " + id);
+	
+	                    // "external" dependency, we can already resolve it
+	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
+	                    try (final FileReader r = new FileReader(featureFile)) {
+	                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
+	                    } catch ( final IOException ioe) {
+	                        env.logger.error("Unable to read feature file from " + featureFile, ioe);
+	                    }
+	                }
+	
+	                return null;
+                } finally {
+                	processing.remove(id);
                 }
-
-                return null;
             }
         };
+    }
+    
+    private void addDependency(final Logger logger, final MavenProject project, final ArtifactId id, final String scope) {
+    	boolean found = false;
+    	for(final Dependency d : project.getDependencies()) {
+    		if ( d.getGroupId().equals(id.getGroupId()) && d.getArtifactId().equals(id.getArtifactId())) {
+    			if ( d.getVersion().equals(id.getVersion()) && d.getType().equals(id.getType())) {
+    				if ( d.getClassifier() == null && id.getClassifier() == null ) {
+    					found = true;
+    					break;
+    				}
+    				if ( d.getClassifier() != null && d.getClassifier().equals(id.getClassifier())) {
+    					found = true;
+    					break;
+    				}
+    			}
+    		}
+    	}
+    	if ( !found ) {
+    		logger.debug("- adding dependency " + id.toMvnId());
+    		final Dependency dep = ProjectHelper.toDependency(id, scope);
+    		project.getDependencies().add(dep);    
+    	}
+    }
+    
+    private Feature findFeature(final Map<String, Feature> featureMap, final ArtifactId id) {
+        Feature found = null;
+    	if ( featureMap != null ) {
+            for(final Feature f : featureMap.values()) {
+                if ( f.getId().equals(id) ) {
+                    found = f;
+                    break;
+                }
+            }
+    	}
+		return found;
     }
 }
