@@ -20,7 +20,7 @@
   <components>
     <component>
       <role>org.apache.maven.lifecycle.mapping.LifecycleMapping</role>
-      <role-hint>slingfeature</role-hint>
+      <role-hint>slingosgifeature</role-hint>
       <implementation>org.apache.maven.lifecycle.mapping.DefaultLifecycleMapping</implementation>
       <configuration>
         <lifecycles>
@@ -37,13 +37,13 @@
     </component>
     <component>
       <role>org.apache.maven.artifact.handler.ArtifactHandler</role>
-      <role-hint>slingfeature</role-hint>
+      <role-hint>slingosgifeature</role-hint>
       <implementation>org.apache.maven.artifact.handler.DefaultArtifactHandler</implementation>
       <configuration>
-        <type>slingfeature</type>
+        <type>slingosgifeature</type>
         <includesDependencies>false</includesDependencies>
         <language>json</language>
-        <extension>slingfeature</extension>
+        <extension>slingosgifeature</extension>
         <addedToClasspath>false</addedToClasspath>
       </configuration>
     </component>
