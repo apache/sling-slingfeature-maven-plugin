@@ -16,28 +16,13 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
-import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.artifact.versioning.VersionRange;
-import org.apache.maven.model.Build;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.project.DefaultMavenProjectHelper;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.repository.RepositorySystem;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojo.FeatureConfig;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
@@ -54,13 +39,29 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
+import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.model.Build;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.DefaultMavenProjectHelper;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.repository.RepositorySystem;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.FeatureConstants;
+import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojo.FeatureConfig;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
@@ -108,7 +109,7 @@ public class AggregateFeaturesMojoTest {
         fc.setGroupId("gid1");
         fc.setArtifactId("aid1");
         fc.setVersion("1.2.3");
-        fc.setType("slingfeature");
+        fc.setType(FeatureConstants.PACKAGING_FEATURE);
         fc.setClassifier("clf1");
 
         assertEquals(Arrays.asList("i1", "i2"), fc.includes);
@@ -117,7 +118,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("gid1", fc.groupId);
         assertEquals("aid1", fc.artifactId);
         assertEquals("1.2.3", fc.version);
-        assertEquals("slingfeature", fc.type);
+        assertEquals(FeatureConstants.PACKAGING_FEATURE, fc.type);
         assertEquals("clf1", fc.classifier);
 
         assertFalse(fc.isDirectory());
@@ -175,7 +176,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("org.foo", id.getGroupId());
         assertEquals("org.foo.bar", id.getArtifactId());
         assertEquals("1.2.3-SNAPSHOT", id.getVersion());
-        assertEquals("slingfeature", id.getType());
+        assertEquals(FeatureConstants.PACKAGING_FEATURE, id.getType());
         assertEquals("aggregated", id.getClassifier());
 
         Set<ArtifactId> expectedBundles = new HashSet<>();
@@ -252,7 +253,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("org.foo", id.getGroupId());
         assertEquals("org.foo.bar", id.getArtifactId());
         assertEquals("1.2.3-SNAPSHOT", id.getVersion());
-        assertEquals("slingfeature", id.getType());
+        assertEquals(FeatureConstants.PACKAGING_FEATURE, id.getType());
         assertEquals("aggregated", id.getClassifier());
 
         int numBundlesFound = 0;
@@ -424,7 +425,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("g", id.getGroupId());
         assertEquals("a", id.getArtifactId());
         assertEquals("999", id.getVersion());
-        assertEquals("slingfeature", id.getType());
+        assertEquals(FeatureConstants.PACKAGING_FEATURE, id.getType());
         assertEquals("agg", id.getClassifier());
 
         Map<String, Dictionary<String, Object>> expectedConfigs = new HashMap<>();
@@ -455,7 +456,7 @@ public class AggregateFeaturesMojoTest {
         fc.setGroupId("g1");
         fc.setArtifactId("a1");
         fc.setVersion("9.9.9");
-        fc.setType("slingfeature");
+        fc.setType(FeatureConstants.PACKAGING_FEATURE);
         fc.setClassifier("c1");
 
         RepositorySystem mockRepo = createMockRepo();
@@ -496,7 +497,7 @@ public class AggregateFeaturesMojoTest {
                     assertEquals("g1", a.getGroupId());
                     assertEquals("a1", a.getArtifactId());
                     assertEquals("9.9.9", a.getVersion());
-                    assertEquals("slingfeature", a.getType());
+                    assertEquals(FeatureConstants.PACKAGING_FEATURE, a.getType());
                     assertEquals("c1", a.getClassifier());
 
                     assertSame(af.localRepository, arr.getLocalRepository());
@@ -516,7 +517,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("mygroup", id.getGroupId());
         assertEquals("myart", id.getArtifactId());
         assertEquals("42", id.getVersion());
-        assertEquals("slingfeature", id.getType());
+        assertEquals(FeatureConstants.PACKAGING_FEATURE, id.getType());
         assertEquals("mynewfeature", id.getClassifier());
 
         int numFound = 0;
@@ -570,7 +571,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals("Precondition", 0, pluginCallbacks.size());
         af.execute();
 
-        ArtifactId id = new ArtifactId("org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", "slingfeature");
+        ArtifactId id = new ArtifactId("org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", FeatureConstants.PACKAGING_FEATURE);
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension1"));
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension2"));
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension3"));
