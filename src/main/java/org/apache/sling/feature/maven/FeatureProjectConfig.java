@@ -105,7 +105,7 @@ public class FeatureProjectConfig {
             this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_FEATURE, "true"));
         }
         this.featuresDirName = ProjectHelper.getConfigValue(info.plugin, featuresDirCfgName, defaultDir);
-        this.includes = ProjectHelper.getConfigValue(info.plugin, incCfgName, null);
+        this.includes = ProjectHelper.getConfigValue(info.plugin, incCfgName, DEFAULT_FEATURE_INCLUDES);
         this.excludes = ProjectHelper.getConfigValue(info.plugin, exCfgName, null);
         final String skipCfg = ProjectHelper.getConfigValue(info.plugin, skipAddDepCfgName, defaultSkipValue);
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
