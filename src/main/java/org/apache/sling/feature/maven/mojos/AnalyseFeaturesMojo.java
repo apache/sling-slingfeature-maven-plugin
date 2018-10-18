@@ -34,9 +34,9 @@ import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.analyser.Analyser;
+import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
-import org.apache.sling.feature.scanner.spi.ArtifactProvider;
 
 /**
  * Analyse the feature.

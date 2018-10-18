@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
 import java.util.function.Consumer;
-import java.util.function.Function;
-
 import org.apache.maven.model.License;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -116,9 +114,6 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
             if (f.getId().getClassifier() == null ) {
                 if ( main == null ) {
                     main = f;
-                } else {
-                    // TODO we should check this already in the Preprocessor
-                    throw new MojoExecutionException("Project has more than one feature without a classifier.");
                 }
             } else {
                 attach(f, f.getId().getClassifier());

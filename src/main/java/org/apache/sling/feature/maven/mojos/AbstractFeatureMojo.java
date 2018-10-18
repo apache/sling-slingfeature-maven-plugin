@@ -31,6 +31,14 @@ import org.apache.sling.feature.maven.FeatureProjectConfig;
  */
 public abstract class AbstractFeatureMojo extends AbstractMojo {
 
+	/**
+	 * All of the below configurations are handled by the Preprocessor.
+	 * Mojos should only use them for informational purposes but not
+	 * for processing!
+	 * The read features and test features are available through the
+	 * ProjectHelper.
+	 */
+
     /**
      * Directory containing feature files
      */
@@ -40,20 +48,24 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     protected File features;
 
     /**
-     * Comma separated list of includes
+     * Comma separated list of includes for the feature files in
+     * the configured directory. Only feature files specified by
+     * this include are processed.
      */
     @Parameter(name = FeatureProjectConfig.CFG_FEATURES_INCLUDES,
             defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
     private String featuresIncludes;
 
     /**
-     * Comma separated list of excludes
+     * Comma separated list of excludes for the feature files.
+     * Feature files excluded by this configuration are not processed
+     * at all.
      */
     @Parameter(name = FeatureProjectConfig.CFG_FEATURES_EXCLUDES)
     private String featuresExcludes;
 
     /**
-     * Directory containing test feature files
+     * Directory containing test feature files.
      */
     @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES,
             required = true,
@@ -61,14 +73,14 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     private File testFeatures;
 
     /**
-     * Comma separated list of includes
+     * Comma separated list of includes for the test features.
      */
     @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES_INCLUDES,
             defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
     private String testFeaturesIncludes;
 
     /**
-     * Comma separated list of excludes
+     * Comma separated list of excludes for the test features.
      */
     @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES_EXCLUDES)
     private String testFeaturesExcludes;

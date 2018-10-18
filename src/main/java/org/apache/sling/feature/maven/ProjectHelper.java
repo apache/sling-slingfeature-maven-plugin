@@ -43,6 +43,11 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
+/**
+ * The project helper contains utility functions and provides access
+ * to the already read and processed features and test features.
+ * Mojos must not read features by themselves but use this helper to get them.
+ */
 public abstract class ProjectHelper {
 
     /** Read feature. */
@@ -124,18 +129,23 @@ public abstract class ProjectHelper {
     }
 
     /**
-     * Get the assembled features from the project
+     * Get the assembled features from the project. An assembled feature
+     * is already processed with respect to its include.
+     * The returned map uses the full path in the file system as the key and
+     * the assembled feature as a value.
      * @param project The maven projet
-     * @return The assembled features or {@code null}
+     * @return The assembled features. The map might be empty. 
      */
     public static Map<String, Feature> getAssembledFeatures(final MavenProject project) {
         return getFeatures(project, ASSEMBLED_FEATURE_JSON);
     }
 
     /**
-     * Get the raw feature from the project
+     * Get the raw feature from the project.
+     * The returned map uses the full path in the file system as the key and
+     * the read feature as a value.
      * @param project The maven projet
-     * @return The raw features or {@code null}
+     * @return The raw features. The map might be empty.
      */
     public static Map<String, Feature> getFeatures(final MavenProject project) {
         return getFeatures(project, RAW_FEATURE_JSON);
