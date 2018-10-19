@@ -191,31 +191,14 @@ public class Preprocessor {
             final Feature assembledFeature,
             final String scope) {
         for(final org.apache.sling.feature.Artifact entry : assembledFeature.getBundles()) {
-            final ArtifactId a = entry.getId();
-            if ( a.getGroupId().equals(info.project.getGroupId())
-                 && a.getArtifactId().equals(info.project.getArtifactId())
-                 && a.getVersion().equals(info.project.getVersion()) ) {
-                // skip artifact from the same project
-                env.logger.debug("- skipping dependency " + a.toMvnId());
-                continue;
-            }
-
-            this.addDependency(env.logger, info.project, a, scope);
+            this.addDependency(env.logger, info.project, entry.getId(), scope);
         }
         for(final Extension ext : assembledFeature.getExtensions()) {
             if ( ext.getType() != ExtensionType.ARTIFACTS ) {
                 continue;
             }
             for(final org.apache.sling.feature.Artifact art : ext.getArtifacts()) {
-                final ArtifactId a = art.getId();
-                if ( a.getGroupId().equals(info.project.getGroupId())
-                     && a.getArtifactId().equals(info.project.getArtifactId())
-                     && a.getVersion().equals(info.project.getVersion()) ) {
-                    // skip artifact from the same project
-                    env.logger.debug("- skipping dependency " + a.toMvnId());
-                    continue;
-                }
-                this.addDependency(env.logger, info.project, a, scope);
+                this.addDependency(env.logger, info.project, art.getId(), scope);
             }
         }
     }
@@ -330,7 +313,7 @@ public class Preprocessor {
         return new FeatureProvider() {
 
         	private final Set<ArtifactId> processing = new HashSet<>();
-        	
+
             @Override
             public Feature provide(final ArtifactId id) {
                 if ( processing.contains(id) ) {
@@ -340,10 +323,10 @@ public class Preprocessor {
                 processing.add(id);
                 try {
 	                if ( !skipAddDependencies ) {
-	
+
 	                    addDependency(env.logger, info.project, id, dependencyScope);
 	                }
-	
+
 	                // if it's a project from the current reactor build, we can't resolve it right now
 	                final String key = id.getGroupId() + ":" + id.getArtifactId();
 	                final FeatureProjectInfo depProjectInfo = env.modelProjects.get(key);
@@ -371,7 +354,7 @@ public class Preprocessor {
 	                    		}
 	                    	}
 	                    }
-	
+
 	                    if ( isTest && found == null ) {
 	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive test feature dependency list including project " + info.project);
 	                    } else if ( !isTest && found == null ) {
@@ -380,7 +363,7 @@ public class Preprocessor {
 	                    return found;
 	                } else {
 	                    env.logger.debug("Found external " + id.getType() + " dependency: " + id);
-	
+
 	                    // "external" dependency, we can already resolve it
 	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
 	                    try (final FileReader r = new FileReader(featureFile)) {
@@ -389,7 +372,7 @@ public class Preprocessor {
 	                        env.logger.error("Unable to read feature file from " + featureFile, ioe);
 	                    }
 	                }
-	
+
 	                return null;
                 } finally {
                 	processing.remove(id);
@@ -397,30 +380,38 @@ public class Preprocessor {
             }
         };
     }
-    
+
     private void addDependency(final Logger logger, final MavenProject project, final ArtifactId id, final String scope) {
-    	boolean found = false;
-    	for(final Dependency d : project.getDependencies()) {
-    		if ( d.getGroupId().equals(id.getGroupId()) && d.getArtifactId().equals(id.getArtifactId())) {
-    			if ( d.getVersion().equals(id.getVersion()) && d.getType().equals(id.getType())) {
-    				if ( d.getClassifier() == null && id.getClassifier() == null ) {
-    					found = true;
-    					break;
-    				}
-    				if ( d.getClassifier() != null && d.getClassifier().equals(id.getClassifier())) {
-    					found = true;
-    					break;
-    				}
-    			}
-    		}
-    	}
-    	if ( !found ) {
-    		logger.debug("- adding dependency " + id.toMvnId());
-    		final Dependency dep = ProjectHelper.toDependency(id, scope);
-    		project.getDependencies().add(dep);    
-    	}
+        if ( id.getGroupId().equals(project.getGroupId())
+             && id.getArtifactId().equals(project.getArtifactId())
+             && id.getVersion().equals(project.getVersion()) ) {
+            // skip artifact from the same project
+            logger.debug("- skipping dependency " + id.toMvnId());
+        } else {
+
+			boolean found = false;
+			for(final Dependency d : project.getDependencies()) {
+				if ( d.getGroupId().equals(id.getGroupId()) && d.getArtifactId().equals(id.getArtifactId())) {
+					if ( d.getVersion().equals(id.getVersion()) && d.getType().equals(id.getType())) {
+						if ( d.getClassifier() == null && id.getClassifier() == null ) {
+							found = true;
+							break;
+						}
+						if ( d.getClassifier() != null && d.getClassifier().equals(id.getClassifier())) {
+							found = true;
+							break;
+						}
+					}
+				}
+			}
+			if ( !found ) {
+				logger.debug("- adding dependency " + id.toMvnId());
+				final Dependency dep = ProjectHelper.toDependency(id, scope);
+				project.getDependencies().add(dep);
+			}
+        }
     }
-    
+
     private Feature findFeature(final Map<String, Feature> featureMap, final ArtifactId id) {
         Feature found = null;
     	if ( featureMap != null ) {
