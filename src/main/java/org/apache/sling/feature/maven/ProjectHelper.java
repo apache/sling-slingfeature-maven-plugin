@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
@@ -134,7 +135,7 @@ public abstract class ProjectHelper {
      * The returned map uses the full path in the file system as the key and
      * the assembled feature as a value.
      * @param project The maven projet
-     * @return The assembled features. The map might be empty. 
+     * @return The assembled features. The map might be empty.
      */
     public static Map<String, Feature> getAssembledFeatures(final MavenProject project) {
         return getFeatures(project, ASSEMBLED_FEATURE_JSON);
@@ -254,5 +255,28 @@ public abstract class ProjectHelper {
         dep.setScope(scope);
 
         return dep;
+    }
+
+    public static void setProjectInfo(final MavenProject project, final Feature feature) {
+        // set title, description, vendor, license
+        if ( feature.getTitle() == null ) {
+            feature.setTitle(project.getName());
+        }
+        if ( feature.getDescription() == null ) {
+            feature.setDescription(project.getDescription());
+        }
+        if ( feature.getVendor() == null && project.getOrganization() != null ) {
+            feature.setVendor(project.getOrganization().getName());
+        }
+        if ( feature.getLicense() == null
+             && project.getLicenses() != null
+             && !project.getLicenses().isEmpty()) {
+            final String license = project.getLicenses().stream()
+                    .filter(l -> l.getName() != null )
+                    .map(l -> l.getName())
+                    .collect(Collectors.joining(", "));
+
+            feature.setLicense(license);
+        }
     }
 }

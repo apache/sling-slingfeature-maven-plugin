@@ -21,13 +21,19 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
+import javax.json.stream.JsonGenerator;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
@@ -71,6 +77,16 @@ public class Preprocessor {
                 } else {
                     if ( classifiers.contains(f.getId().getClassifier()) ) {
                         throw new RuntimeException("Duplicate feature classifier " + f.getId().getClassifier() + " used in project " + finfo.project.getId());
+                    }
+                    classifiers.add(f.getId().getClassifier());
+                }
+            }
+            for(final Feature f : finfo.testFeatures.values()) {
+                if ( f.getId().getClassifier() == null ) {
+                   throw new RuntimeException("Found test feature without classifier in project " + finfo.project.getId());
+                } else {
+                    if ( classifiers.contains(f.getId().getClassifier()) ) {
+                        throw new RuntimeException("Duplicate (test) feature classifier " + f.getId().getClassifier() + " used in project " + finfo.project.getId());
                     }
                     classifiers.add(f.getId().getClassifier());
                 }
@@ -229,14 +245,47 @@ public class Preprocessor {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
 
-                final String json = Substitution.replaceMavenVars(info.project, sb.toString());
+                String json = Substitution.replaceMavenVars(info.project, sb.toString());
 
+                // check if "id" is set
+                try (final JsonReader reader = Json.createReader(new StringReader(json)) ) {
+                	final JsonObject obj = reader.readObject();
+                	if ( !obj.containsKey("id") ) {
+                		final StringBuilder isb = new StringBuilder();
+                		isb.append(info.project.getGroupId());
+                		isb.append(':');
+                		isb.append(info.project.getArtifactId());
+                		isb.append(':');
+               			isb.append(FeatureConstants.PACKAGING_FEATURE);
+                		isb.append(':');
+                		final int lastDot = file.getName().lastIndexOf('.');
+                		isb.append(file.getName().substring(0, lastDot));
+                		isb.append(':');
+                   		isb.append(info.project.getVersion());
+
+                        final StringWriter writer = new StringWriter();
+
+                        logger.debug("Generating id " + isb.toString() + " for feature file " + file);
+                        try ( final JsonGenerator generator = Json.createGenerator(writer) ) {
+                        	generator.writeStartObject();
+
+                        	generator.write("id", isb.toString());
+
+                        	for(final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
+                                generator.write(entry.getKey(), entry.getValue());
+                        	}
+                        	generator.writeEnd();
+                        }
+
+                        json = writer.toString();
+                   	}
+                }
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
                     this.checkFeatureId(info.project, feature);
 
-                    this.setProjectInfo(info.project, feature);
+                    ProjectHelper.setProjectInfo(info.project, feature);
                     this.postProcessReadFeature(feature);
                     (config.isTestConfig() ? info.testFeatures : info.features).put(file.getAbsolutePath(), feature);
 
@@ -271,28 +320,6 @@ public class Preprocessor {
         return result;
     }
 
-    protected void setProjectInfo(final MavenProject project, final Feature feature) {
-        // set title, description, vendor, license
-        if ( feature.getTitle() == null ) {
-            feature.setTitle(project.getName());
-        }
-        if ( feature.getDescription() == null ) {
-            feature.setDescription(project.getDescription());
-        }
-        if ( feature.getVendor() == null && project.getOrganization() != null ) {
-            feature.setVendor(project.getOrganization().getName());
-        }
-        if ( feature.getLicense() == null
-             && project.getLicenses() != null
-             && !project.getLicenses().isEmpty()) {
-            final String license = project.getLicenses().stream()
-                    .filter(l -> l.getName() != null )
-                    .map(l -> l.getName())
-                    .collect(Collectors.joining(", "));
-
-            feature.setLicense(license);
-        }
-    }
 
     protected FeatureProvider createFeatureProvider(final Environment env,
             final FeatureProjectInfo info,

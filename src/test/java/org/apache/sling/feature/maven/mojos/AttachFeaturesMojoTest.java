@@ -62,8 +62,8 @@ public class AttachFeaturesMojoTest {
         af.projectHelper = helper;
 
         af.attachClassifierFeatures(features);
-        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", new File(featuresDir, "testa.json"));
-        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", new File(featuresDir, "testd.json"));
+        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testa.json"));
+        Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testd.json"));
         Mockito.verifyNoMoreInteractions(helper);
     }
 }

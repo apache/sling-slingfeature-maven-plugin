@@ -21,8 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Collection;
-import java.util.function.Consumer;
-import org.apache.maven.model.License;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -43,49 +42,36 @@ import org.apache.sling.feature.maven.ProjectHelper;
       threadSafe = true
     )
 public class AttachFeaturesMojo extends AbstractFeatureMojo {
-
-    @Parameter(defaultValue = "false")
-    private boolean addPomMetadata;
+    /**
+     * Attach test features
+     */
+    @Parameter(name = "attachTestFeatures",
+            defaultValue = "false")
+    private boolean attachTestFeatures;
 
     private void attach(final Feature feature,
             final String classifier)
     throws MojoExecutionException {
-        if ( feature != null ) {
+        ProjectHelper.setProjectInfo(project, feature);
 
-            if (addPomMetadata) {
-                addPomMetadata(feature.getTitle(), project.getName(), title -> feature.setTitle(title));
-                addPomMetadata(feature.getDescription(), project.getDescription(), description -> feature.setDescription(description));
+        // write the feature
+        final File outputFile = new File(this.getTmpDir(), "feature-" + classifier + ".json");
+        outputFile.getParentFile().mkdirs();
 
-                if (project.getOrganization() != null) {
-                    addPomMetadata(feature.getVendor(), project.getOrganization().getName(), vendor -> feature.setVendor(vendor));
-                }
+        try ( final Writer writer = new FileWriter(outputFile)) {
+            FeatureJSONWriter.write(writer, feature);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("Unable to write feature " + feature.getId().toMvnId() + " to " + outputFile, e);
+        }
 
-                if (project.getLicenses() != null && !project.getLicenses().isEmpty()) {
-                    License license = project.getLicenses().iterator().next();
-                    addPomMetadata(feature.getLicense(), license.getName(), licenseName -> feature.setLicense(licenseName));
-                }
-            }
-
-            // write the feature
-            final File outputFile = new File(this.project.getBuild().getDirectory() + File.separatorChar + classifier + ".json");
-            outputFile.getParentFile().mkdirs();
-
-            try ( final Writer writer = new FileWriter(outputFile)) {
-                FeatureJSONWriter.write(writer, feature);
-            } catch (final IOException e) {
-                throw new MojoExecutionException("Unable to write feature to " + outputFile, e);
-            }
-
-            // if this project is a feature, it's the main artifact
-            if ( project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE)
-                 && (FeatureConstants.CLASSIFIER_FEATURE.equals(classifier))) {
-                project.getArtifact().setFile(outputFile);
-            } else {
-
-                // otherwise attach it as an additional artifact
-                projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
+        // if this project is a feature, it's the main artifact
+        if ( project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE)
+             && (FeatureConstants.CLASSIFIER_FEATURE.equals(classifier))) {
+            project.getArtifact().setFile(outputFile);
+        } else {
+            // otherwise attach it as an additional artifact
+            projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
                     classifier, outputFile);
-            }
         }
     }
 
@@ -96,9 +82,11 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
             attach(main, FeatureConstants.CLASSIFIER_FEATURE);
         }
 
-        final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
-        if ( test != null ) {
-            attach(test, FeatureConstants.CLASSIFIER_TEST_FEATURE);
+        if ( this.attachTestFeatures ) {
+        	final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
+        	if ( test != null ) {
+        		attach(test, FeatureConstants.CLASSIFIER_TEST_FEATURE);
+        	}
         }
     }
 
@@ -120,11 +108,5 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
             }
         }
         return main;
-    }
-
-    private static void addPomMetadata(String originalValue, String value, Consumer<String> setter) {
-        if ((originalValue == null || originalValue.isEmpty()) && value != null && !value.isEmpty()) {
-            setter.accept(value);
-        }
     }
 }
