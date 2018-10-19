@@ -24,12 +24,21 @@ import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.codehaus.plexus.logging.Logger;
 
+/**
+ * The environment provides required services to the {@link Preprocessor} as well
+ * as the projects, the preprocessor should work on.
+ */
 public class Environment {
 
     public ArtifactHandlerManager artifactHandlerManager;
     public ArtifactResolver resolver;
     public MavenSession session;
     public Logger logger;
+
+    /**
+     * The projects for the preprocessor.
+     * The key of this map is in the format : "{groupId}:{artifactId}"
+     */
     public final Map<String, FeatureProjectInfo> modelProjects = new HashMap<>();
 }
 

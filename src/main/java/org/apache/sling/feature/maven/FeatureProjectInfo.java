@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
@@ -30,10 +31,10 @@ public class FeatureProjectInfo {
     public boolean featureDone = false;
     public boolean testFeatureDone = false;
 
-    public Map<String, Feature> features;
-    public Map<String, Feature> assembledFeatures;
+    public final Map<String, Feature> features = new TreeMap<>();
+    public final Map<String, Feature> assembledFeatures = new TreeMap<>();
 
-    public Map<String, Feature> testFeatures;
-    public Map<String, Feature> assembledTestFeatures;
+    public final Map<String, Feature> testFeatures = new TreeMap<>();
+    public final Map<String, Feature> assembledTestFeatures = new TreeMap<>();
 }
 

@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +81,7 @@ public class Preprocessor {
 
     /**
      * Process a feature project.
-     * This method is invoked twice, once for the main project and one for testing.
+     * This method is invoked twice, once for the main project and then for testing.
      *
      * @param env The environment with all maven settings and projects
      * @param info The project to process.
@@ -106,13 +105,8 @@ public class Preprocessor {
         env.logger.debug("Processing " + config.getName() + " in project " + info.project.getId());
 
         // read project features
-        final Map<String, Feature> features = readProjectFeatures(env.logger, info.project, config);
-        if ( config.isTestConfig() ) {
-            info.testFeatures = features;
-        } else {
-            info.features = features;
-        }
-        if ( features.isEmpty() ) {
+        readProjectFeatures(env.logger, info, config);
+        if ( (config.isTestConfig() ? info.testFeatures : info.features).isEmpty() ) {
             env.logger.debug("No " + config.getName() + " found in project " + info.project.getId());
             return;
         }
@@ -134,24 +128,23 @@ public class Preprocessor {
                 if ( config.getJarStartOrder() != null ) {
                     jar.setStartOrder(Integer.valueOf(config.getJarStartOrder()));
                 }
-                features.get(0).getBundles().add(jar);
+                // add to first feature
+                (config.isTestConfig() ? info.testFeatures : info.features).values().iterator().next().getBundles().add(jar);
             }
         }
 
         // assemble features
         final Map<String, Feature> assembledFeatures = new TreeMap<>();
         for(final Map.Entry<String, Feature> entry : (config.isTestConfig() ? info.testFeatures : info.features).entrySet()) {
-            final Feature assembledFeature = FeatureBuilder.assemble(entry.getValue(), new BuilderContext(this.createFeatureProvider(env,
-                info,
-                config.isTestConfig(),
-                config.isSkipAddDependencies(),
-                config.getScope(), null)));
-            assembledFeatures.put(entry.getKey(), assembledFeature);
-        }
-        if ( config.isTestConfig() ) {
-            info.assembledTestFeatures = assembledFeatures;
-        } else {
-            info.assembledFeatures = assembledFeatures;
+        	final Map<String, Feature> featureMap = (config.isTestConfig() ? info.assembledTestFeatures : info.assembledFeatures);
+        	if ( !featureMap.containsKey(entry.getKey())) {
+	            final Feature assembledFeature = FeatureBuilder.assemble(entry.getValue(), new BuilderContext(this.createFeatureProvider(env,
+	                info,
+	                config.isTestConfig(),
+	                config.isSkipAddDependencies(),
+	                config.getScope(), null)));
+	            featureMap.put(entry.getKey(), assembledFeature);
+        	}
         }
 
         if ( config.isSkipAddDependencies() ) {
@@ -212,18 +205,18 @@ public class Preprocessor {
      * @param config The configuration
      * @return The feature or {@code null}
      */
-    protected Map<String, Feature> readProjectFeatures(
+    protected void readProjectFeatures(
             final Logger logger,
-            final MavenProject project,
+            final FeatureProjectInfo info,
             final FeatureProjectConfig config) {
         // feature files first:
-        final File dir = new File(project.getBasedir(), config.getFeaturesDir());
+        final File dir = new File(info.project.getBasedir(), config.getFeaturesDir());
         if ( dir.exists() ) {
-            final Map<String, Feature> featureMap = new TreeMap<>();
             final List<File> files = new ArrayList<>();
             scan(files, dir, config.getIncludes(), config.getExcludes());
 
             for(final File file : files) {
+            	logger.debug("Reading feature file " + file + " in project " + info.project.getId());
                 final StringBuilder sb = new StringBuilder();
                 try (final Reader reader = new FileReader(file)) {
                     final char[] buf = new char[4096];
@@ -236,26 +229,23 @@ public class Preprocessor {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
 
-                final String json = Substitution.replaceMavenVars(project, sb.toString());
+                final String json = Substitution.replaceMavenVars(info.project, sb.toString());
 
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
-                    this.checkFeatureId(project, feature);
+                    this.checkFeatureId(info.project, feature);
 
-                    this.setProjectInfo(project, feature);
+                    this.setProjectInfo(info.project, feature);
                     this.postProcessReadFeature(feature);
-                    featureMap.put(file.getAbsolutePath(), feature);
+                    (config.isTestConfig() ? info.testFeatures : info.features).put(file.getAbsolutePath(), feature);
 
                 } catch ( final IOException io) {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
             }
-
-            return featureMap;
         } else {
-            logger.debug("Feature directory " + config.getFeaturesDir() + " does not exist in project " + project.getId());
-            return Collections.emptyMap();
+            logger.debug("Feature directory " + config.getFeaturesDir() + " does not exist in project " + info.project.getId());
         }
     }
 
@@ -310,6 +300,7 @@ public class Preprocessor {
             final boolean skipAddDependencies,
             final String dependencyScope,
             final List<Feature> projectFeatures) {
+    	final String projectKey = info.project.getGroupId() + ":" + info.project.getArtifactId();
         return new FeatureProvider() {
 
         	private final Set<ArtifactId> processing = new HashSet<>();
@@ -322,13 +313,27 @@ public class Preprocessor {
                 }
                 processing.add(id);
                 try {
+                	// add feature to dependencies
 	                if ( !skipAddDependencies ) {
-
 	                    addDependency(env.logger, info.project, id, dependencyScope);
 	                }
 
-	                // if it's a project from the current reactor build, we can't resolve it right now
 	                final String key = id.getGroupId() + ":" + id.getArtifactId();
+	                if ( projectKey.equals(key) ) {
+	                	// this is a feature from the current project
+	                	final Map.Entry<String, Feature> found = findFeature(info, isTest, id);
+	                    if ( found == null ) {
+	                        env.logger.error("Unable to find included feature " + id.toMvnId() + " in project " + info.project);
+	                        return null;
+	                    }
+	                    Feature f = found.getValue();
+	                    if ( !found.getValue().isAssembled() ) {
+	                    	f = FeatureBuilder.assemble(found.getValue(), new BuilderContext(this));
+	                    	(isTest ? info.assembledTestFeatures : info.testFeatures).put(found.getKey(), f);
+	                    }
+	                    return f;
+	                }
+	                // if it's a project from the current reactor build, we can't resolve it right now
 	                final FeatureProjectInfo depProjectInfo = env.modelProjects.get(key);
 	                if ( depProjectInfo != null ) {
 	                    env.logger.debug("Found reactor " + id.getType() + " dependency to project: " + id);
@@ -339,28 +344,14 @@ public class Preprocessor {
 	                    } else {
 	                        process(env, depInfo, FeatureProjectConfig.getMainConfig(depInfo));
 	                    }
-	                    Feature found = findFeature(isTest ? depInfo.assembledTestFeatures : depInfo.assembledFeatures, id);
-	                    if ( found == null ) {
-	                    	if ( isTest ) {
-	                    		found = findFeature(depInfo.features, id);
-	                    	}
-	                    	if ( found == null ) {
-	                    		found = findFeature(isTest ? depInfo.testFeatures : depInfo.features, id);
-	                    		if ( found == null && isTest ) {
-	                    			found = findFeature(depInfo.features, id);
-	                    		}
-	                    		if ( found != null ) {
-	                                found = FeatureBuilder.assemble(found, new BuilderContext(this));
-	                    		}
-	                    	}
-	                    }
+	                    final Map.Entry<String, Feature> found = findFeature(info, isTest, id);
 
 	                    if ( isTest && found == null ) {
 	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive test feature dependency list including project " + info.project);
 	                    } else if ( !isTest && found == null ) {
 	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive feature dependency list including project " + info.project);
 	                    }
-	                    return found;
+	                    return found.getValue();
 	                } else {
 	                    env.logger.debug("Found external " + id.getType() + " dependency: " + id);
 
@@ -412,11 +403,27 @@ public class Preprocessor {
         }
     }
 
-    private Feature findFeature(final Map<String, Feature> featureMap, final ArtifactId id) {
-        Feature found = null;
+    private Map.Entry<String, Feature> findFeature(final FeatureProjectInfo info, final boolean isTest, final ArtifactId id) {
+    	Map.Entry<String, Feature> found = findFeature(isTest ? info.assembledTestFeatures : info.assembledFeatures, id);
+        if ( found == null ) {
+        	if ( isTest ) {
+        		found = findFeature(info.features, id);
+        	}
+        	if ( found == null ) {
+        		found = findFeature(isTest ? info.testFeatures : info.features, id);
+        		if ( found == null && isTest ) {
+        			found = findFeature(info.features, id);
+        		}
+        	}
+        }
+        return found;
+    }
+
+    private Map.Entry<String, Feature> findFeature(final Map<String, Feature> featureMap, final ArtifactId id) {
+    	Map.Entry<String, Feature> found = null;
     	if ( featureMap != null ) {
-            for(final Feature f : featureMap.values()) {
-                if ( f.getId().equals(id) ) {
+            for(final Map.Entry<String, Feature> f : featureMap.entrySet()) {
+                if ( f.getValue().getId().equals(id) ) {
                     found = f;
                     break;
                 }
