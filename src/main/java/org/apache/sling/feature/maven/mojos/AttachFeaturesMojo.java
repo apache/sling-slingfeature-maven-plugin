@@ -52,8 +52,6 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     private void attach(final Feature feature,
             final String classifier)
     throws MojoExecutionException {
-        ProjectHelper.setProjectInfo(project, feature);
-
         // write the feature
         final File outputFile = new File(this.getTmpDir(), "feature-" + classifier + ".json");
         outputFile.getParentFile().mkdirs();

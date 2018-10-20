@@ -146,9 +146,11 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                 ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
             .toArray(FeatureExtensionHandler[]::new));
 
-        ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
+        final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                 project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
-        Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
+        final Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
+
+        ProjectHelper.setProjectInfo(project, result);
 
         // Add feature to map of features
         projectFeatures.put(key, result);
