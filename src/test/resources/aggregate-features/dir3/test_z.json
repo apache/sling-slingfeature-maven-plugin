@@ -1,5 +1,5 @@
 {
-  "id":"test:z:1.0.1",
+  "id":"test:test:1.0.1:z:slingfeature",
   "configurations": {
     "some.pid": {
       "x": "y"

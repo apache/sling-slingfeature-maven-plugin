@@ -67,8 +67,6 @@ import org.codehaus.plexus.util.AbstractScanner;
 )
 public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
-    private static final String PREFIX = ":aggregate:";
-
     @Parameter(required = true)
     List<FeatureConfig> aggregates;
 
@@ -97,16 +95,11 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         // get map of all project features
         final Map<String, Feature> projectFeatures = ProjectHelper.getFeatures(this.project);
-        final String key = PREFIX + aggregateClassifier;
-        if ( projectFeatures.containsKey(key) ) {
-            throw new MojoExecutionException("Duplicate aggregated feature definition for classifier " + aggregateClassifier);
-        }
+        final String key = ProjectHelper.generateAggregateFeatureKey(aggregateClassifier);
+        ProjectHelper.validateFeatureClassifiers(this.project, projectFeatures, ProjectHelper.getTestFeatures(this.project), key, aggregateClassifier);
         // ..and hash them by artifact id
         final Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
         for(final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
-            if ( aggregateClassifier.equals(entry.getValue().getId().getClassifier())) {
-                throw new MojoExecutionException("Aggregated feature definition is using same classifier as project feature " + aggregateClassifier);
-            }
             contextFeatures.put(entry.getValue().getId(), entry.getValue());
         }
 
@@ -354,7 +347,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
             for ( Map.Entry<String, Feature> entry : features.entrySet() ) {
                 // skip aggregates
-                if ( entry.getKey().startsWith(PREFIX) ) {
+                if ( ProjectHelper.isAggregate(entry.getKey()) ) {
                     continue;
                 }
                 final String name = entry.getKey().substring(prefix.length());

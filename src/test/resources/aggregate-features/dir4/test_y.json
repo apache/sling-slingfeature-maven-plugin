@@ -1,5 +1,5 @@
 {
-  "id":"test:y:9.9.9",
+  "id":"test:test:9.9.9:y:slingfeature",
   "configurations": {
     "v.pid": {
       "v": "y"

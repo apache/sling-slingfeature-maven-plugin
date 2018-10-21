@@ -19,8 +19,11 @@ package org.apache.sling.feature.maven;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -278,5 +281,82 @@ public abstract class ProjectHelper {
 
             feature.setLicense(license);
         }
+    }
+
+    private static final String AGGREGATE_PREFIX = ":aggregate:";
+
+    private static String toString(final List<String> featureKeys) {
+    	final StringBuilder sb = new StringBuilder();
+    	if ( featureKeys.size() > 1 ) {
+    		sb.append('[');
+    	}
+        boolean first = true;
+        for(final String key : featureKeys) {
+        	if ( first ) {
+        		first = false;
+        	} else {
+        		sb.append(", ");
+        	}
+        	if ( key.startsWith(AGGREGATE_PREFIX) ) {
+        		sb.append("aggregate ");
+        		sb.append(key.substring(AGGREGATE_PREFIX.length()));
+        	} else {
+        		sb.append(key);
+        	}
+        }
+    	if ( featureKeys.size() > 1 ) {
+    		sb.append(']');
+    	}
+        return sb.toString();
+    }
+
+    public static boolean isAggregate(final String featureKey) {
+    	return featureKey.startsWith(AGGREGATE_PREFIX);
+    }
+
+    public static String generateAggregateFeatureKey(final String classifier) {
+    	return AGGREGATE_PREFIX.concat(classifier);
+    }
+
+    private static final String NULL_KEY = ":";
+
+    private static void addClassifier(final Map<String, List<String>> classifiers, final String classifier, final String featureKey) {
+    	final String key = classifier == null ? NULL_KEY : classifier;
+    	List<String> list = classifiers.get(key);
+    	if ( list == null ) {
+    		list = new ArrayList<>();
+    		classifiers.put(key, list);
+    	}
+    	list.add(featureKey);
+    }
+
+    public static void validateFeatureClassifiers(final MavenProject project,
+    		final Map<String, Feature> features,
+    		final Map<String, Feature> testFeatures,
+    		final String additionalFeatureKey,
+    		final String additionalClassifier) {
+        final Map<String, List<String>> classifiers = new HashMap<>();
+        for(final Map.Entry<String, Feature> entry : features.entrySet()) {
+        	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
+        }
+        for(final Map.Entry<String, Feature> entry : testFeatures.entrySet()) {
+        	if ( entry.getValue().getId().getClassifier() == null ) {
+                throw new RuntimeException("Found test feature without classifier in project " + project.getId() + " : " + entry.getKey());
+        	}
+        	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
+        }
+        if ( additionalFeatureKey != null ) {
+        	addClassifier(classifiers, additionalClassifier, additionalFeatureKey);
+        }
+        for(final Map.Entry<String, List<String>> entry : classifiers.entrySet()) {
+        	if ( entry.getValue().size() > 1 ) {
+        		if ( entry.getKey().equals(NULL_KEY)) {
+                    throw new RuntimeException("More than one feature file without classifier in project " + project.getId() + " : " + toString(entry.getValue()));
+        		} else {
+                    throw new RuntimeException("More than one feature file for classifier " + entry.getKey() + " in project " + project.getId() + " : " + toString(entry.getValue()));
+        		}
+        	}
+        }
+
     }
 }

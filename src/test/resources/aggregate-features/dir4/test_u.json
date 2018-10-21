@@ -1,5 +1,5 @@
 {
-  "id":"test:u:9.9.9",
+  "id":"test:test:9.9.9:u:slingfeature",
   "configurations": {
     "u.pid": {
       "u": "u"

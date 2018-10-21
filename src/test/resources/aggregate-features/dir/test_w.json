@@ -1,5 +1,5 @@
 {
-  "id":"test:w:9.9.9",
+  "id":"test:test:9.9.9:w:slingfeature",
   "bundles":[
     "org.apache.sling:someotherbundle:1"
   ]

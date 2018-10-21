@@ -53,7 +53,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
             final String classifier)
     throws MojoExecutionException {
         // write the feature
-        final File outputFile = new File(this.getTmpDir(), "feature-" + classifier + ".json");
+        final File outputFile = new File(this.getTmpDir(), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
         outputFile.getParentFile().mkdirs();
 
         try ( final Writer writer = new FileWriter(outputFile)) {
@@ -64,7 +64,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
 
         // if this project is a feature, it's the main artifact
         if ( project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE)
-             && (FeatureConstants.CLASSIFIER_FEATURE.equals(classifier))) {
+             && classifier == null) {
             project.getArtifact().setFile(outputFile);
         } else {
             // otherwise attach it as an additional artifact
@@ -75,36 +75,20 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        final Feature main = this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values());
-        if ( main != null ) {
-            attach(main, FeatureConstants.CLASSIFIER_FEATURE);
-        }
+        this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values());
 
         if ( this.attachTestFeatures ) {
-        	final Feature test = this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
-        	if ( test != null ) {
-        		attach(test, FeatureConstants.CLASSIFIER_TEST_FEATURE);
-        	}
+        	this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
         }
     }
 
     /**
-     * Attach classifier features and return the main non classifier feature
-     * @return
+     * Attach all features
      * @throws MojoExecutionException
      */
-    Feature attachClassifierFeatures(final Collection<Feature> features) throws MojoExecutionException {
-        // Find all features that have a classifier and attach each of them
-        Feature main = null;
+    void attachClassifierFeatures(final Collection<Feature> features) throws MojoExecutionException {
         for (final Feature f : features) {
-            if (f.getId().getClassifier() == null ) {
-                if ( main == null ) {
-                    main = f;
-                }
-            } else {
-                attach(f, f.getId().getClassifier());
-            }
+            attach(f, f.getId().getClassifier());
         }
-        return main;
     }
 }
