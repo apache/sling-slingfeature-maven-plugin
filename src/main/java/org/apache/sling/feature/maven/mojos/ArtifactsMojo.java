@@ -38,8 +38,7 @@ import org.apache.sling.feature.maven.FeatureProjectConfig;
 
 @Mojo(
     name = "collect-artifacts",
-    defaultPhase = LifecyclePhase.PACKAGE,
-    requiresDependencyResolution = ResolutionScope.TEST,
+    requiresProject = false,
     threadSafe = true
 )
 public final class ArtifactsMojo extends AbstractRepositoryMojo {

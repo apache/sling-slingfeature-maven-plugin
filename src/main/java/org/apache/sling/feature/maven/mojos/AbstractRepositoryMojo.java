@@ -47,7 +47,7 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
     /**
      * The directory to store the artifacts into.
      */
-    @Parameter(defaultValue = "artifacts")
+    @Parameter(defaultValue = "artifacts", property = "repositoryDir")
     private String repositoryDir;
 
     @Parameter
@@ -65,7 +65,12 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        final File artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
+        final File artifactDir ;
+        if ( this.project.getBuild().getDirectory().contains( "${project.basedir}" ) ) {
+            artifactDir = new File(repositoryDir);
+        } else {
+            artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
+        }
         this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
 
         final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
