@@ -320,7 +320,7 @@ public class AggregateFeaturesMojoTest {
             af.execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
-            assertTrue(mee.getCause().getMessage().contains("Non pattern include doesnotexist.json not found"));
+            assertTrue(mee.getMessage().contains("Include doesnotexist.json not found"));
         }
     }
 
@@ -365,7 +365,7 @@ public class AggregateFeaturesMojoTest {
             af.execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
-            assertTrue(mee.getCause().getMessage().contains("Non pattern exclude doesnotexist.json not found"));
+            assertTrue(mee.getMessage().contains("Exclude doesnotexist.json not found"));
         }
     }
 

@@ -22,7 +22,6 @@ import java.io.StringReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,6 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
-import org.apache.sling.feature.maven.Substitution;
 import org.codehaus.plexus.util.AbstractScanner;
 
 /**
@@ -94,14 +92,9 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         // get map of all project features
-        final Map<String, Feature> projectFeatures = ProjectHelper.getFeatures(this.project);
+        final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         final String key = ProjectHelper.generateAggregateFeatureKey(aggregateClassifier);
         ProjectHelper.validateFeatureClassifiers(this.project, projectFeatures, ProjectHelper.getTestFeatures(this.project), key, aggregateClassifier);
-        // ..and hash them by artifact id
-        final Map<ArtifactId, Feature> contextFeatures = new HashMap<>();
-        for(final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
-            contextFeatures.put(entry.getValue().getId(), entry.getValue());
-        }
 
         // get the map of features for this aggregate
         final Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
@@ -118,20 +111,26 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
             @Override
             public Feature provide(ArtifactId id) {
                 Feature f = featureMap.get(id);
-                if (f != null)
+                if (f != null) {
                     return f;
+                }
 
                 // Check for the feature in the local context
-                f = contextFeatures.get(id);
-                if (f != null)
-                    return f;
+                for(final Feature feat : projectFeatures.values()) {
+                    if (feat.getId().equals(id) ) {
+                        return feat;
+                    }
+                }
 
+                if ( ProjectHelper.isLocalProject(project, id)) {
+        	        throw new RuntimeException("Unable to resolve local artifact " + id.toMvnId());
+                }
                 // Finally, look the feature up via Maven's dependency mechanism
                 try {
                     return readFeatureFromMavenArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(),
                             id.getType(), id.getClassifier());
-                } catch (IOException e) {
-                    throw new RuntimeException("Cannot find feature: " + id, e);
+                } catch (MojoExecutionException e) {
+                    throw new RuntimeException("Cannot find feature: " + id.toMvnId(), e);
                 }
             }
         }, variableOverrides, frameworkProperties)
@@ -143,11 +142,11 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                 project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
         final Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
 
-        ProjectHelper.setProjectInfo(project, result);
+        ProjectHelper.setFeatureInfo(project, result);
 
         // Add feature to map of features
         projectFeatures.put(key, result);
-        ProjectHelper.getAssembledFeatures(this.project).put(key, result);
+        ProjectHelper.getFeatures(this.project).put(key, result);
     }
 
     private Map<ArtifactId, Feature> readFeatures(Collection<FeatureConfig> featureConfigs,
@@ -155,18 +154,14 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     throws MojoExecutionException {
         final Map<ArtifactId, Feature> featureMap = new LinkedHashMap<>();
 
-        try {
-            for (final FeatureConfig fc : featureConfigs) {
-                if (fc.isDirectory()) {
-                    readFeaturesFromDirectory(fc, featureMap, contextFeatures);
-                } else if (fc.isArtifact()) {
-                    readFeatureFromMavenArtifact(fc, featureMap, contextFeatures);
-                } else {
-                    throw new MojoExecutionException("Invalid aggregate configuration: " + fc);
-                }
+        for (final FeatureConfig fc : featureConfigs) {
+            if (fc.isDirectory()) {
+                readFeaturesFromDirectory(fc, featureMap, contextFeatures);
+            } else if (fc.isArtifact()) {
+                readFeatureFromMavenArtifact(fc, featureMap, contextFeatures);
+            } else {
+                throw new MojoExecutionException("Invalid aggregate configuration: " + fc);
             }
-        } catch (IOException e) {
-            throw new MojoExecutionException("Problem reading feature", e);
         }
 
         return featureMap;
@@ -174,7 +169,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
     // TODO this only works for projects not being part of the reactor build
     private void readFeatureFromMavenArtifact(FeatureConfig fc, Map<ArtifactId, Feature> featureMap,
-            Map<String, Feature> contextFeatures) throws IOException {
+            Map<String, Feature> contextFeatures) throws MojoExecutionException {
         ArtifactId id = new ArtifactId(fc.groupId, fc.artifactId, fc.version, fc.classifier, fc.type);
         Feature f = null;
         for(final Feature c : contextFeatures.values()) {
@@ -193,13 +188,19 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
         }
     }
 
-    private Feature readFeatureFromMavenArtifact(ArtifactId id) throws IOException {
+    private Feature readFeatureFromMavenArtifact(ArtifactId id) throws MojoExecutionException {
         return readFeatureFromMavenArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), id.getType(), id.getClassifier());
     }
 
-    private Feature readFeatureFromMavenArtifact(String groupId, String artifactId, String version, String type, String classifier) throws IOException {
-        File artFile = resolveMavenArtifact(groupId, artifactId, version, type, classifier);
-        return readFeatureFromFile(artFile);
+    private Feature readFeatureFromMavenArtifact(String groupId, String artifactId, String version, String type, String classifier) throws MojoExecutionException {
+        final File artFile = resolveMavenArtifact(groupId, artifactId, version, type, classifier);
+    	try {
+	        String content = new String(Files.readAllBytes(artFile.toPath()), "UTF-8");
+	        return FeatureJSONReader.read(new StringReader(content), null);
+    	} catch ( final IOException ioe) {
+    		final ArtifactId id = new ArtifactId(groupId, artifactId, version, classifier, type);
+    		throw new MojoExecutionException("Unable to read feature file " + artFile + " for " + id.toMvnId(), ioe);
+    	}
     }
 
     private File resolveMavenArtifact(String groupId, String artifactId, String version, String type, String classifier) {
@@ -218,7 +219,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
     private void readFeaturesFromDirectory(FeatureConfig fc,
             Map<ArtifactId, Feature> featureMap,
-            Map<String, Feature> contextFeatures) throws IOException {
+            Map<String, Feature> contextFeatures) throws MojoExecutionException {
         final String prefix = this.features.getAbsolutePath().concat(File.separator);
         if ( fc.includes.isEmpty() ) {
             final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
@@ -237,7 +238,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                 scanner.scan();
 
                 if ( !include.contains("*") && scanner.getIncluded().isEmpty() ) {
-                    throw new IOException("Non pattern include " + include + " not found.");
+                    throw new MojoExecutionException("Include " + include + " not found.");
                 }
                 featureMap.putAll(scanner.getIncluded());
             }
@@ -249,17 +250,11 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                     scanner.setIncludes(new String[] {exclude});
                     scanner.scan();
                     if ( scanner.getIncluded().isEmpty() ) {
-                        throw new IOException("Non pattern exclude " + exclude + " not found.");
+                        throw new MojoExecutionException("Exclude " + exclude + " not found.");
                     }
                 }
             }
         }
-    }
-
-    private Feature readFeatureFromFile(File f) throws IOException {
-        String content = new String(Files.readAllBytes(f.toPath()));
-        content = Substitution.replaceMavenVars(project, content);
-        return FeatureJSONReader.read(new StringReader(content), null);
     }
 
     public static class FeatureConfig {

@@ -261,7 +261,7 @@ public class Preprocessor {
 
                     this.checkFeatureId(info.project, feature);
 
-                    ProjectHelper.setProjectInfo(info.project, feature);
+                    ProjectHelper.setFeatureInfo(info.project, feature);
                     this.postProcessReadFeature(feature);
                     (config.isTestConfig() ? info.testFeatures : info.features).put(file.getAbsolutePath(), feature);
 

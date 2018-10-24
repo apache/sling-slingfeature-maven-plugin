@@ -260,7 +260,7 @@ public abstract class ProjectHelper {
         return dep;
     }
 
-    public static void setProjectInfo(final MavenProject project, final Feature feature) {
+    public static void setFeatureInfo(final MavenProject project, final Feature feature) {
         // set title, description, vendor, license
         if ( feature.getTitle() == null ) {
             feature.setTitle(project.getName());
@@ -358,5 +358,12 @@ public abstract class ProjectHelper {
         	}
         }
 
+    }
+
+    public static boolean isLocalProject(final MavenProject project,
+    		final ArtifactId id) {
+    	return id.getGroupId().equals(project.getGroupId())
+    			&& id.getArtifactId().equals(project.getArtifactId())
+    			&& id.getVersion().equals(project.getVersion());
     }
 }
