@@ -330,23 +330,35 @@ public abstract class ProjectHelper {
     	list.add(featureKey);
     }
 
+    /**
+     * Validate the classifiers in a project
+     * @param project The maven project
+     */
+    public static void validateFeatureClassifiers(final MavenProject project) {
+    	validateFeatureClassifiers(project, null);
+    }
+
+    /**
+     * Validate the classifiers in a project
+     * @param project The maven project
+     * @param additionalClassifier Optional additional classifier
+     */
     public static void validateFeatureClassifiers(final MavenProject project,
-    		final Map<String, Feature> features,
-    		final Map<String, Feature> testFeatures,
-    		final String additionalFeatureKey,
     		final String additionalClassifier) {
+
         final Map<String, List<String>> classifiers = new HashMap<>();
-        for(final Map.Entry<String, Feature> entry : features.entrySet()) {
+        for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
         	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
-        for(final Map.Entry<String, Feature> entry : testFeatures.entrySet()) {
+        for(final Map.Entry<String, Feature> entry : getTestFeatures(project).entrySet()) {
         	if ( entry.getValue().getId().getClassifier() == null ) {
                 throw new RuntimeException("Found test feature without classifier in project " + project.getId() + " : " + entry.getKey());
         	}
         	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
-        if ( additionalFeatureKey != null ) {
-        	addClassifier(classifiers, additionalClassifier, additionalFeatureKey);
+        if ( additionalClassifier != null ) {
+        	final String key = ProjectHelper.generateAggregateFeatureKey(additionalClassifier);
+        	addClassifier(classifiers, additionalClassifier, key);
         }
         for(final Map.Entry<String, List<String>> entry : classifiers.entrySet()) {
         	if ( entry.getValue().size() > 1 ) {
@@ -360,7 +372,13 @@ public abstract class ProjectHelper {
 
     }
 
-    public static boolean isLocalProject(final MavenProject project,
+    /**
+     * Check if the artifact is produced by the current project
+     * @param project The current project
+     * @param id The artifact id
+     * @return {@code true} if the artifact belongs to the project
+     */
+    public static boolean isLocalProjectArtifact(final MavenProject project,
     		final ArtifactId id) {
     	return id.getGroupId().equals(project.getGroupId())
     			&& id.getArtifactId().equals(project.getArtifactId())

@@ -91,10 +91,11 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        // check classifier
+        ProjectHelper.validateFeatureClassifiers(this.project, aggregateClassifier);
+
         // get map of all project features
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
-        final String key = ProjectHelper.generateAggregateFeatureKey(aggregateClassifier);
-        ProjectHelper.validateFeatureClassifiers(this.project, projectFeatures, ProjectHelper.getTestFeatures(this.project), key, aggregateClassifier);
 
         // get the map of features for this aggregate
         final Map<ArtifactId, Feature> featureMap = readFeatures(aggregates, projectFeatures);
@@ -122,7 +123,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                     }
                 }
 
-                if ( ProjectHelper.isLocalProject(project, id)) {
+                if ( ProjectHelper.isLocalProjectArtifact(project, id)) {
         	        throw new RuntimeException("Unable to resolve local artifact " + id.toMvnId());
                 }
                 // Finally, look the feature up via Maven's dependency mechanism
@@ -145,6 +146,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
         ProjectHelper.setFeatureInfo(project, result);
 
         // Add feature to map of features
+    	final String key = ProjectHelper.generateAggregateFeatureKey(aggregateClassifier);
         projectFeatures.put(key, result);
         ProjectHelper.getFeatures(this.project).put(key, result);
     }

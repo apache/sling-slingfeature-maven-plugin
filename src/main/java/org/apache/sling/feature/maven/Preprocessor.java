@@ -67,9 +67,9 @@ public class Preprocessor {
                 throw new RuntimeException("Feature project has no feature defined: " + finfo.project.getId());
             }
 
-            ProjectHelper.validateFeatureClassifiers(finfo.project, finfo.features, finfo.testFeatures, null, null);
-
             ProjectHelper.storeProjectInfo(finfo);
+
+            ProjectHelper.validateFeatureClassifiers(finfo.project);
         }
     }
 
