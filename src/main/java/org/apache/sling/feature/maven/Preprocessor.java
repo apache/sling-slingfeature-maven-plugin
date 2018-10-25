@@ -263,7 +263,7 @@ public class Preprocessor {
 
                     ProjectHelper.setFeatureInfo(info.project, feature);
                     this.postProcessReadFeature(feature);
-                    (config.isTestConfig() ? info.testFeatures : info.features).put(file.getAbsolutePath(), feature);
+                    (config.isTestConfig() ? info.testFeatures : info.features).put(file.toPath().normalize().toFile().getAbsolutePath(), feature);
 
                 } catch ( final IOException io) {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);

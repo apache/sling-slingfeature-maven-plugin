@@ -222,7 +222,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     private void readFeaturesFromDirectory(FeatureConfig fc,
             Map<ArtifactId, Feature> featureMap,
             Map<String, Feature> contextFeatures) throws MojoExecutionException {
-        final String prefix = this.features.getAbsolutePath().concat(File.separator);
+        final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
         if ( fc.includes.isEmpty() ) {
             final FeatureScanner scanner = new FeatureScanner(contextFeatures, prefix);
             if ( !fc.excludes.isEmpty() ) {
