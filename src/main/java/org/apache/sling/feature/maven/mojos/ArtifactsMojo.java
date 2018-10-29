@@ -17,45 +17,50 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.maven.ProjectHelper;
 
-/**
- * Create a Maven repository structure from the referenced artifacts in the features.
- */
 @Mojo(
-        name = "repository",
-        defaultPhase = LifecyclePhase.PACKAGE,
-        requiresDependencyResolution = ResolutionScope.TEST,
-        threadSafe = true
-    )
-public class RepositoryMojo extends AbstractRepositoryMojo {
+    name = "collect-artifacts",
+    requiresProject = false,
+    threadSafe = true
+)
+public final class ArtifactsMojo extends AbstractRepositoryMojo {
+
+    private final Pattern gavPattern = Pattern.compile("([^: ]+):([^: ]+)(:([^: ]*)(:([^: ]+))?)?:([^: ]+)");
 
     /**
-     * Used to look up Artifacts in the remote repository.
-     *
+     * A CSV list of Feature GAV.
+     * Specifying this property, <code>includes</code> parameter will be overridden
      */
-    @Component
-    private ArtifactResolver resolver;
-
-    @Override
+    @Parameter(property = "features")
+    private String csvFeaturesGAV;
+    
     public void execute() throws MojoExecutionException, MojoFailureException {
-        final File artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
+        final File artifactDir ;
+        if ( this.project.getBuild().getDirectory().contains( "${project.basedir}" ) ) {
+            artifactDir = new File(repositoryDir);
+        } else {
+            artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
+        }
         this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
 
         final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
+
+        List<Include> includes = getIncludes();
 
         if (includes != null && !includes.isEmpty()) {
             for (Include include : includes) {
@@ -70,10 +75,8 @@ public class RepositoryMojo extends AbstractRepositoryMojo {
                     processRemoteFeature(artifactDir, include.getID());
                 }
             }
-        }
-        else {
-            for (final Feature f : features.values())
-            {
+        } else {
+            for (final Feature f : features.values()) {
                 processFeature(artifactDir, f);
             }
         }
@@ -82,5 +85,35 @@ public class RepositoryMojo extends AbstractRepositoryMojo {
                 copyArtifactToRepository(include.getID(), artifactDir);
             }
         }
+    }
+
+    protected List<Include> getIncludes() {
+        List<Include> includes = new ArrayList<>();
+
+        if (csvFeaturesGAV != null && !csvFeaturesGAV.isEmpty()) {
+
+            StringTokenizer tokenizer = new StringTokenizer(csvFeaturesGAV, ",");
+            while (tokenizer.hasMoreTokens()) {
+                String gav = tokenizer.nextToken();
+                Matcher gavMatcher = gavPattern.matcher(gav);
+
+                if (!gavMatcher.matches()) {
+                    getLog().warn("Wrong GAV coordinates "
+                            + gav
+                            + " specified on 'features' property, expected format is groupId:artifactId[:packaging[:classifier]]:version");
+                }
+
+                Include include = new Include();
+                include.setGroupId(gavMatcher.group(1));
+                include.setArtifactId(gavMatcher.group(2));
+                include.setVersion(gavMatcher.group(7));
+                include.setType(gavMatcher.group(4));
+                include.setClassifier(gavMatcher.group(6));
+
+                includes.add(include);
+            }
+        }
+
+        return includes;
     }
 }
