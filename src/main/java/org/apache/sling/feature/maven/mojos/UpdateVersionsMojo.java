@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import javax.json.stream.JsonGenerator;
+import javax.json.stream.JsonParsingException;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -37,8 +40,8 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.SimpleFeatureJSONReader;
-import org.apache.sling.feature.io.json.SimpleFeatureJSONWriter;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
@@ -231,4 +234,71 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 		public String newVersion;
 	}
 
+	public static class SimpleFeatureJSONReader extends FeatureJSONReader {
+
+		static final ArtifactId PLACEHOLDER_ID = new ArtifactId("_", "_", "1.0", null, null);
+
+		/**
+	     * Private constructor
+	     * @param location Optional location
+	     */
+	    protected SimpleFeatureJSONReader(final String location) {
+	        super(location);
+	    }
+
+	    @Override
+		protected ArtifactId getFeatureId(Map<String, Object> map) throws IOException {
+	    	final ArtifactId id;
+	        if ( !map.containsKey("id") ) {
+	        	id = PLACEHOLDER_ID;
+	        } else {
+	        	id = super.getFeatureId(map);
+	        }
+	        return id;
+	    }
+
+		/**
+	     * Read a new feature from the reader
+	     * The reader is not closed. It is up to the caller to close the reader.
+	     *
+	     * @param reader The reader for the feature
+	     * @param location Optional location
+	     * @return The read feature
+	     * @throws IOException If an IO errors occurs or the JSON is invalid.
+	     */
+	    public static Feature read(final Reader reader, final String location)
+	    throws IOException {
+	        try {
+	            final SimpleFeatureJSONReader mr = new SimpleFeatureJSONReader(location);
+	            return mr.readFeature(reader);
+	        } catch (final IllegalStateException | IllegalArgumentException | JsonParsingException e) {
+	            throw new IOException(e);
+	        }
+	    }
+	}
+
+	public static class SimpleFeatureJSONWriter extends FeatureJSONWriter {
+
+		private SimpleFeatureJSONWriter() {}
+
+	    /**
+	     * Writes the feature to the writer.
+	     * The writer is not closed.
+	     * @param writer Writer
+	     * @param feature Feature
+	     * @throws IOException If writing fails
+	     */
+	    public static void write(final Writer writer, final Feature feature)
+	    throws IOException {
+	        final SimpleFeatureJSONWriter w = new SimpleFeatureJSONWriter();
+	        w.writeFeature(writer, feature);
+	    }
+
+	    @Override
+		protected void writeFeatureId(JsonGenerator generator, Feature feature) {
+	    	if ( !feature.getId().equals(SimpleFeatureJSONReader.PLACEHOLDER_ID) ) {
+	            super.writeFeatureId(generator, feature);
+	        }
+	    }
+	}
 }
