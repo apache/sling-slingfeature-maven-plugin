@@ -22,8 +22,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
@@ -40,7 +40,6 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
-import org.apache.sling.feature.maven.mojos.AbstractRepositoryMojo.Include;
 
 public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
 
@@ -49,12 +48,6 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
      */
     @Parameter(defaultValue = "artifacts", property = "repositoryDir")
     String repositoryDir;
-
-    @Parameter
-    List<Include> includes;
-
-    @Parameter
-    List<Include> embed;
 
     @Component
     ArtifactHandlerManager artifactHandlerManager;
@@ -68,6 +61,45 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
 
     @Override
     public abstract void execute() throws MojoExecutionException, MojoFailureException;
+
+    protected void doExecute(final File artifactDir, final List<Include> featureIncludes, final List<Include> embed)
+            throws MojoExecutionException, MojoFailureException {
+        this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
+
+        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
+
+        if (featureIncludes != null && !featureIncludes.isEmpty()) {
+            for (Include include : featureIncludes) {
+                if (ProjectHelper.isLocalProjectArtifact(this.project, include.getID())) {
+                    final Feature inc = this.getLocalFeature(include.getID());
+                    if (inc == null) {
+                        throw new MojoExecutionException("Unable to find project feature " + include.getID().toMvnId());
+                    }
+                    processFeature(artifactDir, inc);
+                } else {
+                    processRemoteFeature(artifactDir, include.getID());
+                }
+            }
+        } else {
+            for (final Feature f : features.values()) {
+                processFeature(artifactDir, f);
+            }
+        }
+        if (embed != null) {
+            for (Include include : embed) {
+                copyArtifactToRepository(include.getID(), artifactDir);
+            }
+        }
+    }
+    protected Feature getLocalFeature(final ArtifactId id) {
+        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
+        for (Feature f : features.values()) {
+            if (f.getId().equals(id)) {
+                return f;
+            }
+        }
+        return null;
+    }
 
     protected void processFeature(final File artifactDir, final Feature f) throws MojoExecutionException {
         for(final org.apache.sling.feature.Artifact artifact : f.getBundles()) {
@@ -89,7 +121,16 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
             throw new MojoExecutionException("Unable to write feature file ", e);
         }
         if ( f.getInclude() != null ) {
-            processRemoteFeature(artifactDir, f.getInclude().getId());
+            if (ProjectHelper.isLocalProjectArtifact(this.project, f.getInclude().getId())) {
+                final Feature inc = this.getLocalFeature(f.getInclude().getId());
+                if (inc == null) {
+                    throw new MojoExecutionException(
+                            "Unable to find project feature " + f.getInclude().getId().toMvnId());
+                }
+                processFeature(artifactDir, inc);
+            } else {
+                processRemoteFeature(artifactDir, f.getInclude().getId());
+            }
         }
     }
 

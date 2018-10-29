@@ -19,19 +19,14 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 @Mojo(
     name = "collect-artifacts",
@@ -48,43 +43,17 @@ public final class ArtifactsMojo extends AbstractRepositoryMojo {
      */
     @Parameter(property = "features")
     private String csvFeaturesGAV;
-    
+
+    @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final File artifactDir ;
+        // this strange looking line checks whether this is outside of a maven project
         if ( this.project.getBuild().getDirectory().contains( "${project.basedir}" ) ) {
             artifactDir = new File(repositoryDir);
         } else {
             artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
         }
-        this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
-
-        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
-
-        List<Include> includes = getIncludes();
-
-        if (includes != null && !includes.isEmpty()) {
-            for (Include include : includes) {
-                boolean found = false;
-                for (Feature f : features.values()) {
-                    if (f.getId().equals(include.getID())) {
-                        processFeature(artifactDir, f);
-                        found = true;
-                    }
-                }
-                if (!found) {
-                    processRemoteFeature(artifactDir, include.getID());
-                }
-            }
-        } else {
-            for (final Feature f : features.values()) {
-                processFeature(artifactDir, f);
-            }
-        }
-        if (embed != null) {
-            for (Include include : embed) {
-                copyArtifactToRepository(include.getID(), artifactDir);
-            }
-        }
+        this.doExecute(artifactDir, getIncludes(), null);
     }
 
     protected List<Include> getIncludes() {
