@@ -43,13 +43,6 @@ import org.apache.sling.feature.maven.ProjectHelper;
     )
 public class RepositoryMojo extends AbstractRepositoryMojo {
 
-    /**
-     * Used to look up Artifacts in the remote repository.
-     *
-     */
-    @Component
-    private ArtifactResolver resolver;
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final File artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
