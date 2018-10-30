@@ -18,21 +18,13 @@ package org.apache.sling.feature.maven.mojos.plugins;
 
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.FeatureExtensionHandler;
+import org.apache.sling.feature.builder.HandlerContext;
+import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojoTest;
 
-public class TestPlugin1 implements FeatureExtensionHandler {
+public class TestPlugin1 implements PostProcessHandler {
     @Override
-    public boolean canMerge(Extension extension) {
-        return true;
-    }
-
-    @Override
-    public void merge(Feature target, Feature source, Extension extension) {
-    }
-
-    @Override
-    public void postProcess(Feature feature, Extension extension) {
+    public void postProcess(HandlerContext context, Feature feature, Extension extension) {
         AggregateFeaturesMojoTest.addPluginCallback("TestPlugin1 - " +extension.getName(), feature.getId());
     }
 }

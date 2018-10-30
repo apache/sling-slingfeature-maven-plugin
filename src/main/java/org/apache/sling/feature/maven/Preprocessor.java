@@ -16,6 +16,20 @@
  */
 package org.apache.sling.feature.maven;
 
+import org.apache.maven.model.Dependency;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.io.DirectoryScanner;
+import org.apache.sling.feature.Artifact;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Extension;
+import org.apache.sling.feature.ExtensionType;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.builder.BuilderContext;
+import org.apache.sling.feature.builder.FeatureBuilder;
+import org.apache.sling.feature.builder.FeatureProvider;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.codehaus.plexus.logging.Logger;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -35,20 +49,6 @@ import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.json.stream.JsonGenerator;
-
-import org.apache.maven.model.Dependency;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.utils.io.DirectoryScanner;
-import org.apache.sling.feature.Artifact;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Extension;
-import org.apache.sling.feature.ExtensionType;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.BuilderContext;
-import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.FeatureProvider;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.codehaus.plexus.logging.Logger;
 
 /**
  * The processor processes all feature projects.
@@ -163,7 +163,8 @@ public class Preprocessor {
     		                info,
     		                config.isTestConfig(),
     		                config.isSkipAddDependencies(),
-    		                config.getScope(), null)));
+    		                config.getScope(), null),
+    	                    aid -> ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, aid).getFile()));
     	            aggregatedFeatures.put(entry.getKey(), assembledFeature);
     	            break;
         		}

@@ -32,6 +32,7 @@ import java.util.StringTokenizer;
 import java.util.stream.StreamSupport;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
@@ -48,8 +49,9 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.KeyValueMap;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.FeatureExtensionHandler;
 import org.apache.sling.feature.builder.FeatureProvider;
+import org.apache.sling.feature.builder.MergeHandler;
+import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -87,6 +89,9 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
     RepositorySystem repoSystem;
 
     @Component
+    ArtifactHandlerManager artifactHandlerManager;
+
+    @Component
     ArtifactResolver artifactResolver;
 
     @Override
@@ -108,6 +113,7 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                 variableOverrides.put(entry.getKey(), entry.getValue());
             }
         }
+
         BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
             @Override
             public Feature provide(ArtifactId id) {
@@ -134,10 +140,15 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
                     throw new RuntimeException("Cannot find feature: " + id.toMvnId(), e);
                 }
             }
-        }, variableOverrides, frameworkProperties)
-            .add(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-                ServiceLoader.load(FeatureExtensionHandler.class).iterator(), Spliterator.ORDERED), false)
-            .toArray(FeatureExtensionHandler[]::new));
+        },
+        id -> ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile(),
+        variableOverrides, frameworkProperties)
+            .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                ServiceLoader.load(MergeHandler.class).iterator(), Spliterator.ORDERED), false)
+                    .toArray(MergeHandler[]::new))
+            .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+                ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED), false)
+                    .toArray(PostProcessHandler[]::new));
 
         final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                 project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
