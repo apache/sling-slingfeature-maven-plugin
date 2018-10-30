@@ -34,6 +34,7 @@ import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.analyser.Analyser;
+import org.apache.sling.feature.analyser.AnalyserResult;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
@@ -76,8 +77,7 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
             }
         };
 
-        boolean failed = false;
-
+        boolean hasErrors = false;
         try {
             getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
             final Scanner scanner = new Scanner(am);
@@ -109,11 +109,24 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
 
                 try {
                     getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(featureId).a(" ...").toString());
-                    analyser.analyse(f);
-                    getLog().debug(MessageUtils.buffer().a("Feature ").debug(featureId).a(" succesfully passed all analysis").toString());
-                } catch (Throwable t) {
-                    failed = true;
-                    getLog().error(MessageUtils.buffer().a("An error occurred while analyzing Feature ").error(featureId).a(", read the log for details:").toString(), t);
+                    final AnalyserResult result = analyser.analyse(f);
+                    for (final String msg : result.getWarnings()) {
+                        getLog().warn(msg);
+                    }
+                    for (final String msg : result.getErrors()) {
+                        getLog().error(msg);
+                    }
+
+                    if (!result.getErrors().isEmpty()) {
+                        getLog().error("Analyser detected errors on Feature '" + f.getId()
+                                + "'. See log output for error messages.");
+                        hasErrors = true;
+                    } else {
+                        getLog().debug(MessageUtils.buffer().a("Feature ").debug(featureId).a(" succesfully passed all analysis").toString());
+                    }
+                } catch (Exception t) {
+                    throw new MojoFailureException(
+                            "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(), t);
                 }
             }
         } catch (IOException e) {
@@ -122,7 +135,7 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
             getLog().debug("Features analysis complete");
         }
 
-        if (failed) {
+        if (hasErrors) {
             throw new MojoFailureException("One or more features Analyzer detected Feature error(s), please read the plugin log for more datils");
         }
     }
