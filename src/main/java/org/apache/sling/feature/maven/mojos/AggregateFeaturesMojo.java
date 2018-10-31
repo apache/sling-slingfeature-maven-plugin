@@ -67,11 +67,36 @@ import org.codehaus.plexus.util.AbstractScanner;
 )
 public class AggregateFeaturesMojo extends AbstractFeatureMojo {
 
+    /**
+     * The definition of the features used to create the new feature.
+     */
     @Parameter(required = true)
     List<FeatureConfig> aggregates;
 
-    @Parameter(required = true)
+    /**
+     * This is the classifier for the new feature. If not specified the feature is
+     * the main artifact for the project.
+     */
+    @Parameter
     String aggregateClassifier;
+
+    /**
+     * If this is set to {@code true} the feature is marked as final.
+     */
+    @Parameter(defaultValue = "false")
+    private boolean markAsFinal;
+
+    /**
+     * Optional title for the feature
+     */
+    @Parameter
+    private String featureTitle;
+
+    /**
+     * Optional description for the feature
+     */
+    @Parameter
+    private String featureDescription;
 
     @Parameter(required = false)
     Map<String,String> variables;
@@ -153,6 +178,16 @@ public class AggregateFeaturesMojo extends AbstractFeatureMojo {
         final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                 project.getVersion(), aggregateClassifier, FeatureConstants.PACKAGING_FEATURE);
         final Feature result = FeatureBuilder.assemble(newFeatureID, builderContext, featureMap.values().toArray(new Feature[] {}));
+
+        if (markAsFinal) {
+            result.setFinal(true);
+        }
+        if (featureTitle != null) {
+            result.setTitle(featureTitle);
+        }
+        if (featureDescription != null) {
+            result.setDescription(featureDescription);
+        }
 
         ProjectHelper.setFeatureInfo(project, result);
 

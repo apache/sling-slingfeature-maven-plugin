@@ -299,7 +299,11 @@ public abstract class ProjectHelper {
         	}
         	if ( key.startsWith(AGGREGATE_PREFIX) ) {
         		sb.append("aggregate ");
-        		sb.append(key.substring(AGGREGATE_PREFIX.length()));
+                if (key.length() == AGGREGATE_PREFIX.length()) {
+                    sb.append("main artifact (no classifier)");
+                } else {
+                    sb.append(key.substring(AGGREGATE_PREFIX.length()));
+                }
         	} else {
         		sb.append(key);
         	}
@@ -315,7 +319,7 @@ public abstract class ProjectHelper {
     }
 
     public static String generateAggregateFeatureKey(final String classifier) {
-    	return AGGREGATE_PREFIX.concat(classifier);
+        return classifier != null ? AGGREGATE_PREFIX.concat(classifier) : AGGREGATE_PREFIX;
     }
 
     private static final String NULL_KEY = ":";
@@ -335,7 +339,7 @@ public abstract class ProjectHelper {
      * @param project The maven project
      */
     public static void validateFeatureClassifiers(final MavenProject project) {
-    	validateFeatureClassifiers(project, null);
+        validateFeatureClassifiers(project, false, null);
     }
 
     /**
@@ -345,6 +349,17 @@ public abstract class ProjectHelper {
      */
     public static void validateFeatureClassifiers(final MavenProject project,
     		final String additionalClassifier) {
+        validateFeatureClassifiers(project, true, additionalClassifier);
+    }
+
+    /**
+     * Validate the classifiers in a project
+     *
+     * @param project              The maven project
+     * @param additionalClassifier Optional additional classifier
+     */
+    private static void validateFeatureClassifiers(final MavenProject project, final boolean classifierProvided,
+            final String additionalClassifier) {
 
         final Map<String, List<String>> classifiers = new HashMap<>();
         for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
@@ -356,7 +371,7 @@ public abstract class ProjectHelper {
         	}
         	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
-        if ( additionalClassifier != null ) {
+        if (classifierProvided) {
         	final String key = ProjectHelper.generateAggregateFeatureKey(additionalClassifier);
         	addClassifier(classifiers, additionalClassifier, key);
         }
