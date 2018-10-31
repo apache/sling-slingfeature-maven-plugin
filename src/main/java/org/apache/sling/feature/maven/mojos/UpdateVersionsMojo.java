@@ -23,6 +23,10 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -48,6 +52,7 @@ import org.apache.maven.project.path.PathTranslator;
 import org.apache.maven.settings.Settings;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Artifacts;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
@@ -155,23 +160,33 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
         return features;
     }
 
+    private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts) {
+        for (final Artifact a : artifacts) {
+            dependencies.add(ProjectHelper.toDependency(a.getId(), org.apache.maven.artifact.Artifact.SCOPE_PROVIDED));
+        }
+    }
+
     private Set<Dependency> getDependencies(final List<Map.Entry<String, Feature>> features) {
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         for (final Map.Entry<String, Feature> entry : features) {
-            for (final Artifact a : entry.getValue().getBundles()) {
-                dependencies
-                        .add(ProjectHelper.toDependency(a.getId(), org.apache.maven.artifact.Artifact.SCOPE_PROVIDED));
-            }
+            addDependencies(dependencies, entry.getValue().getBundles());
             for (final Extension ext : entry.getValue().getExtensions()) {
                 if (ext.getType() == ExtensionType.ARTIFACTS) {
-                    for (final Artifact a : ext.getArtifacts()) {
-                        dependencies.add(ProjectHelper.toDependency(a.getId(),
-                                org.apache.maven.artifact.Artifact.SCOPE_PROVIDED));
-                    }
+                    addDependencies(dependencies, ext.getArtifacts());
                 }
             }
         }
         return dependencies;
+    }
+
+    private Feature readRawFeature(final String fileName) throws MojoExecutionException {
+        // we need to read the raw file
+        final File out = new File(fileName);
+        try (final Reader r = new FileReader(out)) {
+            return SimpleFeatureJSONReader.read(r, fileName);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("Unable to read feature file " + fileName, e);
+        }
     }
 
     @Override
@@ -182,96 +197,41 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
             throw new MojoExecutionException("No features found in project!");
         }
 
+        // create config
+        final UpdateConfig cfg = new UpdateConfig();
+
         // Calculate dependencies for features
         final Set<Dependency> dependencies = getDependencies(features);
-        final List<Map.Entry<Dependency, String>> updates;
+        // get updates
         try {
-            updates = calculateUpdates(getHelper().lookupDependenciesUpdates(dependencies, false));
+            cfg.updateInfos = calculateUpdateInfos(getHelper().lookupDependenciesUpdates(dependencies, false));
         } catch (ArtifactMetadataRetrievalException | InvalidVersionSpecificationException e) {
             throw new MojoExecutionException("Unable to calculate updates", e);
         }
 
         // get includes and excludes
-        final List<String[]> includes = parseMatches(updatesIncludesList, "include");
-        final List<String[]> excludes = parseMatches(updatesExcludesList, "exclude");
+        cfg.includes = parseMatches(updatesIncludesList, "include");
+        cfg.excludes = parseMatches(updatesExcludesList, "exclude");
+
+        final Map<String, UpdateResult> results = new LinkedHashMap<>();
+
+        final Map<String, Set<String>> globalPropertyUpdates = new HashMap<String, Set<String>>();
 
         for (final Map.Entry<String, Feature> entry : features) {
-            if (dryRun) {
-                getLog().info("Checking feature file " + entry.getKey()
-                        + " - dryRun is specified! Feature file is not changed!");
-            } else {
-                getLog().info("Checking feature file " + entry.getKey());
-            }
-            final List<BundleUpdate> bundleUpdates = new ArrayList<>();
-            final List<ArtifactUpdate> artifactUpdates = new ArrayList<>();
+            getLog().debug("Checking feature file " + entry.getKey());
 
-            for (final Artifact bundle : entry.getValue().getBundles()) {
-                if (shouldHandle(bundle.getId(), includes, excludes)) {
-                    final String newVersion = update(bundle, updates);
-                    if (newVersion != null) {
-                        final BundleUpdate update = new BundleUpdate();
-                        update.bundle = bundle;
-                        update.newVersion = newVersion;
-                        bundleUpdates.add(update);
-                    }
-                }
-            }
+            final UpdateResult result = new UpdateResult();
+            results.put(entry.getKey(), result);
 
-            for (final Extension ext : entry.getValue().getExtensions()) {
-                if (ext.getType() == ExtensionType.ARTIFACTS) {
-                    for (final Artifact a : ext.getArtifacts()) {
-                        if (shouldHandle(a.getId(), includes, excludes)) {
-                            final String newVersion = update(a, updates);
-                            if (newVersion != null) {
-                                final ArtifactUpdate update = new ArtifactUpdate();
-                                update.extension = ext;
-                                update.artifact = a;
-                                update.newVersion = newVersion;
-                                artifactUpdates.add(update);
-                            }
-                        }
-                    }
-                }
-            }
-            if (!bundleUpdates.isEmpty() || !artifactUpdates.isEmpty()) {
-                final Feature rawFeature;
-                // we need to read the raw file
-                final File out = new File(entry.getKey());
-                try (final Reader r = new FileReader(out)) {
-                    rawFeature = SimpleFeatureJSONReader.read(r, entry.getKey());
-                } catch (final IOException e) {
-                    throw new MojoExecutionException("Unable to read feature file " + entry.getValue(), e);
-                }
+            result.updates = this.getUpdates(entry.getValue(), cfg);
 
-                // update bundles
-                for (final BundleUpdate update : bundleUpdates) {
-                    if (!rawFeature.getBundles().removeExact(update.bundle.getId())) {
-                        throw new MojoExecutionException(
-                                "Unable to update bundle as variables are used: " + update.bundle.getId().toMvnId());
-                    }
-                    final Artifact newBundle = new Artifact(new ArtifactId(update.bundle.getId().getGroupId(),
-                            update.bundle.getId().getArtifactId(), update.newVersion,
-                            update.bundle.getId().getClassifier(), update.bundle.getId().getType()));
-                    newBundle.getMetadata().putAll(update.bundle.getMetadata());
-                    rawFeature.getBundles().add(newBundle);
-                }
+            if (!result.updates.isEmpty()) {
 
-                // update artifacts in extensions
-                for (final ArtifactUpdate update : artifactUpdates) {
-                    final Extension ext = rawFeature.getExtensions().getByName(update.extension.getName());
+                // read raw feature file
+                final Feature rawFeature = this.readRawFeature(entry.getKey());
 
-                    if (!ext.getArtifacts().removeExact(update.artifact.getId())) {
-                        throw new MojoExecutionException("Unable to update artifact in extension " + ext.getName()
-                                + " as variables are used: " + update.artifact.getId().toMvnId());
-                    }
-                    final Artifact newArtifact = new Artifact(new ArtifactId(update.artifact.getId().getGroupId(),
-                            update.artifact.getId().getArtifactId(), update.newVersion,
-                            update.artifact.getId().getClassifier(), update.artifact.getId().getType()));
-                    newArtifact.getMetadata().putAll(update.artifact.getMetadata());
-                    ext.getArtifacts().add(newArtifact);
-                }
-                if (!dryRun) {
-                    try (final Writer w = new FileWriter(out)) {
+                if (updateVersions(entry.getKey(), rawFeature, result, globalPropertyUpdates) && !dryRun) {
+                    try (final Writer w = new FileWriter(new File(entry.getKey()))) {
                         SimpleFeatureJSONWriter.write(w, rawFeature);
                     } catch (final IOException e) {
                         throw new MojoExecutionException("Unable to write feature file " + entry.getValue(), e);
@@ -279,15 +239,66 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
                 }
     		}
     	}
+
+        boolean printedHeader = false;
+        for (final Map.Entry<String, UpdateResult> entry : results.entrySet()) {
+            if (entry.getValue().updates.isEmpty()) {
+                if (!printedHeader) {
+                    getLog().info("The following features have no updates:");
+                    printedHeader = true;
+                }
+                getLog().info("- " + entry.getKey());
+            }
+        }
+        printedHeader = false;
+        for (final Map.Entry<String, UpdateResult> entry : results.entrySet()) {
+            if (!entry.getValue().updates.isEmpty()) {
+                if (!printedHeader) {
+                    getLog().info("The following features have updates:");
+                    printedHeader = true;
+                }
+                getLog().info("- " + entry.getKey());
+                for (final ArtifactUpdate update : entry.getValue().updates) {
+                    if (this.dryRun) {
+                        getLog().info("    " + update.artifact.getId().toMvnId() + " could be updated to "
+                                + update.newVersion);
+                    } else {
+                        getLog().info("    Updating " + update.artifact.getId().toMvnId() + " to " + update.newVersion);
+                    }
+                }
+                if (!entry.getValue().propertyUpdates.isEmpty()) {
+                    getLog().info("    The following properties in the pom should be updated:");
+                    for (final Map.Entry<String, String> prop : entry.getValue().propertyUpdates.entrySet()) {
+                        getLog().info("    Property '" + prop.getKey() + "' to " + prop.getValue());
+                    }
+                }
+            }
+        }
+
+        if (!globalPropertyUpdates.isEmpty()) {
+            getLog().info("Update summary for properties in the pom:");
+            for (final Map.Entry<String, Set<String>> entry : globalPropertyUpdates.entrySet()) {
+                if (entry.getValue().size() > 1) {
+                    throw new MojoExecutionException("Inconsistent use of version property " + entry.getKey()
+                            + ". Different version updates available: " + entry.getValue());
+                }
+                final String value = entry.getValue().iterator().next();
+                final Object oldValue = this.project.getProperties().get(entry.getKey());
+                if (oldValue == null) {
+                    throw new MojoExecutionException("Property '" + entry.getKey() + "' is not defined in POM");
+                }
+                getLog().info("  Please update property '" + entry.getKey() + "' from " + oldValue + " to " + value);
+            }
+        }
     }
 
-    private boolean shouldHandle(final ArtifactId id, final List<String[]> includes, final List<String[]> excludes) {
+    private boolean shouldHandle(final ArtifactId id, final UpdateConfig cfg) {
         boolean include = true;
-        if (includes != null) {
-            include = match(id, includes);
+        if (cfg.includes != null) {
+            include = match(id, cfg.includes);
         }
-        if (include && excludes != null) {
-            include = !match(id, excludes);
+        if (include && cfg.excludes != null) {
+            include = !match(id, cfg.excludes);
         }
         return include;
     }
@@ -335,6 +346,7 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
             if (artifact.getId().getGroupId().equals(entry.getKey().getGroupId())
                     && artifact.getId().getArtifactId().equals(entry.getKey().getArtifactId())
                     && artifact.getId().getType().equals(entry.getKey().getType())
+                    && !artifact.getId().getVersion().equals(entry.getValue())
                     && ((artifact.getId().getClassifier() == null && entry.getKey().getClassifier() == null)
                             || (artifact.getId().getClassifier() != null
                                     && artifact.getId().getClassifier().equals(entry.getKey().getClassifier())))) {
@@ -345,8 +357,7 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 		}
 
 		if ( found != null ) {
-			getLog().debug("Found " + artifact.getId().toMvnId());
-            getLog().info("Updating " + artifact.getId().toMvnId() + " to " + found);
+            getLog().debug("Updating " + artifact.getId().toMvnId() + " to " + found);
 
             updated = found;
 		} else {
@@ -356,9 +367,11 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 		return updated;
 	}
 
-	public static final class BundleUpdate {
-		public Artifact bundle;
-		public String newVersion;
+    public static final class UpdateConfig {
+        public List<String[]> includes;
+        public List<String[]> excludes;
+
+        List<Map.Entry<Dependency, String>> updateInfos;
 	}
 
 	public static final class ArtifactUpdate {
@@ -366,6 +379,11 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 		public Artifact artifact;
 		public String newVersion;
 	}
+
+    public static final class UpdateResult {
+        public List<ArtifactUpdate> updates;
+        public Map<String, String> propertyUpdates = new HashMap<>();
+    }
 
 	public static class SimpleFeatureJSONReader extends FeatureJSONReader {
 
@@ -435,7 +453,7 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 	    }
 	}
 
-    private List<Map.Entry<Dependency, String>> calculateUpdates(Map<Dependency, ArtifactVersions> updateInfos) {
+    private List<Map.Entry<Dependency, String>> calculateUpdateInfos(Map<Dependency, ArtifactVersions> updateInfos) {
         final List<Map.Entry<Dependency, String>> updates = new ArrayList<>();
         for (final Map.Entry<Dependency, ArtifactVersions> entry : updateInfos.entrySet()) {
             ArtifactVersion latest;
@@ -472,6 +490,108 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
                         return entry.getKey();
                     }
                 });
+            }
+        }
+
+        return updates;
+    }
+
+    private boolean updateVersions(final String fileName, final Feature rawFeature, final UpdateResult result,
+            final Map<String, Set<String>> globalPropertyUpdates) throws MojoExecutionException {
+        // update artifacts
+        final Iterator<ArtifactUpdate> iter = result.updates.iterator();
+        while (iter.hasNext()) {
+            final ArtifactUpdate update = iter.next();
+
+            final Artifacts container;
+            if (update.extension == null) {
+                container = rawFeature.getBundles();
+            } else {
+                container = rawFeature.getExtensions().getByName(update.extension.getName()).getArtifacts();
+            }
+            if (!container.removeExact(update.artifact.getId())) {
+                // check if property is used
+                final Artifact same = container.getSame(update.artifact.getId());
+                boolean found = same != null;
+                if (same != null) {
+                    if (!same.getId().getVersion().startsWith("${") || !same.getId().getVersion().endsWith("}")) {
+                        found = false;
+                    } else {
+                        final String propName = same.getId().getVersion().substring(2,
+                                same.getId().getVersion().length() - 1);
+                        if (!update.artifact.getId().getVersion().equals(this.project.getProperties().get(propName))) {
+                            found = false;
+                        } else {
+                            Set<String> versions = globalPropertyUpdates.get(propName);
+                            if (versions == null) {
+                                versions = new HashSet<>();
+                                globalPropertyUpdates.put(propName, versions);
+                            }
+                            versions.add(update.newVersion);
+                            result.propertyUpdates.put(propName, update.newVersion);
+                        }
+                    }
+                }
+                if (!found) {
+                    throw new MojoExecutionException("Unable to update artifact as it's not found in feature: "
+                            + update.artifact.getId().toMvnId());
+                }
+                iter.remove();
+            } else {
+
+                final Artifact newArtifact = new Artifact(new ArtifactId(update.artifact.getId().getGroupId(),
+                        update.artifact.getId().getArtifactId(), update.newVersion,
+                        update.artifact.getId().getClassifier(), update.artifact.getId().getType()));
+                newArtifact.getMetadata().putAll(update.artifact.getMetadata());
+                container.add(newArtifact);
+            }
+        }
+
+        return !result.updates.isEmpty();
+    }
+
+    /**
+     * Add the updates for a list of artifacts
+     *
+     * @param updates
+     * @param ext
+     * @param artifacts
+     * @param cfg
+     * @throws MojoExecutionException
+     */
+    private void addUpdates(final List<ArtifactUpdate> updates, final Extension ext, final Artifacts artifacts,
+            final UpdateConfig cfg)
+            throws MojoExecutionException {
+        for (final Artifact a : artifacts) {
+            if (shouldHandle(a.getId(), cfg)) {
+                final String newVersion = update(a, cfg.updateInfos);
+                if (newVersion != null) {
+                    final ArtifactUpdate update = new ArtifactUpdate();
+                    update.artifact = a;
+                    update.newVersion = newVersion;
+                    update.extension = ext;
+                    updates.add(update);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get all updates for a feature
+     *
+     * @param feature
+     * @param cfg
+     * @return
+     * @throws MojoExecutionException
+     */
+    private List<ArtifactUpdate> getUpdates(final Feature feature, final UpdateConfig cfg)
+            throws MojoExecutionException {
+        final List<ArtifactUpdate> updates = new ArrayList<>();
+        addUpdates(updates, null, feature.getBundles(), cfg);
+
+        for (final Extension ext : feature.getExtensions()) {
+            if (ext.getType() == ExtensionType.ARTIFACTS) {
+                addUpdates(updates, ext, ext.getArtifacts(), cfg);
             }
         }
 
