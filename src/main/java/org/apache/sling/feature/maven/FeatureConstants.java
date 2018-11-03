@@ -17,9 +17,7 @@
 package org.apache.sling.feature.maven;
 
 public abstract class FeatureConstants {
+
     public static final String PACKAGING_FEATURE = "slingosgifeature";
 
-    public static final String CLASSIFIER_FEATURE = "feature";
-
-    public static final String CLASSIFIER_TEST_FEATURE = "testfeature";
 }
