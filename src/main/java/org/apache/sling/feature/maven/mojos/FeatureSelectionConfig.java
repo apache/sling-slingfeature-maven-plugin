@@ -62,6 +62,10 @@ public class FeatureSelectionConfig {
         return this.featureClassifiers;
     }
 
+    public List<Dependency> getFeatureArtifacts() {
+        return this.artifacts;
+    }
+
     @Override
     public String toString() {
         return "FeatureSelectionConfig [featureFilesIncludes=" + includes + ", featureFilesExcludes=" + excludes

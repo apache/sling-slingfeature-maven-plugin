@@ -17,34 +17,48 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Component;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
-public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
+public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
-    protected List<Feature> getSelectedFeatures(final FeatureSelectionConfig config) throws MojoExecutionException {
-        final List<Feature> selection = new ArrayList<>();
+    @Component
+    ArtifactHandlerManager artifactHandlerManager;
+
+    @Component
+    ArtifactResolver artifactResolver;
+
+    protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
+            throws MojoExecutionException {
+        final Map<String, Feature> selection = new LinkedHashMap<>();
 
         selectFeatureFiles(config, selection);
 
         selectFeatureClassifiers(config, selection);
 
-        // TODO process artifacts
+        selectFeatureArtifacts(config, selection);
 
         return selection;
     }
 
-    private void selectFeatureClassifiers(final FeatureSelectionConfig config, final List<Feature> selection)
+    private void selectFeatureClassifiers(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         boolean includeAll = false;
@@ -69,12 +83,12 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 }
             }
             if (include) {
-                selection.add(entry.getValue());
+                selection.put(entry.getKey(), entry.getValue());
             }
         }
     }
 
-    private void selectFeatureFiles(final FeatureSelectionConfig config, final List<Feature> selection)
+    private void selectFeatureFiles(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
@@ -85,7 +99,7 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 scanner.setExcludes(config.getExcludes().toArray(new String[config.getExcludes().size()]));
             }
             scanner.scan();
-            selection.addAll(scanner.getIncluded().values());
+            selection.putAll(scanner.getIncluded());
         } else {
             for (final String include : config.getIncludes()) {
                 final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
@@ -98,7 +112,7 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 if (!include.contains("*") && scanner.getIncluded().isEmpty()) {
                     throw new MojoExecutionException("FeatureInclude " + include + " not found.");
                 }
-                selection.addAll(scanner.getIncluded().values());
+                selection.putAll(scanner.getIncluded());
             }
         }
         if (!config.getExcludes().isEmpty()) {
@@ -115,11 +129,31 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         }
     }
 
+    private void selectFeatureArtifacts(final FeatureSelectionConfig config, final Map<String, Feature> selection)
+            throws MojoExecutionException {
+        for (final Dependency dep : config.getFeatureArtifacts()) {
+            final ArtifactId id = new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(),
+                    dep.getClassifier(), dep.getType());
+            if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
+                throw new MojoExecutionException(
+                        "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
+            }
+            final File file = ProjectHelper.getOrResolveArtifact(this.project, this.mavenSession,
+                    this.artifactHandlerManager, this.artifactResolver, id).getFile();
+            try (final Reader reader = new FileReader(file)) {
+                final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
+                selection.put(id.toMvnUrl(), feature);
+            } catch (final IOException ioe) {
+                throw new MojoExecutionException("Unable to read feature file " + file + " for " + id.toMvnId(), ioe);
+            }
+        }
+    }
+
     public static class FeatureScanner extends AbstractScanner {
 
         private final Map<String, Feature> features;
 
-        private final Map<ArtifactId, Feature> included = new LinkedHashMap<>();
+        private final Map<String, Feature> included = new LinkedHashMap<>();
 
         private final String prefix;
 
@@ -142,7 +176,7 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 final String[] tokenizedName = tokenizePathToString(name, File.separator);
                 if (isIncluded(name, tokenizedName)) {
                     if (!isExcluded(name, tokenizedName)) {
-                        included.put(entry.getValue().getId(), entry.getValue());
+                        included.put(entry.getKey(), entry.getValue());
                     }
                 }
             }
@@ -157,7 +191,7 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             return ret.toArray(new String[ret.size()]);
         }
 
-        public Map<ArtifactId, Feature> getIncluded() {
+        public Map<String, Feature> getIncluded() {
             return this.included;
         }
 
@@ -176,12 +210,4 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             return null;
         }
     }
-
-    @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
-        // TODO Auto-generated method stub
-
-    }
-
-
 }
