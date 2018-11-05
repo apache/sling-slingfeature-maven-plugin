@@ -29,16 +29,16 @@ public class FeatureSelectionConfig {
 
     private List<Dependency> artifacts = new ArrayList<>();
 
-    private List<String> aggregatedFeatures = new ArrayList<>();
+    private List<String> featureClassifiers = new ArrayList<>();
 
     public FeatureSelectionConfig() {
     }
 
-    public void setFeatureInclude(final String val) {
+    public void setFeatureFilesInclude(final String val) {
         includes.add(val);
     }
 
-    public void setFeatureExclude(final String val) {
+    public void setFeatureFilesExclude(final String val) {
         excludes.add(val);
     }
 
@@ -46,8 +46,8 @@ public class FeatureSelectionConfig {
         artifacts.add(a);
     }
 
-    public void setAggregatedFeature(final String classifier) {
-        aggregatedFeatures.add(classifier);
+    public void setFeatureClassifier(final String classifier) {
+        featureClassifiers.add(classifier);
     }
 
     public List<String> getIncludes() {
@@ -58,9 +58,13 @@ public class FeatureSelectionConfig {
         return this.excludes;
     }
 
+    public List<String> getFeatureClassifiers() {
+        return this.featureClassifiers;
+    }
+
     @Override
     public String toString() {
-        return "FeatureSelectionConfig [featureIncludes=" + includes + ", featureExcludes=" + excludes
-                + ", featureArtifacts=" + artifacts + ", aggregatedFeatures=" + aggregatedFeatures + "]";
+        return "FeatureSelectionConfig [featureFilesIncludes=" + includes + ", featureFilesExcludes=" + excludes
+                + ", featureArtifacts=" + artifacts + ", featureClassifiers=" + featureClassifiers + "]";
     }
 }

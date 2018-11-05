@@ -37,16 +37,45 @@ public class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
         selectFeatureFiles(config, selection);
 
-        // TODO process aggregates
+        selectFeatureClassifiers(config, selection);
 
         // TODO process artifacts
 
         return selection;
     }
 
+    private void selectFeatureClassifiers(final FeatureSelectionConfig config, final List<Feature> selection)
+            throws MojoExecutionException {
+        final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
+        boolean includeAll = false;
+        for (final String c : config.getFeatureClassifiers()) {
+            if ("*".equals(c)) {
+                includeAll = true;
+            }
+        }
+        if (includeAll && config.getFeatureClassifiers().size() > 1) {
+            throw new MojoExecutionException("Match all (*) and additional classifiers are specified.");
+        }
+        for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
+            final String classifier = entry.getValue().getId().getClassifier();
+            boolean include = includeAll;
+            if (!include) {
+                for (final String c : config.getFeatureClassifiers()) {
+                    if (c.trim().length() == 0 && classifier == null) {
+                        include = true;
+                    } else if (c.equals(classifier)) {
+                        include = true;
+                    }
+                }
+            }
+            if (include) {
+                selection.add(entry.getValue());
+            }
+        }
+    }
+
     private void selectFeatureFiles(final FeatureSelectionConfig config, final List<Feature> selection)
             throws MojoExecutionException {
-        // get map of all project features
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
         final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
