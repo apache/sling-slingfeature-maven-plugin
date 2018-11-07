@@ -39,7 +39,6 @@ import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
 import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.model.Dependency;
@@ -72,20 +71,20 @@ import org.codehaus.mojo.versions.utils.DependencyComparator;
         name = "update-feature-versions",
         threadSafe = true
     )
-public class UpdateVersionsMojo extends AbstractFeatureMojo {
+public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * A comma separated list of artifact patterns to include. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". Designed to allow specifing the
-     * set of includes from the command line.
+     * "groupId:artifactId:type:classifier:version". Designed to allow specifying
+     * the set of includes from the command line.
      */
     @Parameter(property = "includes")
     private String updatesIncludesList;
 
     /**
      * A comma separated list of artifact patterns to exclude. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". Designed to allow specifing the
-     * set of excludes from the command line.
+     * "groupId:artifactId:type:classifier:version". Designed to allow specifying
+     * the set of excludes from the command line.
      */
     @Parameter(property = "excludes")
     private String updatesExcludesList;
@@ -126,9 +125,6 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
     @Component
     protected PathTranslator pathTranslator;
 
-    @Component
-    protected ArtifactResolver artifactResolver;
-
     private VersionsHelper getHelper() throws MojoExecutionException {
         return new DefaultVersionsHelper(artifactFactory, artifactResolver, artifactMetadataSource,
                 remoteArtifactRepositories, remotePluginRepositories, localRepository, wagonManager, settings, serverId,
@@ -150,14 +146,11 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
         return matches;
     }
 
-    private List<Map.Entry<String, Feature>> getFeatures() {
-        final List<Map.Entry<String, Feature>> features = new ArrayList<>();
-        for (final Map.Entry<String, Feature> entry : ProjectHelper.getFeatures(this.project).entrySet()) {
-            if (!ProjectHelper.isAggregate(entry.getKey())) {
-                features.add(entry);
-            }
-        }
-        return features;
+    private Map<String, Feature> getFeatures() throws MojoExecutionException {
+        final FeatureSelectionConfig config = new FeatureSelectionConfig();
+        config.setFilesInclude("**/*.*");
+
+        return this.getSelectedFeatures(config);
     }
 
     private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts) {
@@ -166,9 +159,9 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
         }
     }
 
-    private Set<Dependency> getDependencies(final List<Map.Entry<String, Feature>> features) {
+    private Set<Dependency> getDependencies(final Map<String, Feature> features) {
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
-        for (final Map.Entry<String, Feature> entry : features) {
+        for (final Map.Entry<String, Feature> entry : features.entrySet()) {
             addDependencies(dependencies, entry.getValue().getBundles());
             for (final Extension ext : entry.getValue().getExtensions()) {
                 if (ext.getType() == ExtensionType.ARTIFACTS) {
@@ -192,7 +185,7 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         // get the features
-        final List<Map.Entry<String, Feature>> features = this.getFeatures();
+        final Map<String, Feature> features = this.getFeatures();
         if (features.isEmpty()) {
             throw new MojoExecutionException("No features found in project!");
         }
@@ -217,7 +210,7 @@ public class UpdateVersionsMojo extends AbstractFeatureMojo {
 
         final Map<String, Set<String>> globalPropertyUpdates = new HashMap<String, Set<String>>();
 
-        for (final Map.Entry<String, Feature> entry : features) {
+        for (final Map.Entry<String, Feature> entry : features.entrySet()) {
             getLog().debug("Checking feature file " + entry.getKey());
 
             final UpdateResult result = new UpdateResult();
