@@ -17,10 +17,8 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Reader;
 import java.io.Writer;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +26,7 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -37,11 +35,10 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
 
-public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
+public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * The directory to store the artifacts into.
@@ -52,42 +49,20 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
     @Component
     ArtifactHandlerManager artifactHandlerManager;
 
-    /**
-     * Used to look up Artifacts in the remote repository.
-     *
-     */
-    @Component
-    ArtifactResolver resolver;
-
     @Override
     public abstract void execute() throws MojoExecutionException, MojoFailureException;
 
-    protected void doExecute(final File artifactDir, final List<Include> featureIncludes, final List<Include> embed)
+    protected void doExecute(final File artifactDir, final Map<String, Feature> features, final List<Dependency> embed)
             throws MojoExecutionException, MojoFailureException {
         this.getLog().info("Creating repository in '" + artifactDir.getPath() + "'...");
 
-        final Map<String, org.apache.sling.feature.Feature> features = ProjectHelper.getAssembledFeatures(this.project);
-
-        if (featureIncludes != null && !featureIncludes.isEmpty()) {
-            for (Include include : featureIncludes) {
-                if (ProjectHelper.isLocalProjectArtifact(this.project, include.getID())) {
-                    final Feature inc = this.getLocalFeature(include.getID());
-                    if (inc == null) {
-                        throw new MojoExecutionException("Unable to find project feature " + include.getID().toMvnId());
-                    }
-                    processFeature(artifactDir, inc);
-                } else {
-                    processRemoteFeature(artifactDir, include.getID());
-                }
-            }
-        } else {
-            for (final Feature f : features.values()) {
-                processFeature(artifactDir, f);
-            }
+        for (final Feature feature : features.values()) {
+            processFeature(artifactDir, feature);
         }
+
         if (embed != null) {
-            for (Include include : embed) {
-                copyArtifactToRepository(include.getID(), artifactDir);
+            for (Dependency include : embed) {
+                copyArtifactToRepository(ProjectHelper.toArtifactId(include), artifactDir);
             }
         }
     }
@@ -118,7 +93,7 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
         try ( final Writer writer = new FileWriter(featureFile)) {
             FeatureJSONWriter.write(writer, f);
         } catch (final IOException e) {
-            throw new MojoExecutionException("Unable to write feature file ", e);
+            throw new MojoExecutionException("Unable to write feature file  :" + f.getId().toMvnId(), e);
         }
         if ( f.getInclude() != null ) {
             if (ProjectHelper.isLocalProjectArtifact(this.project, f.getInclude().getId())) {
@@ -129,23 +104,10 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
                 }
                 processFeature(artifactDir, inc);
             } else {
-                processRemoteFeature(artifactDir, f.getInclude().getId());
+                final Feature inc = ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
+                        artifactResolver, f.getInclude().getId());
+                processFeature(artifactDir, inc);
             }
-        }
-    }
-
-    protected void processRemoteFeature(final File artifactDir, final ArtifactId id) throws MojoExecutionException {
-        final Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
-            this.mavenSession,
-            this.artifactHandlerManager,
-            this.resolver,
-            id);
-
-        try (final Reader reader = new FileReader(source.getFile()) ) {
-            final Feature inc = FeatureJSONReader.read(reader, id.toMvnId());
-            processFeature(artifactDir, inc);
-        } catch (final IOException e) {
-            throw new MojoExecutionException("Unable to read feature file ", e);
         }
     }
 
@@ -155,7 +117,7 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
      * @param artifact The artifact
      * @return The file
      */
-    protected File getRepositoryFile(final File artifactDir, final org.apache.sling.feature.ArtifactId artifact) {
+    private File getRepositoryFile(final File artifactDir, final org.apache.sling.feature.ArtifactId artifact) {
         final StringBuilder artifactNameBuilder = new StringBuilder();
         artifactNameBuilder.append(artifact.getArtifactId());
         artifactNameBuilder.append('-');
@@ -188,7 +150,7 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
      * Copy a single artifact to the repository
      * @throws MojoExecutionException
      */
-    protected void copyArtifactToRepository(final ArtifactId artifactId,
+    private void copyArtifactToRepository(final ArtifactId artifactId,
             final File artifactDir)
     throws MojoExecutionException {
         final File artifactFile = getRepositoryFile(artifactDir, artifactId);
@@ -199,46 +161,13 @@ public abstract class AbstractRepositoryMojo extends AbstractFeatureMojo {
         final Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
                 this.mavenSession,
                 this.artifactHandlerManager,
-                this.resolver,
+                this.artifactResolver,
                 artifactId);
 
         try {
             FileUtils.copyFile(source.getFile(), artifactFile);
         } catch (IOException e) {
             throw new MojoExecutionException("Unable to copy artifact from " + source.getFile(), e);
-        }
-    }
-
-    public static class Include {
-        String groupId;
-        String artifactId;
-        String version;
-        String type;
-        String classifier;
-
-        public void setGroupId(String gid) {
-            groupId = gid;
-        }
-
-        public void setArtifactId(String aid) {
-            artifactId = aid;
-        }
-
-        public void setVersion(String ver) {
-            version = ver;
-        }
-
-        public void setType(String t) {
-            type = t;
-        }
-
-        public void setClassifier(String clf) {
-            classifier = clf;
-        }
-
-        public ArtifactId getID()
-        {
-            return new ArtifactId(groupId, artifactId, version, classifier, type);
         }
     }
 

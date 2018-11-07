@@ -54,6 +54,20 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         return selection;
     }
 
+    protected Map<String, Feature> selectAllFeatureFiles() throws MojoExecutionException {
+        final FeatureSelectionConfig config = new FeatureSelectionConfig();
+        config.setFilesInclude("**/*.*");
+
+        return this.getSelectedFeatures(config);
+    }
+
+    protected Map<String, Feature> selectAllFeatureFilesAndAggregates() throws MojoExecutionException {
+        final FeatureSelectionConfig config = new FeatureSelectionConfig();
+        config.setFilesInclude("**/*.*");
+        config.setIncludeClassifier("*");
+        return this.getSelectedFeatures(config);
+    }
+
     private void selectFeatureClassifiers(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);

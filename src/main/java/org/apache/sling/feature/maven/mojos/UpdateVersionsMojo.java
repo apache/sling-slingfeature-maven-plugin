@@ -147,10 +147,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     }
 
     private Map<String, Feature> getFeatures() throws MojoExecutionException {
-        final FeatureSelectionConfig config = new FeatureSelectionConfig();
-        config.setFilesInclude("**/*.*");
-
-        return this.getSelectedFeatures(config);
+        return this.selectAllFeatureFiles();
     }
 
     private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts) {

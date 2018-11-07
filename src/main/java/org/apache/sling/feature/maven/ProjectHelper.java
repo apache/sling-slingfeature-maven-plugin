@@ -273,6 +273,11 @@ public abstract class ProjectHelper {
         return dep;
     }
 
+    public static ArtifactId toArtifactId(final Dependency dep) {
+        return new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getClassifier(),
+                dep.getType());
+    }
+
     public static void setFeatureInfo(final MavenProject project, final Feature feature) {
         // set title, description, vendor, license
         if ( feature.getTitle() == null ) {

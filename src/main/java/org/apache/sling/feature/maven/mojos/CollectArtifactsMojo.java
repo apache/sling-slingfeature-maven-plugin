@@ -17,23 +17,24 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.sling.feature.Feature;
 
 @Mojo(
     name = "collect-artifacts",
     requiresProject = false,
     threadSafe = true
 )
-public final class ArtifactsMojo extends AbstractRepositoryMojo {
+public final class CollectArtifactsMojo extends AbstractRepositoryMojo {
 
     private final Pattern gavPattern = Pattern.compile("([^: ]+):([^: ]+)(:([^: ]*)(:([^: ]+))?)?:([^: ]+)");
 
@@ -53,11 +54,11 @@ public final class ArtifactsMojo extends AbstractRepositoryMojo {
         } else {
             artifactDir = new File(this.project.getBuild().getDirectory(), repositoryDir);
         }
-        this.doExecute(artifactDir, getIncludes(), null);
+        this.doExecute(artifactDir, getFeatures(), null);
     }
 
-    protected List<Include> getIncludes() {
-        List<Include> includes = new ArrayList<>();
+    protected Map<String, Feature> getFeatures() throws MojoExecutionException {
+        final FeatureSelectionConfig config = new FeatureSelectionConfig();
 
         if (csvFeaturesGAV != null && !csvFeaturesGAV.isEmpty()) {
 
@@ -72,17 +73,17 @@ public final class ArtifactsMojo extends AbstractRepositoryMojo {
                             + " specified on 'features' property, expected format is groupId:artifactId[:packaging[:classifier]]:version");
                 }
 
-                Include include = new Include();
-                include.setGroupId(gavMatcher.group(1));
-                include.setArtifactId(gavMatcher.group(2));
-                include.setVersion(gavMatcher.group(7));
-                include.setType(gavMatcher.group(4));
-                include.setClassifier(gavMatcher.group(6));
+                final Dependency dep = new Dependency();
+                dep.setGroupId(gavMatcher.group(1));
+                dep.setArtifactId(gavMatcher.group(2));
+                dep.setVersion(gavMatcher.group(7));
+                dep.setType(gavMatcher.group(4));
+                dep.setClassifier(gavMatcher.group(6));
 
-                includes.add(include);
+                config.setIncludeArtifact(dep);
             }
         }
 
-        return includes;
+        return this.getSelectedFeatures(config);
     }
 }
