@@ -17,9 +17,6 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,7 +30,6 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
@@ -90,6 +86,10 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     private void selectFeatureFiles(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
+        // neither includes nor excludes - don't select any file
+        if (config.getIncludes().isEmpty() && config.getExcludes().isEmpty()) {
+            return;
+        }
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
         final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
@@ -138,14 +138,9 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 throw new MojoExecutionException(
                         "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
             }
-            final File file = ProjectHelper.getOrResolveArtifact(this.project, this.mavenSession,
-                    this.artifactHandlerManager, this.artifactResolver, id).getFile();
-            try (final Reader reader = new FileReader(file)) {
-                final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
-                selection.put(id.toMvnUrl(), feature);
-            } catch (final IOException ioe) {
-                throw new MojoExecutionException("Unable to read feature file " + file + " for " + id.toMvnId(), ioe);
-            }
+            final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
+                    this.artifactHandlerManager, this.artifactResolver, id);
+            selection.put(id.toMvnUrl(), feature);
         }
     }
 

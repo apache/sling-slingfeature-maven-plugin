@@ -16,29 +16,32 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.plugins.annotations.Parameter;
+import java.util.Map;
 
-public class AggregateConfig extends FeatureSelectionConfig {
+public class Aggregate extends FeatureSelectionConfig {
 
     /**
      * This is the classifier for the new feature. If not specified the feature is
      * the main artifact for the project.
      */
-    @Parameter
-    public String aggregateClassifier;
+    public String classifier;
+
     /**
      * If this is set to {@code true} the feature is marked as final.
      */
-    @Parameter(defaultValue = "false")
-    public boolean markAsFinal;
+    public boolean markAsFinal = false;
+
     /**
      * Optional title for the feature
      */
-    @Parameter
-    public String featureTitle;
+    public String title;
+
     /**
      * Optional description for the feature
      */
-    @Parameter
-    public String featureDescription;
+    public String description;
+
+    public Map<String, String> variables;
+
+    public Map<String, String> frameworkProperties;
 }

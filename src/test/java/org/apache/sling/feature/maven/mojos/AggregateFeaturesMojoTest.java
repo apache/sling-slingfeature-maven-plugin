@@ -17,16 +17,12 @@
 package org.apache.sling.feature.maven.mojos;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
-import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -36,32 +32,37 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
 import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.artifact.resolver.ResolutionListener;
+import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Build;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.DefaultMavenProjectHelper;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.repository.RepositorySystem;
+import org.apache.maven.wagon.events.TransferListener;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
-import org.apache.sling.feature.maven.mojos.AggregateFeaturesMojo.FeatureConfig;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
@@ -89,49 +90,6 @@ public class AggregateFeaturesMojoTest {
     }
 
     @Test
-    public void testFeatureConfig() {
-        FeatureConfig fc = new FeatureConfig();
-
-        assertEquals(0, fc.includes.size());
-        assertEquals(0, fc.excludes.size());
-        assertNull(fc.groupId);
-        assertNull(fc.artifactId);
-        assertNull(fc.version);
-        assertNull(fc.type);
-        assertNull(fc.classifier);
-
-        fc.setIncludes("i1");
-        fc.setIncludes("i2");
-        fc.setExcludes("e1");
-
-        assertTrue(fc.isDirectory());
-        assertFalse(fc.isArtifact());
-        fc.setGroupId("gid1");
-        fc.setArtifactId("aid1");
-        fc.setVersion("1.2.3");
-        fc.setType(FeatureConstants.PACKAGING_FEATURE);
-        fc.setClassifier("clf1");
-
-        assertEquals(Arrays.asList("i1", "i2"), fc.includes);
-        assertEquals(Collections.singletonList("e1"), fc.excludes);
-
-        assertEquals("gid1", fc.groupId);
-        assertEquals("aid1", fc.artifactId);
-        assertEquals("1.2.3", fc.version);
-        assertEquals(FeatureConstants.PACKAGING_FEATURE, fc.type);
-        assertEquals("clf1", fc.classifier);
-
-        assertFalse(fc.isDirectory());
-        assertFalse(fc.isArtifact());
-
-        fc.includes.clear();
-        fc.excludes.clear();
-
-        assertFalse(fc.isDirectory());
-        assertTrue(fc.isArtifact());
-    }
-
-    @Test
     public void testAggregateFeaturesFromDirectory() throws Exception {
         File featuresDir = new File(
                 getClass().getResource("/aggregate-features/dir2").getFile());
@@ -142,8 +100,8 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setIncludes("*.json");
+        Aggregate fc = new Aggregate();
+        fc.setFeatureFilesInclude("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -161,11 +119,10 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "aggregated";
+        fc.classifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
         af.execute();
 
@@ -215,11 +172,11 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setIncludes("*.json");
-        fc.setIncludes("*.foobar");
-        fc.setExcludes("*_v*");
-        fc.setExcludes("test_w.json");
+        Aggregate fc = new Aggregate();
+        fc.setFeatureFilesInclude("*.json");
+        fc.setFeatureFilesInclude("*.foobar");
+        fc.setFeatureFilesExclude("*_v*");
+        fc.setFeatureFilesExclude("test_w.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -237,11 +194,10 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "aggregated";
+        fc.classifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
 
         af.execute();
@@ -291,8 +247,8 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setIncludes("doesnotexist.json");
+        Aggregate fc = new Aggregate();
+        fc.setFeatureFilesInclude("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -310,11 +266,10 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "aggregated";
+        fc.classifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
 
         try {
@@ -336,8 +291,8 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setExcludes("doesnotexist.json");
+        Aggregate fc = new Aggregate();
+        fc.setFeatureFilesInclude("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -355,18 +310,17 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "aggregated";
+        fc.classifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
 
         try {
             af.execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
-            assertTrue(mee.getMessage().contains("Exclude doesnotexist.json not found"));
+            assertTrue(mee.getMessage().contains("FeatureInclude doesnotexist.json not found"));
         }
     }
 
@@ -381,17 +335,15 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc1 = new FeatureConfig();
-        fc1.setIncludes("test_x.json");
+        Aggregate fc1 = new Aggregate();
+        fc1.setFeatureFilesInclude("test_x.json");
 
-        FeatureConfig fc2 = new FeatureConfig();
-        fc2.setIncludes("test_u.json");
-        fc2.setIncludes("test_y.json");
-        fc2.setIncludes("test_v.json");
-        fc2.setIncludes("test_z.json");
+        fc1.setFeatureFilesInclude("test_u.json");
+        fc1.setFeatureFilesInclude("test_y.json");
+        fc1.setFeatureFilesInclude("test_v.json");
+        fc1.setFeatureFilesInclude("test_z.json");
 
-        FeatureConfig fc3 = new FeatureConfig();
-        fc3.setIncludes("test_t.json");
+        fc1.setFeatureFilesInclude("test_t.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -410,11 +362,10 @@ public class AggregateFeaturesMojoTest {
 
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "agg";
-        af.aggregates = Arrays.asList(fc1, fc2, fc3);
+        fc1.classifier = "agg";
+        af.aggregates = Arrays.asList(fc1);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
 
         af.execute();
@@ -452,14 +403,15 @@ public class AggregateFeaturesMojoTest {
         Feature feat = FeatureJSONReader.read(new FileReader(featureFile), null);
         featureMap.put(featureFile.getAbsolutePath(), feat);
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setGroupId("g1");
-        fc.setArtifactId("a1");
-        fc.setVersion("9.9.9");
-        fc.setType(FeatureConstants.PACKAGING_FEATURE);
-        fc.setClassifier("c1");
+        Aggregate fc = new Aggregate();
+        final Dependency dep = new Dependency();
+        dep.setGroupId("g1");
+        dep.setArtifactId("a1");
+        dep.setVersion("9.9.9");
+        dep.setType(FeatureConstants.PACKAGING_FEATURE);
+        dep.setClassifier("c1");
 
-        RepositorySystem mockRepo = createMockRepo();
+        fc.setFeatureArtifact(dep);
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -477,38 +429,104 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "mynewfeature";
+        fc.classifier = "mynewfeature";
         af.aggregates = Collections.singletonList(fc);
-        af.repoSystem = mockRepo;
-        af.localRepository = Mockito.mock(ArtifactRepository.class);
-        af.remoteRepositories = Collections.emptyList();
         af.project = mockProj;
+        af.mavenSession = Mockito.mock(MavenSession.class);
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
+        af.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
         af.features = featureFile.getParentFile();
 
-        af.artifactResolver = Mockito.mock(ArtifactResolver.class);
-        Mockito.when(af.artifactResolver.resolve(Mockito.isA(ArtifactResolutionRequest.class)))
-            .then(new Answer<ArtifactResolutionResult>() {
-                @Override
-                public ArtifactResolutionResult answer(InvocationOnMock invocation) throws Throwable {
-                    ArtifactResolutionRequest arr = (ArtifactResolutionRequest) invocation.getArguments()[0];
-                    Artifact a = arr.getArtifact();
-                    assertEquals("g1", a.getGroupId());
-                    assertEquals("a1", a.getArtifactId());
-                    assertEquals("9.9.9", a.getVersion());
-                    assertEquals(FeatureConstants.PACKAGING_FEATURE, a.getType());
-                    assertEquals("c1", a.getClassifier());
+        af.artifactResolver = new ArtifactResolver() {
 
-                    assertSame(af.localRepository, arr.getLocalRepository());
-                    assertSame(af.remoteRepositories, arr.getRemoteRepositories());
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
+                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source, ArtifactFilter filter,
+                    List<ResolutionListener> listeners) throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
 
-                    // Configure Artifact.getFile()
-                    Mockito.when(a.getFile()).thenReturn(featureFile);
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
+                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source, ArtifactFilter filter)
+                    throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
 
-                    return null;
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository,
+                    ArtifactMetadataSource source, List<ResolutionListener> listeners)
+                    throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
+                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source)
+                    throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    ArtifactRepository localRepository, List<ArtifactRepository> remoteRepositories,
+                    ArtifactMetadataSource source, ArtifactFilter filter)
+                    throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
+                    List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository,
+                    ArtifactMetadataSource source) throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+
+            @Override
+            public void resolveAlways(Artifact artifact, List<ArtifactRepository> remoteRepositories,
+                    ArtifactRepository localRepository) throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void resolve(Artifact artifact, List<ArtifactRepository> remoteRepositories,
+                    ArtifactRepository localRepository, TransferListener downloadMonitor)
+                    throws ArtifactResolutionException, ArtifactNotFoundException {
+                // TODO Auto-generated method stub
+
+            }
+
+            @Override
+            public void resolve(Artifact artifact, List<ArtifactRepository> remoteRepositories,
+                    ArtifactRepository localRepository) throws ArtifactResolutionException, ArtifactNotFoundException {
+                if (artifact.getGroupId().equals(dep.getGroupId())
+                        && artifact.getArtifactId().equals(dep.getArtifactId())
+                        && artifact.getVersion().equals(dep.getVersion())
+                        && artifact.getClassifier().equals(dep.getClassifier())
+                        && artifact.getType().equals(dep.getType())) {
+                    artifact.setFile(featureFile);
+                    return;
                 }
-            });
+                throw new ArtifactResolutionException("Not found", artifact);
+            }
+
+            @Override
+            public ArtifactResolutionResult resolve(ArtifactResolutionRequest request) {
+                // TODO Auto-generated method stub
+                return null;
+            }
+        };
 
         af.execute();
 
@@ -542,8 +560,8 @@ public class AggregateFeaturesMojoTest {
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
-        FeatureConfig fc = new FeatureConfig();
-        fc.setIncludes("*.json");
+        Aggregate fc = new Aggregate();
+        fc.setFeatureFilesInclude("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -561,11 +579,10 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregateClassifier = "aggregated";
+        fc.classifier = "aggregated";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
-        setPrivateField(af.projectHelper, "artifactHandlerManager", Mockito.mock(ArtifactHandlerManager.class));
         af.features = featuresDir;
 
         assertEquals("Precondition", 0, pluginCallbacks.size());
@@ -587,32 +604,5 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(parentArtifact.getVersionRange()).thenReturn(VersionRange.createFromVersion("123"));
         Mockito.when(parentArtifact.getType()).thenReturn("foo");
         return parentArtifact;
-    }
-
-    private RepositorySystem createMockRepo() {
-        RepositorySystem repo = Mockito.mock(RepositorySystem.class);
-        Mockito.when(repo.createArtifactWithClassifier(
-                Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString()))
-            .then(new Answer<Artifact>() {
-                @Override
-                public Artifact answer(InvocationOnMock inv) throws Throwable {
-                    Artifact art = Mockito.mock(Artifact.class);
-
-                    Mockito.when(art.getGroupId()).thenReturn((String) inv.getArguments()[0]);
-                    Mockito.when(art.getArtifactId()).thenReturn((String) inv.getArguments()[1]);
-                    Mockito.when(art.getVersion()).thenReturn((String) inv.getArguments()[2]);
-                    Mockito.when(art.getType()).thenReturn((String) inv.getArguments()[3]);
-                    Mockito.when(art.getClassifier()).thenReturn((String) inv.getArguments()[4]);
-
-                    return art;
-                }
-            });
-        return repo;
-    }
-
-    private void setPrivateField(Object obj, String name, Object value) throws Exception {
-        Field f = obj.getClass().getDeclaredField(name);
-        f.setAccessible(true);
-        f.set(obj, value);
     }
 }

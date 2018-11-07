@@ -16,7 +16,10 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -240,6 +243,16 @@ public abstract class ProjectHelper {
             throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
         }
         return prjArtifact;
+    }
+
+    public static Feature getOrResolveFeature(final MavenProject project, final MavenSession session,
+            final ArtifactHandlerManager artifactHandlerManager, final ArtifactResolver resolver, final ArtifactId id) {
+        final File artFile = getOrResolveArtifact(project, session, artifactHandlerManager, resolver, id).getFile();
+        try (final Reader reader = new FileReader(artFile)) {
+            return FeatureJSONReader.read(reader, artFile.getAbsolutePath());
+        } catch (final IOException ioe) {
+            throw new RuntimeException("Unable to read feature file " + artFile + " for " + id.toMvnId(), ioe);
+        }
     }
 
     public static String toString(final Dependency d) {
