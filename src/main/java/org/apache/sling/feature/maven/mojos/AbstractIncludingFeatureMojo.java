@@ -58,19 +58,19 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         boolean includeAll = false;
-        for (final String c : config.getFeatureClassifiers()) {
+        for (final String c : config.getClassifiers()) {
             if ("*".equals(c)) {
                 includeAll = true;
             }
         }
-        if (includeAll && config.getFeatureClassifiers().size() > 1) {
+        if (includeAll && config.getClassifiers().size() > 1) {
             throw new MojoExecutionException("Match all (*) and additional classifiers are specified.");
         }
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
             final String classifier = entry.getValue().getId().getClassifier();
             boolean include = includeAll;
             if (!include) {
-                for (final String c : config.getFeatureClassifiers()) {
+                for (final String c : config.getClassifiers()) {
                     if (c.trim().length() == 0 && classifier == null) {
                         include = true;
                     } else if (c.equals(classifier)) {
@@ -131,7 +131,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     private void selectFeatureArtifacts(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
-        for (final Dependency dep : config.getFeatureArtifacts()) {
+        for (final Dependency dep : config.getArtifacts()) {
             final ArtifactId id = new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(),
                     dep.getClassifier(), dep.getType());
             if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {

@@ -101,7 +101,7 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc = new Aggregate();
-        fc.setFeatureFilesInclude("*.json");
+        fc.setFilesInclude("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -173,10 +173,10 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc = new Aggregate();
-        fc.setFeatureFilesInclude("*.json");
-        fc.setFeatureFilesInclude("*.foobar");
-        fc.setFeatureFilesExclude("*_v*");
-        fc.setFeatureFilesExclude("test_w.json");
+        fc.setFilesInclude("*.json");
+        fc.setFilesInclude("*.foobar");
+        fc.setFilesExclude("*_v*");
+        fc.setFilesExclude("test_w.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -248,7 +248,7 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc = new Aggregate();
-        fc.setFeatureFilesInclude("doesnotexist.json");
+        fc.setFilesInclude("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -292,7 +292,7 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc = new Aggregate();
-        fc.setFeatureFilesInclude("doesnotexist.json");
+        fc.setFilesInclude("doesnotexist.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -336,14 +336,14 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc1 = new Aggregate();
-        fc1.setFeatureFilesInclude("test_x.json");
+        fc1.setFilesInclude("test_x.json");
 
-        fc1.setFeatureFilesInclude("test_u.json");
-        fc1.setFeatureFilesInclude("test_y.json");
-        fc1.setFeatureFilesInclude("test_v.json");
-        fc1.setFeatureFilesInclude("test_z.json");
+        fc1.setFilesInclude("test_u.json");
+        fc1.setFilesInclude("test_y.json");
+        fc1.setFilesInclude("test_v.json");
+        fc1.setFilesInclude("test_z.json");
 
-        fc1.setFeatureFilesInclude("test_t.json");
+        fc1.setFilesInclude("test_t.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -411,7 +411,7 @@ public class AggregateFeaturesMojoTest {
         dep.setType(FeatureConstants.PACKAGING_FEATURE);
         dep.setClassifier("c1");
 
-        fc.setFeatureArtifact(dep);
+        fc.setIncludeArtifact(dep);
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -561,7 +561,7 @@ public class AggregateFeaturesMojoTest {
         }
 
         Aggregate fc = new Aggregate();
-        fc.setFeatureFilesInclude("*.json");
+        fc.setFilesInclude("*.json");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());

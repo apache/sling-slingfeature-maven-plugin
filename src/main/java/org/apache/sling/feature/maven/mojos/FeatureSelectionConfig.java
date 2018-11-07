@@ -34,19 +34,19 @@ public class FeatureSelectionConfig {
     public FeatureSelectionConfig() {
     }
 
-    public void setFeatureFilesInclude(final String val) {
+    public void setFilesInclude(final String val) {
         includes.add(val);
     }
 
-    public void setFeatureFilesExclude(final String val) {
+    public void setFilesExclude(final String val) {
         excludes.add(val);
     }
 
-    public void setFeatureArtifact(final Dependency a) {
+    public void setIncludeArtifact(final Dependency a) {
         artifacts.add(a);
     }
 
-    public void setFeatureClassifier(final String classifier) {
+    public void setIncludeClassifier(final String classifier) {
         featureClassifiers.add(classifier);
     }
 
@@ -58,17 +58,17 @@ public class FeatureSelectionConfig {
         return this.excludes;
     }
 
-    public List<String> getFeatureClassifiers() {
+    public List<String> getClassifiers() {
         return this.featureClassifiers;
     }
 
-    public List<Dependency> getFeatureArtifacts() {
+    public List<Dependency> getArtifacts() {
         return this.artifacts;
     }
 
     @Override
     public String toString() {
-        return "FeatureSelectionConfig [featureFilesIncludes=" + includes + ", featureFilesExcludes=" + excludes
-                + ", featureArtifacts=" + artifacts + ", featureClassifiers=" + featureClassifiers + "]";
+        return "FeatureSelectionConfig [filesIncludes=" + includes + ", filesExcludes=" + excludes
+                + ", includeArtifact=" + artifacts + ", includeClassifier=" + featureClassifiers + "]";
     }
 }
