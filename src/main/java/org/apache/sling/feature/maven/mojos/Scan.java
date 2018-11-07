@@ -16,33 +16,35 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.apache.maven.model.Dependency;
+public class Scan extends FeatureSelectionConfig {
 
-public class Repository extends FeatureSelectionConfig {
+    private Set<String> includeTasks = new HashSet<>();
 
-    private List<Dependency> embeds = new ArrayList<>();
+    private Set<String> excludeTasks = new HashSet<>();
 
-    /**
-     * The directory for the repository to store. This directory is relative to the
-     * build directory.
-     */
-    public String repositoryDir = "artifacts";
-
-    public void setEmbedArtifact(final Dependency dep) {
-        this.embeds.add(dep);
+    public void setIncludeTask(final String name) {
+        this.includeTasks.add(name);
     }
 
-    public List<Dependency> getEmbeds() {
-        return this.embeds;
+    public void setExcludeTask(final String name) {
+        this.excludeTasks.add(name);
+    }
+
+    public Set<String> getIncludeTasks() {
+        return this.includeTasks.isEmpty() ? null : this.includeTasks;
+    }
+
+    public Set<String> getExcludeTasks() {
+        return this.excludeTasks.isEmpty() ? null : this.excludeTasks;
     }
 
     @Override
     public String toString() {
-        return "Repository [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
-                + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", embeds=" + embeds + ", repositoryDir="
-                + repositoryDir + "]";
+        return "Scan [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
+                + getArtifacts() + ", includeClassifier=" + getClassifiers() + "includeTasks=" + includeTasks
+                + ", excludeTasks=" + excludeTasks + "]";
     }
 }

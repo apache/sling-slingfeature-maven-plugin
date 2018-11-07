@@ -19,13 +19,10 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -39,6 +36,8 @@ import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+
 /**
  * Analyse the feature.
  */
@@ -47,28 +46,21 @@ import org.apache.sling.feature.scanner.Scanner;
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
-public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
-
-    @Component
-    private ArtifactHandlerManager artifactHandlerManager;
-
-    @Component
-    ArtifactResolver artifactResolver;
+public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
-    Set<String> includeTasks;
+    private List<Scan> scans;
 
-    @Parameter
-    Set<String> excludeTasks;
-
-    @Parameter
-    Set<String> includeFeatures;
-
-    @Parameter
-    Set<String> excludeFeatures;
-
+    @SuppressWarnings("unchecked")
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        List<Scan> list = scans;
+        if (list == null || list.isEmpty()) {
+            // use default configuration
+            final Scan a = new Scan();
+            a.setFilesInclude("**/*.*");
+            list = Collections.singletonList(a);
+        }
         final ArtifactProvider am = new ArtifactProvider() {
 
             @Override
@@ -77,64 +69,68 @@ public class AnalyseFeaturesMojo extends AbstractFeatureMojo {
             }
         };
 
-        boolean hasErrors = false;
+        getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
+        Scanner scanner;
         try {
-            getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
-            final Scanner scanner = new Scanner(am);
-            getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
-
-            getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a("...").toString());
-            final Analyser analyser = new Analyser(scanner, includeTasks, excludeTasks);
-            getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
-
-            getLog().debug("Retrieving Feature files...");
-            final Collection<Feature> features = ProjectHelper.getAssembledFeatures(this.project).values();
-
-            if (features.isEmpty()) {
-                getLog().debug("There are no assciated Feature files to current ptoject, plugin execution will be interrupted");
-                return;
-            } else {
-                getLog().debug("Starting Features analysis...");
-            }
-
-            for (final Feature f : features) {
-                String featureId = f.getId().toMvnId();
-                boolean included = includeFeatures != null ? includeFeatures.contains(featureId) : true;
-                boolean excluded = excludeFeatures != null ? excludeFeatures.contains(featureId) : false;
-
-                if (!included || excluded) {
-                    getLog().debug(MessageUtils.buffer().a("Feature '").strong(featureId).a("' will not be included in the Analysis").toString());
-                    continue;
-                }
-
-                try {
-                    getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(featureId).a(" ...").toString());
-                    final AnalyserResult result = analyser.analyse(f);
-                    for (final String msg : result.getWarnings()) {
-                        getLog().warn(msg);
-                    }
-                    for (final String msg : result.getErrors()) {
-                        getLog().error(msg);
-                    }
-
-                    if (!result.getErrors().isEmpty()) {
-                        getLog().error("Analyser detected errors on Feature '" + f.getId()
-                                + "'. See log output for error messages.");
-                        hasErrors = true;
-                    } else {
-                        getLog().debug(MessageUtils.buffer().a("Feature ").debug(featureId).a(" succesfully passed all analysis").toString());
-                    }
-                } catch (Exception t) {
-                    throw new MojoFailureException(
-                            "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(), t);
-                }
-            }
-        } catch (IOException e) {
-            throw new MojoExecutionException("A fatal error occurred while setting up the Scanner and related Analyzer, see error cause:", e);
-        } finally {
-            getLog().debug("Features analysis complete");
+            scanner = new Scanner(am);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("A fatal error occurred while setting up the Scanner, see error cause:",
+                    e);
         }
+        getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
 
+        boolean hasErrors = false;
+        for (final Scan an : list) {
+            try {
+
+                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a("...").toString());
+                final Analyser analyser = new Analyser(scanner, an.getIncludeTasks(), an.getExcludeTasks());
+                getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
+
+                getLog().debug("Retrieving Feature files...");
+                final Collection<Feature> features = this.getSelectedFeatures(an).values();
+
+                if (features.isEmpty()) {
+                    getLog().debug(
+                            "There are no assciated Feature files to current project, plugin execution will be interrupted");
+                    continue;
+                } else {
+                    getLog().debug("Starting Features analysis...");
+                }
+
+                for (final Feature f : features) {
+                    try {
+                        getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(f.getId().toMvnId())
+                                .a(" ...").toString());
+                        final AnalyserResult result = analyser.analyse(f);
+                        for (final String msg : result.getWarnings()) {
+                            getLog().warn(msg);
+                        }
+                        for (final String msg : result.getErrors()) {
+                            getLog().error(msg);
+                        }
+
+                        if (!result.getErrors().isEmpty()) {
+                            getLog().error("Analyser detected errors on Feature '" + f.getId().toMvnId()
+                                    + "'. See log output for error messages.");
+                            hasErrors = true;
+                        } else {
+                            getLog().debug(MessageUtils.buffer().a("Feature ").debug(f.getId().toMvnId())
+                                    .a(" succesfully passed all analysis").toString());
+                        }
+                    } catch (Exception t) {
+                        throw new MojoFailureException(
+                                "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(),
+                                t);
+                    }
+                }
+            } catch (IOException e) {
+                throw new MojoExecutionException(
+                        "A fatal error occurred while setting up the Analyzer, see error cause:", e);
+            } finally {
+                getLog().debug("Features analysis complete");
+            }
+        }
         if (hasErrors) {
             throw new MojoFailureException("One or more features Analyzer detected Feature error(s), please read the plugin log for more datils");
         }

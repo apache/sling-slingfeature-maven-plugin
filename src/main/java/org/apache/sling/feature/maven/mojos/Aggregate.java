@@ -44,4 +44,12 @@ public class Aggregate extends FeatureSelectionConfig {
     public Map<String, String> variables;
 
     public Map<String, String> frameworkProperties;
+
+    @Override
+    public String toString() {
+        return "Aggregate [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
+                + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", classifier=" + classifier
+                + ", markAsFinal=" + markAsFinal + ", title=" + title + ", description=" + description + ", variables="
+                + variables + ", frameworkProperties=" + frameworkProperties + "]";
+    }
 }
