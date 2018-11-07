@@ -16,7 +16,9 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class Scan extends FeatureSelectionConfig {
@@ -24,6 +26,8 @@ public class Scan extends FeatureSelectionConfig {
     private Set<String> includeTasks = new HashSet<>();
 
     private Set<String> excludeTasks = new HashSet<>();
+
+    private Map<String, String> contextConfiguration = new HashMap<>();
 
     public void setIncludeTask(final String name) {
         this.includeTasks.add(name);
@@ -41,10 +45,14 @@ public class Scan extends FeatureSelectionConfig {
         return this.excludeTasks.isEmpty() ? null : this.excludeTasks;
     }
 
+    public Map<String, String> getContextConfiguration() {
+        return contextConfiguration;
+    }
+
     @Override
     public String toString() {
         return "Scan [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
                 + getArtifacts() + ", includeClassifier=" + getClassifiers() + "includeTasks=" + includeTasks
-                + ", excludeTasks=" + excludeTasks + "]";
+                + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + contextConfiguration + "]";
     }
 }

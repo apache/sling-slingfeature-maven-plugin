@@ -19,6 +19,7 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -36,8 +37,6 @@ import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-
 /**
  * Analyse the feature.
  */
@@ -51,7 +50,6 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private List<Scan> scans;
 
-    @SuppressWarnings("unchecked")
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         List<Scan> list = scans;
@@ -83,8 +81,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         for (final Scan an : list) {
             try {
 
-                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a("...").toString());
-                final Analyser analyser = new Analyser(scanner, an.getIncludeTasks(), an.getExcludeTasks());
+                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a(" with following configuration:").toString());
+                getLog().debug(" * Context Configuration = " + an.getContextConfiguration());
+                getLog().debug(" * Include Tasks = " + an.getIncludeTasks());
+                getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
+                final Analyser analyser = new Analyser(scanner, an.getContextConfiguration(), an.getIncludeTasks(), an.getExcludeTasks());
                 getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
 
                 getLog().debug("Retrieving Feature files...");
