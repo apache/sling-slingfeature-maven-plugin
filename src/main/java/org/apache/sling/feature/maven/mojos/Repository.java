@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.model.Dependency;
-import org.apache.maven.plugins.annotations.Parameter;
 
 public class Repository extends FeatureSelectionConfig {
 
@@ -30,8 +29,7 @@ public class Repository extends FeatureSelectionConfig {
      * The directory for the repository to store. This directory is relative to the
      * build directory.
      */
-    @Parameter(defaultValue = "artifacts")
-    public String repositoryDir;
+    public String repositoryDir = "artifacts";
 
     public void setEmbedArtifact(final Dependency dep) {
         this.embeds.add(dep);

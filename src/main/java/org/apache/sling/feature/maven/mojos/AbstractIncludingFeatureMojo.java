@@ -146,8 +146,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
     private void selectFeatureArtifacts(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
         for (final Dependency dep : config.getArtifacts()) {
-            final ArtifactId id = new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(),
-                    dep.getClassifier(), dep.getType());
+            final ArtifactId id = ProjectHelper.toArtifactId(dep);
             if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
                 throw new MojoExecutionException(
                         "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
