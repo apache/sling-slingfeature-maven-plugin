@@ -82,10 +82,10 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             try {
 
                 getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a(" with following configuration:").toString());
-                getLog().debug(" * Context Configuration = " + an.getContextConfiguration());
+                getLog().debug(" * Task Configuration = " + an.getTaskConfiguration());
                 getLog().debug(" * Include Tasks = " + an.getIncludeTasks());
                 getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
-                final Analyser analyser = new Analyser(scanner, an.getContextConfiguration(), an.getIncludeTasks(), an.getExcludeTasks());
+                final Analyser analyser = new Analyser(scanner, an.getTaskConfiguration(), an.getIncludeTasks(), an.getExcludeTasks());
                 getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
 
                 getLog().debug("Retrieving Feature files...");

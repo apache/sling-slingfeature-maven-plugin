@@ -27,7 +27,7 @@ public class Scan extends FeatureSelectionConfig {
 
     private Set<String> excludeTasks = new HashSet<>();
 
-    private Map<String, String> contextConfiguration = new HashMap<>();
+    private Map<String, String> taskConfiguration = new HashMap<>();
 
     public void setIncludeTask(final String name) {
         this.includeTasks.add(name);
@@ -45,14 +45,14 @@ public class Scan extends FeatureSelectionConfig {
         return this.excludeTasks.isEmpty() ? null : this.excludeTasks;
     }
 
-    public Map<String, String> getContextConfiguration() {
-        return contextConfiguration;
+    public Map<String, String> getTaskConfiguration() {
+        return taskConfiguration;
     }
 
     @Override
     public String toString() {
         return "Scan [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
                 + getArtifacts() + ", includeClassifier=" + getClassifiers() + "includeTasks=" + includeTasks
-                + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + contextConfiguration + "]";
+                + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + taskConfiguration + "]";
     }
 }

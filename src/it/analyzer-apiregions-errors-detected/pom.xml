@@ -42,10 +42,10 @@
             <scan>
               <includes>**/*.json</includes>
               <includeTasks>api-regions-dependencies</includeTasks>
-              <contextConfiguration>
-                <exporting-apis>my-global</exporting-apis>
-                <hiding-apis>my-deprecated</hiding-apis>
-              </contextConfiguration>
+              <taskConfiguration>
+                <api-regions-dependencies_exporting-apis>my-global</api-regions-dependencies_exporting-apis>
+                <api-regions-dependencies_hiding-apis>my-deprecated</api-regions-dependencies_hiding-apis>
+              </taskConfiguration>
             </scan>
           </scans>
         </configuration>
