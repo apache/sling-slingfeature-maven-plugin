@@ -16,6 +16,27 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Formatter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
+import javax.json.stream.JsonGenerator;
+
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
@@ -30,30 +51,58 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.codehaus.plexus.logging.Logger;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
-import javax.json.stream.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.jsonschema.core.exceptions.ProcessingException;
+import com.github.fge.jsonschema.core.report.LogLevel;
+import com.github.fge.jsonschema.core.report.ProcessingMessage;
+import com.github.fge.jsonschema.core.report.ProcessingReport;
+import com.github.fge.jsonschema.main.JsonSchema;
+import com.github.fge.jsonschema.main.JsonSchemaFactory;
 
 /**
  * The processor processes all feature projects.
  */
 public class Preprocessor {
+
+    private final JsonSchema schema;
+
+    private final ObjectMapper objectMapper;
+
+    public Preprocessor() {
+       JsonSchemaFactory schemaFactory = JsonSchemaFactory.byDefault();
+       String jsonSchemaUri = getClass().getClassLoader().getResource("META-INF/feature/Feature-1.0.0.schema.json").toExternalForm();
+       try {
+           schema = schemaFactory.getJsonSchema(jsonSchemaUri);
+       } catch (ProcessingException e) {
+           throw new RuntimeException("An error occured when retrieving the JSON Schema from " + jsonSchemaUri, e);
+       }
+        objectMapper = new ObjectMapper();
+   }
+    private void checkFeatureFileValidation(File featureFile) {
+       try {
+           JsonNode instance = objectMapper.readTree(featureFile);
+           ProcessingReport report = schema.validate(instance, true);
+           if (!report.isSuccess()) {
+               Formatter formatter = new Formatter();
+               formatter.format("Feature file %s validation detected one or more errors:%n", featureFile);
+                for (ProcessingMessage message : report) {
+                   if (LogLevel.FATAL == message.getLogLevel()
+                           || LogLevel.ERROR == message.getLogLevel())
+                   formatter.format(" * %s: %s%n",
+                                    message.asJson().get("schema").get("pointer").asText(),
+                                    message.getMessage());
+               }
+                String errorMessage = formatter.toString();
+               formatter.close();
+               throw new RuntimeException(errorMessage);
+           }
+       } catch (IOException e) {
+           throw new RuntimeException("An error occurred while reading " + featureFile + " Feature file:", e);
+       } catch (ProcessingException e) {
+           throw new RuntimeException("An error occurred while validating Feature " + featureFile + ", read the log for details:", e);
+       }
+   }
 
     /**
      * Process the provided projects.
@@ -256,6 +305,8 @@ public class Preprocessor {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
 
+                checkFeatureFileValidation(file);
+
                 final String json = preprocessFeature(logger, info, config, file, sb.toString());
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
@@ -404,6 +455,7 @@ public class Preprocessor {
 
 	                    // "external" dependency, we can already resolve it
 	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
+	                    checkFeatureFileValidation(featureFile);
 	                    try (final FileReader r = new FileReader(featureFile)) {
 	                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
 	                    } catch ( final IOException ioe) {
