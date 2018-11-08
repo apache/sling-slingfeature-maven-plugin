@@ -77,8 +77,9 @@ public class Preprocessor {
        } catch (ProcessingException e) {
            throw new RuntimeException("An error occured when retrieving the JSON Schema from " + jsonSchemaUri, e);
        }
-        objectMapper = new ObjectMapper();
-   }
+       objectMapper = new ObjectMapper();
+    }
+
     private void checkFeatureFileValidation(File featureFile) {
        try {
            JsonNode instance = objectMapper.readTree(featureFile);
@@ -455,7 +456,6 @@ public class Preprocessor {
 
 	                    // "external" dependency, we can already resolve it
 	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
-	                    checkFeatureFileValidation(featureFile);
 	                    try (final FileReader r = new FileReader(featureFile)) {
 	                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
 	                    } catch ( final IOException ioe) {
