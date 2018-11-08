@@ -308,8 +308,6 @@ public class Preprocessor {
 
                 final String json = preprocessFeature(logger, info, config, file, sb.toString());
 
-                checkFeatureFileValidation(file, json);
-
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
@@ -330,7 +328,7 @@ public class Preprocessor {
 
 	protected String preprocessFeature(final Logger logger, final FeatureProjectInfo info,
 			final FeatureProjectConfig config, final File file, final String readJson) {
-		String json = Substitution.replaceMavenVars(info.project, readJson);
+        String json = readJson;
 
 		// check if "id" is set
 		try (final JsonReader reader = Json.createReader(new StringReader(json)) ) {
@@ -373,7 +371,14 @@ public class Preprocessor {
 		        json = writer.toString();
 		   	}
 		}
-		return json;
+
+        // validate
+        if (config.isValidate()) {
+            checkFeatureFileValidation(file, json);
+        }
+
+        // replace variables
+        return Substitution.replaceMavenVars(info.project, json);
 	}
 
     private void checkFeatureId(final MavenProject project, final Feature feature) {

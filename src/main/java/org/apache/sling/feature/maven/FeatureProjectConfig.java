@@ -42,6 +42,7 @@ public class FeatureProjectConfig {
 
     public static final String CFG_JAR_START_ORDER = "jarStartOrder";
 
+    public static final String CFG_VALIDATE_FEATURES = "validateFeatures";
 
     public static final String DEFAULT_FEATURE_DIR = "src/main/features";
 
@@ -66,6 +67,8 @@ public class FeatureProjectConfig {
     private final String jarStartOrder;
 
     private final boolean skipAddJar;
+
+    private final boolean validate;
 
     public static FeatureProjectConfig getMainConfig(final FeatureProjectInfo info) {
         return new FeatureProjectConfig(info, false);
@@ -110,6 +113,8 @@ public class FeatureProjectConfig {
         final String skipCfg = ProjectHelper.getConfigValue(info.plugin, skipAddDepCfgName, defaultSkipValue);
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
         this.jarStartOrder = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_ORDER, null);
+        this.validate = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_VALIDATE_FEATURES, "true"));
+
     }
 
     public String getName() {
@@ -146,6 +151,10 @@ public class FeatureProjectConfig {
 
     public boolean isSkipAddJarToFeature() {
         return this.skipAddJar;
+    }
+
+    public boolean isValidate() {
+        return this.validate;
     }
 }
 

@@ -86,7 +86,14 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     private String testFeaturesExcludes;
 
     /**
-     * If set to {@code true} the artifacts from the feature are not as dependencies to the project.
+     * If set to {@code true} the features are validated against the JSON schema.
+     */
+    @Parameter(name = FeatureProjectConfig.CFG_VALIDATE_FEATURES, defaultValue = "true")
+    private boolean validateFeatures;
+
+    /**
+     * If set to {@code true} the artifacts from the feature are not as dependencies
+     * to the project.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_FEATURE_DEPENDENCIES,
             defaultValue="false")
