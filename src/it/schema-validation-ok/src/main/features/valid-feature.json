@@ -1,0 +1,29 @@
+{
+  "id":"org.apache.sling:slingfeature-maven-plugin-test:1.0.0-SNAPSHOT",
+  "include": {
+    "id": "org.apache.sling:slingfeature:slingfeature:base:${project.version}",
+    "removals": {
+      "configurations": ["org.apache.sling.jcr.repoinit.impl.RepositoryInitializer"]
+    }
+  },
+  "bundles":[
+    {
+      "id":"org.osgi:org.osgi.framework:1.9.0",
+      "start-level":"20"
+    }
+  ],
+  "api-regions:JSON|false": [
+    {
+      "name": "global",
+      "exports": [
+        "org.osgi.util.function"
+      ]
+    },
+    {
+      "name": "asf",
+      "exports": [
+        "org.osgi.util.function"
+      ]
+    }
+  ]
+}
