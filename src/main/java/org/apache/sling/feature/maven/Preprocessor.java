@@ -80,9 +80,9 @@ public class Preprocessor {
        objectMapper = new ObjectMapper();
     }
 
-    private void checkFeatureFileValidation(File featureFile) {
+    private void checkFeatureFileValidation(File featureFile, String json) {
        try {
-           JsonNode instance = objectMapper.readTree(featureFile);
+           JsonNode instance = objectMapper.readTree(json);
            ProcessingReport report = schema.validate(instance, true);
            if (!report.isSuccess()) {
                Formatter formatter = new Formatter();
@@ -306,9 +306,10 @@ public class Preprocessor {
                     throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
                 }
 
-                checkFeatureFileValidation(file);
-
                 final String json = preprocessFeature(logger, info, config, file, sb.toString());
+
+                checkFeatureFileValidation(file, json);
+
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
