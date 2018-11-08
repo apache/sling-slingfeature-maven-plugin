@@ -18,12 +18,11 @@
 import java.util.*;
  import org.codehaus.plexus.util.*;
      boolean check() {
-        File file = new File(basedir, "target/slingtest.json");
+        File file = new File(basedir, "build.log");
         String log = FileUtils.fileRead(file);
          String[] values = {
-            "/definitions/Bundle: instance type (boolean) does not match any allowed primitive type (allowed: ["object","string"])",
-            "/properties/model-version: instance type (integer) does not match any allowed primitive type (allowed: ["string"])",
-            "One or more features Feature file validation detected one or more error(s), please read the plugin log for more datils"
+            " * /definitions/Bundle: instance type (boolean) does not match any allowed primitive type (allowed: [\"object\",\"string\"])",
+            " * /properties/model-version: instance type (integer) does not match any allowed primitive type (allowed: [\"string\"])"
         };
          for (String value : values) {
             if (log.indexOf(value) < 0) {
