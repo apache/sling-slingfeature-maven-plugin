@@ -43,8 +43,16 @@
               <includes>**/*.json</includes>
               <includeTasks>api-regions-dependencies</includeTasks>
               <taskConfiguration>
-                <api-regions-dependencies_exporting-apis>my-global</api-regions-dependencies_exporting-apis>
-                <api-regions-dependencies_hiding-apis>my-deprecated</api-regions-dependencies_hiding-apis>
+                <api-regions-dependencies>
+                  <property>
+                    <name>exporting-apis</name>
+                    <value>my-global</value>
+                  </property>
+                  <property>
+                    <name>hiding-apis</name>
+                    <value>my-deprecated</value>
+                  </property>
+                </api-regions-dependencies>
               </taskConfiguration>
             </scan>
           </scans>
