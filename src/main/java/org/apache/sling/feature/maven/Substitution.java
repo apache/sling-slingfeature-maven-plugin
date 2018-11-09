@@ -40,7 +40,7 @@ public class Substitution {
         List<String> synonymPrefixes = Collections.singletonList("project.");
 
         PrefixedValueSourceWrapper modelWrapper = new PrefixedValueSourceWrapper(
-                new ObjectBasedValueSource(project.getModel()),
+                new ObjectBasedValueSource(project),
                 synonymPrefixes,
                 true);
         interpolator.addValueSource( modelWrapper );
