@@ -63,6 +63,7 @@ import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
 import org.codehaus.mojo.versions.api.UpdateScope;
 import org.codehaus.mojo.versions.api.VersionsHelper;
 import org.codehaus.mojo.versions.utils.DependencyComparator;
+import org.codehaus.plexus.util.StringUtils;
 
 /**
  * Update the bundles/artifact versions
@@ -72,6 +73,8 @@ import org.codehaus.mojo.versions.utils.DependencyComparator;
         threadSafe = true
     )
 public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
+
+    private static final int INFO_PAD_SIZE = 95;
 
     /**
      * A comma separated list of artifact patterns to include. Follows the pattern
@@ -234,6 +237,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         for (final Map.Entry<String, UpdateResult> entry : results.entrySet()) {
             if (entry.getValue().updates.isEmpty()) {
                 if (!printedHeader) {
+                    getLog().info("");
                     getLog().info("The following features have no updates:");
                     printedHeader = true;
                 }
@@ -244,22 +248,40 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         for (final Map.Entry<String, UpdateResult> entry : results.entrySet()) {
             if (!entry.getValue().updates.isEmpty()) {
                 if (!printedHeader) {
-                    getLog().info("The following features have updates:");
+                    getLog().info("");
+                    if (this.dryRun) {
+                        getLog().info("The following features could be updated:");
+                    } else {
+                        getLog().info("The following features are updated:");
+                    }
                     printedHeader = true;
                 }
-                getLog().info("- " + entry.getKey());
+                getLog().info("");
+                getLog().info("Feature " + entry.getKey());
+
                 for (final ArtifactUpdate update : entry.getValue().updates) {
-                    if (this.dryRun) {
-                        getLog().info("    " + update.artifact.getId().toMvnId() + " could be updated to "
-                                + update.newVersion);
+                    final String left = "  " + update.artifact.getId().toMvnId() + "...";
+                    final String right = " -> " + update.newVersion;
+
+                    if (right.length() + left.length() > INFO_PAD_SIZE) {
+                        getLog().info(left);
+                        getLog().info(StringUtils.leftPad(right, INFO_PAD_SIZE));
                     } else {
-                        getLog().info("    Updating " + update.artifact.getId().toMvnId() + " to " + update.newVersion);
+                        getLog().info(StringUtils.rightPad(left, INFO_PAD_SIZE - right.length(), ".") + right);
                     }
                 }
+
                 if (!entry.getValue().propertyUpdates.isEmpty()) {
-                    getLog().info("    The following properties in the pom should be updated:");
+                    getLog().info("  The following properties in the pom should be updated:");
                     for (final Map.Entry<String, String> prop : entry.getValue().propertyUpdates.entrySet()) {
-                        getLog().info("    Property '" + prop.getKey() + "' to " + prop.getValue());
+                        final String left = "    Property '" + prop.getKey() + "' to ...";
+                        final String right = prop.getValue();
+                        if (right.length() + left.length() > INFO_PAD_SIZE) {
+                            getLog().info(left);
+                            getLog().info(StringUtils.leftPad(right, INFO_PAD_SIZE));
+                        } else {
+                            getLog().info(StringUtils.rightPad(left, INFO_PAD_SIZE - right.length(), ".") + right);
+                        }
                     }
                 }
             }
