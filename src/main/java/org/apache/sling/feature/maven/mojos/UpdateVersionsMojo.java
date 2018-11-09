@@ -35,7 +35,6 @@ import java.util.TreeSet;
 import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonParsingException;
 
-import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -47,8 +46,6 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.path.PathTranslator;
-import org.apache.maven.settings.Settings;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
@@ -107,31 +104,13 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "${project.remoteArtifactRepositories}", readonly = true)
     protected List remoteArtifactRepositories;
 
-    @Parameter(defaultValue = "${project.pluginArtifactRepositories}", readonly = true)
-    protected List remotePluginRepositories;
-
     @Parameter(defaultValue = "${localRepository}", readonly = true)
     protected ArtifactRepository localRepository;
 
-    @Component
-    private WagonManager wagonManager;
-
-    @Parameter(defaultValue = "${settings}", readonly = true)
-    protected Settings settings;
-
-    @Parameter(property = "maven.version.rules.serverId", defaultValue = "serverId")
-    private String serverId;
-
-    @Parameter(property = "maven.version.rules")
-    private String rulesUri;
-
-    @Component
-    protected PathTranslator pathTranslator;
-
     private VersionsHelper getHelper() throws MojoExecutionException {
         return new DefaultVersionsHelper(artifactFactory, artifactResolver, artifactMetadataSource,
-                remoteArtifactRepositories, remotePluginRepositories, localRepository, wagonManager, settings, serverId,
-                rulesUri, getLog(), this.mavenSession, pathTranslator);
+                remoteArtifactRepositories, null, localRepository, null, null, null,
+                null, getLog(), this.mavenSession, null);
     }
 
     private List<String[]> parseMatches(final String value, final String matchType) throws MojoExecutionException {
