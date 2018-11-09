@@ -99,6 +99,48 @@ section of the plugin configuration:
   </plugin>  
 ```
 
+### analyse-features
+Run feature model analysers on the feature models in the project. Analysers are defined in the 
+https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID, 
+which is obtained from the `getId()` method in
+https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/src/main/java/org/apache/sling/feature/analyser/task/AnalyserTask.java
+
+```
+<execution>
+  <id>analyze</id>
+  <phase>validate</phase>
+  <goals>
+    <goal>analyse-features</goal>
+  </goals>
+  <configuration>
+    <scans>
+      <scan>
+        <!-- specify which feature files to include -->
+        <includes>**/*.json</includes>
+
+        <!-- if only a subset of tasks need to be run, specify them here -->
+        <includeTasks>api-regions-dependencies</includeTasks>
+
+        <!-- can also exclude tasks -->
+        <excludeTasks>do-not-run-this-task</excludeTasks>
+
+        <!-- taskConfiguration is a String, Properties map -->
+        <taskConfiguration>
+          <!-- the configuration is specific to the analyser tasks -->
+
+          <!-- each key represents an AnalyserTask ID -->
+          <api-regions-dependencies>
+            <!-- can use keyname-textvalue syntax to specify configuration for a task -->
+            <exporting-apis>global</exporting-apis>
+            <hiding-apis>internal</hiding-apis>
+          </api-regions-dependencies>
+        </taskConfiguration>
+      </scan>
+    </scans>
+  </configuration>
+</execution>
+```
+
 ### attach-features
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal.
