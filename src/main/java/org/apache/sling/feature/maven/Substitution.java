@@ -16,34 +16,42 @@
  */
 package org.apache.sling.feature.maven;
 
-import java.util.Properties;
+import java.util.Collections;
+import java.util.List;
 
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.osgi.DefaultMaven2OsgiConverter;
 import org.apache.maven.shared.osgi.Maven2OsgiConverter;
+import org.codehaus.plexus.interpolation.InterpolationException;
+import org.codehaus.plexus.interpolation.ObjectBasedValueSource;
+import org.codehaus.plexus.interpolation.PrefixAwareRecursionInterceptor;
+import org.codehaus.plexus.interpolation.PrefixedValueSourceWrapper;
+import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
+import org.codehaus.plexus.interpolation.RecursionInterceptor;
+import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
 
 public class Substitution {
     public static String replaceMavenVars(MavenProject project, String s) {
-        // There must be a better way than enumerating all these?
-        s = replaceAll(s, "project.groupId", project.getGroupId());
-        s = replaceAll(s, "project.artifactId", project.getArtifactId());
-        s = replaceAll(s, "project.version", project.getVersion());
-        s = replaceAll(s, "project.osgiVersion", getOSGiVersion(project.getVersion()));
+        RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
+        project.getProperties().setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
+        interpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
 
+        List<String> synonymPrefixes = Collections.singletonList("project.");
 
-        Properties props = project.getProperties();
-        if (props != null) {
-            for (String key : props.stringPropertyNames()) {
-                s = replaceAll(s, key, props.getProperty(key));
-            }
+        PrefixedValueSourceWrapper modelWrapper = new PrefixedValueSourceWrapper(
+                new ObjectBasedValueSource(project),
+                synonymPrefixes,
+                true);
+        interpolator.addValueSource( modelWrapper );
+
+        RecursionInterceptor recursionInterceptor = new PrefixAwareRecursionInterceptor(synonymPrefixes, true);
+
+        try {
+            return interpolator.interpolate(s, recursionInterceptor);
+        } catch (InterpolationException e) {
+            throw new RuntimeException("An error occurred while interpolating variables to JSON:\n" + s, e);
         }
-
-        return s;
-    }
-
-    private static String replaceAll(String s, String key, String value) {
-        return s.replaceAll("\\Q${" + key + "}\\E", value);
     }
 
     /**
