@@ -16,11 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Files;
@@ -34,6 +29,7 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
@@ -64,6 +60,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+@SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
     private static Map<String, ArtifactId> pluginCallbacks;
@@ -584,6 +586,12 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.handlerConfiguration = new HashMap<>();
+
+        Properties p3props = new Properties();
+        p3props.put("test3cfg", "myval");
+        p3props.put("test3cfg3", "somethingelse");
+        af.handlerConfiguration.put("TestPlugin3", p3props);
 
         assertEquals("Precondition", 0, pluginCallbacks.size());
         af.execute();
@@ -595,6 +603,9 @@ public class AggregateFeaturesMojoTest {
         assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension1"));
         assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension2"));
         assertEquals(id, pluginCallbacks.get("TestPlugin2 - extension3"));
+
+        ArtifactId id2 = new ArtifactId("test", "test", "9.9.9", "y", "slingosgifeature");
+        assertEquals(id2, pluginCallbacks.get("TestPlugin3 - myval-Hi there"));
     }
 
     private Artifact createMockArtifact() {

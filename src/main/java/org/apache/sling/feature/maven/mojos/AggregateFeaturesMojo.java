@@ -17,8 +17,10 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -58,6 +60,10 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     @Parameter(required = true)
     List<Aggregate> aggregates;
 
+    @Parameter
+    Map<String, Properties> handlerConfiguration = new HashMap<>();
+
+    @SuppressWarnings("unchecked")
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         for (final Aggregate aggregate : aggregates) {
@@ -129,6 +135,10 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                                     ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
                                     false).toArray(PostProcessHandler[]::new));
+
+            @SuppressWarnings("rawtypes")
+            Map<String, Map<String,String>> hc = (Map) handlerConfiguration;
+            builderContext.getHandlerConfiguration().putAll(hc);
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                     project.getVersion(), aggregate.classifier, FeatureConstants.PACKAGING_FEATURE);
