@@ -256,6 +256,9 @@ public abstract class ProjectHelper {
     }
 
     public static String toString(final Dependency d) {
+        if (d == null) {
+            return "null";
+        }
         return "Dependency {groupId=" + d.getGroupId() + ", artifactId=" + d.getArtifactId() + ", version=" + d.getVersion() +
                 (d.getClassifier() != null ? ", classifier=" + d.getClassifier() : "") +
                 ", type=" + d.getType() + "}";
@@ -274,6 +277,9 @@ public abstract class ProjectHelper {
     }
 
     public static ArtifactId toArtifactId(final Dependency dep) {
+        if (dep == null) {
+            return null;
+        }
         return new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getClassifier(),
                 dep.getType());
     }

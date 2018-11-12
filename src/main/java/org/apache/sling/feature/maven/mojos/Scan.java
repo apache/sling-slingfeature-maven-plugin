@@ -22,6 +22,9 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.maven.model.Dependency;
+import org.apache.sling.feature.maven.ProjectHelper;
+
 public class Scan extends FeatureSelectionConfig {
 
     private Set<String> includeTasks = new HashSet<>();
@@ -29,6 +32,8 @@ public class Scan extends FeatureSelectionConfig {
     private Set<String> excludeTasks = new HashSet<>();
 
     private Map<String, Properties> taskConfiguration = new HashMap<>();
+
+    private Dependency framework;
 
     public void setIncludeTask(final String name) {
         this.includeTasks.add(name);
@@ -50,10 +55,19 @@ public class Scan extends FeatureSelectionConfig {
         return taskConfiguration;
     }
 
+    public void setFramework(final Dependency d) {
+        this.framework = d;
+    }
+
+    public Dependency getFramework() {
+        return this.framework;
+    }
+
     @Override
     public String toString() {
         return "Scan [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
                 + getArtifacts() + ", includeClassifier=" + getClassifiers() + "includeTasks=" + includeTasks
-                + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + taskConfiguration + "]";
+                + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + taskConfiguration + ", framework="
+                + ProjectHelper.toString(framework) + "]";
     }
 }

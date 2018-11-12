@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -49,6 +50,9 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
     private List<Scan> scans;
+
+    @Parameter
+    private Dependency framework;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -103,7 +107,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                     try {
                         getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(f.getId().toMvnId())
                                 .a(" ...").toString());
-                        final AnalyserResult result = analyser.analyse(f);
+                        Dependency fwk = an.getFramework();
+                        if (fwk == null) {
+                            fwk = this.framework;
+                        }
+                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk));
                         for (final String msg : result.getWarnings()) {
                             getLog().warn(msg);
                         }
