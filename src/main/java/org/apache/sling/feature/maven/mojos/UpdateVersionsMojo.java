@@ -164,9 +164,14 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         // get the features
-        final Map<String, Feature> features = this.getFeatures();
-        if (features.isEmpty()) {
+        final Map<String, Feature> assembledFeatures = this.getFeatures();
+        if (assembledFeatures.isEmpty()) {
             throw new MojoExecutionException("No features found in project!");
+        }
+
+        final Map<String, Feature> features = new HashMap<>();
+        for (final Map.Entry<String, Feature> entry : assembledFeatures.entrySet()) {
+            features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
         }
 
         // create config
@@ -500,6 +505,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             } else {
                 container = rawFeature.getExtensions().getByName(update.extension.getName()).getArtifacts();
             }
+            final int pos = container.indexOf(update.artifact);
             if (!container.removeExact(update.artifact.getId())) {
                 // check if property is used
                 final Artifact same = container.getSame(update.artifact.getId());
@@ -529,12 +535,14 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 }
                 iter.remove();
             } else {
-
+                if (pos == -1) {
+                    throw new MojoExecutionException("MIST " + update.artifact.getId().toMvnId());
+                }
                 final Artifact newArtifact = new Artifact(new ArtifactId(update.artifact.getId().getGroupId(),
                         update.artifact.getId().getArtifactId(), update.newVersion,
                         update.artifact.getId().getClassifier(), update.artifact.getId().getType()));
                 newArtifact.getMetadata().putAll(update.artifact.getMetadata());
-                container.add(newArtifact);
+                container.add(pos, newArtifact);
             }
         }
 
