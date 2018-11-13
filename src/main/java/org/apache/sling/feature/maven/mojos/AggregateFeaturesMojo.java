@@ -157,6 +157,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             if (aggregate.description != null) {
                 result.setDescription(aggregate.description);
             }
+            if (aggregate.vendor != null) {
+                result.setVendor(aggregate.vendor);
+            }
 
             ProjectHelper.setFeatureInfo(project, result);
 

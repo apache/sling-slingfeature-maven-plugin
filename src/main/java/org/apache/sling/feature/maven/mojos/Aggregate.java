@@ -46,6 +46,11 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     public String description;
 
+    /**
+     * Optional vendor for the feature
+     */
+    public String vendor;
+
     public Map<String, String> variables;
 
     public Map<String, String> frameworkProperties;
@@ -55,7 +60,7 @@ public class Aggregate extends FeatureSelectionConfig {
         return "Aggregate [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
                 + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", classifier=" + classifier
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
-                + ", description=" + description + ", variables="
+                + ", description=" + description + ", vendor=" + vendor + ", variables="
                 + variables + ", frameworkProperties=" + frameworkProperties + "]";
     }
 }
