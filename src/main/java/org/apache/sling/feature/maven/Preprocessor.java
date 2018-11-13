@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
@@ -37,6 +38,7 @@ import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.json.stream.JsonGenerator;
 
+import org.apache.felix.configurator.impl.json.JSMin;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
@@ -328,7 +330,15 @@ public class Preprocessor {
 
 	protected String preprocessFeature(final Logger logger, final FeatureProjectInfo info,
 			final FeatureProjectConfig config, final File file, final String readJson) {
-        String json = readJson;
+        // minify JSON (remove comments)
+        String json;
+        try (final Writer out = new StringWriter(); final Reader in = new StringReader(readJson)) {
+            final JSMin min = new JSMin(in, out);
+            min.jsmin();
+            json = out.toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to read feature file " + file.getAbsolutePath(), e);
+        }
 
 		// check if "id" is set
 		try (final JsonReader reader = Json.createReader(new StringReader(json)) ) {
