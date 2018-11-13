@@ -27,6 +27,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
  * Create a Maven repository structure from the referenced artifacts in the features.
@@ -44,6 +45,7 @@ public class RepositoryMojo extends AbstractRepositoryMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        ProjectHelper.checkPreprocessorRun(this.project);
         if (repositories == null || repositories.isEmpty()) {
             final File artifactDir = new File(this.project.getBuild().getDirectory(), this.repositoryDir);
             this.doExecute(artifactDir, this.selectAllFeatureFilesAndAggregates(), null);

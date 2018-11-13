@@ -56,6 +56,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        ProjectHelper.checkPreprocessorRun(this.project);
         List<Scan> list = scans;
         if (list == null || list.isEmpty()) {
             // use default configuration

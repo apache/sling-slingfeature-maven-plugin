@@ -133,6 +133,14 @@ public abstract class ProjectHelper {
         store(info.project, RAW_TEST_FEATURE_JSON, info.testFeatures);
         store(info.project, ASSEMBLED_FEATURE_JSON, info.assembledFeatures);
         store(info.project, ASSEMBLED_TEST_FEATURE_JSON, info.assembledTestFeatures);
+        info.project.setContextValue(Preprocessor.class.getName(), Boolean.TRUE);
+    }
+
+    public static void checkPreprocessorRun(final MavenProject project) {
+        if (project.getContextValue(Preprocessor.class.getName()) == null) {
+            throw new RuntimeException("The slingfeature preprocessor did not run. "
+                    + "Please make sure to set <extensions>true</extensions> for the slingfeature plugin in your pom.");
+        }
     }
 
     /**

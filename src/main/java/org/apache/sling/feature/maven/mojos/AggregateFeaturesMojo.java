@@ -66,6 +66,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     @SuppressWarnings("unchecked")
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        ProjectHelper.checkPreprocessorRun(this.project);
         for (final Aggregate aggregate : aggregates) {
             // check classifier
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier);

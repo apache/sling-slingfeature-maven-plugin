@@ -16,6 +16,11 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.FileReader;
 import java.nio.file.Files;
@@ -55,15 +60,12 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
+import org.apache.sling.feature.maven.Preprocessor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
@@ -119,6 +121,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "aggregated";
@@ -194,6 +197,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "aggregated";
@@ -266,6 +270,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "aggregated";
@@ -310,6 +315,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "aggregated";
@@ -361,6 +367,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
@@ -429,6 +436,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "mynewfeature";
@@ -579,6 +587,7 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
             .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "aggregated";
