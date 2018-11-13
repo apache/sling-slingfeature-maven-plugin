@@ -148,6 +148,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             if (aggregate.markAsFinal) {
                 result.setFinal(true);
             }
+            if (aggregate.markAsComplete) {
+                result.setComplete(true);
+            }
             if (aggregate.title != null) {
                 result.setTitle(aggregate.title);
             }

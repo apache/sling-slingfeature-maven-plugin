@@ -32,6 +32,11 @@ public class Aggregate extends FeatureSelectionConfig {
     public boolean markAsFinal = false;
 
     /**
+     * If this is set to {@code true} the feature is marked as complete.
+     */
+    public boolean markAsComplete = false;
+
+    /**
      * Optional title for the feature
      */
     public String title;
@@ -49,7 +54,8 @@ public class Aggregate extends FeatureSelectionConfig {
     public String toString() {
         return "Aggregate [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
                 + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", classifier=" + classifier
-                + ", markAsFinal=" + markAsFinal + ", title=" + title + ", description=" + description + ", variables="
+                + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
+                + ", description=" + description + ", variables="
                 + variables + ", frameworkProperties=" + frameworkProperties + "]";
     }
 }
