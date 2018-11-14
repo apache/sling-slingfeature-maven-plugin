@@ -215,8 +215,12 @@ public class Preprocessor {
     		                info,
     		                config.isTestConfig(),
     		                config.isSkipAddDependencies(),
-    		                config.getScope(), null),
-    	                    aid -> ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, aid).getFile()));
+                                    config.getScope(), null))
+                                            .setArtifactProvider(
+                                                    aid -> ProjectHelper
+                                                            .getOrResolveArtifact(info.project, env.session,
+                                                                    env.artifactHandlerManager, env.resolver, aid)
+                                                            .getFile()));
     	            aggregatedFeatures.put(entry.getKey(), assembledFeature);
     	            break;
         		}

@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -46,6 +47,7 @@ import org.apache.maven.model.PluginExecution;
 import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.KeyValueMap;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
@@ -430,5 +432,13 @@ public abstract class ProjectHelper {
     	return id.getGroupId().equals(project.getGroupId())
     			&& id.getArtifactId().equals(project.getArtifactId())
     			&& id.getVersion().equals(project.getVersion());
+    }
+
+    public static KeyValueMap toKeyValueMap(final Properties value) {
+        final KeyValueMap kvm = new KeyValueMap();
+        for (final Object key : value.keySet()) {
+            kvm.put(key.toString(), value.getProperty(key.toString()));
+        }
+        return kvm;
     }
 }

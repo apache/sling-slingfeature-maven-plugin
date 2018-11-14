@@ -37,13 +37,11 @@
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
     </properties>
 
-    <!-- 
     <scm>
-        <connection>scm:svn:http://svn.apache.org/repos/asf/sling/trunk/tooling/maven/osgifeature-maven-plugin</connection>
-        <developerConnection>scm:svn:https://svn.apache.org/repos/asf/sling/trunk/tooling/maven/osgifeature-maven-plugin</developerConnection>
-        <url>http://svn.apache.org/viewvc/sling/trunk/tooling/maven/osgifeature-maven-plugin</url>
+        <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-slingfeature-maven-plugin.git</connection>
+        <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-slingfeature-maven-plugin.git</developerConnection>
+        <url>https://gitbox.apache.org/repos/asf?p=sling-slingfeature-maven-plugin.git</url>
     </scm>
-    -->
 
     <build>
         <plugins>
@@ -134,7 +132,6 @@
             <groupId>org.osgi</groupId>
             <artifactId>osgi.core</artifactId>
             <version>6.0.0</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.felix</groupId>

@@ -23,6 +23,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.apache.maven.model.Dependency;
+import org.apache.sling.feature.KeyValueMap;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 public class Scan extends FeatureSelectionConfig {
@@ -51,8 +52,12 @@ public class Scan extends FeatureSelectionConfig {
         return this.excludeTasks.isEmpty() ? null : this.excludeTasks;
     }
 
-    public Map<String, Properties> getTaskConfiguration() {
-        return taskConfiguration;
+    public Map<String, KeyValueMap> getTaskConfiguration() {
+        final Map<String, KeyValueMap> result = new HashMap<>();
+        for (final Map.Entry<String, Properties> entry : taskConfiguration.entrySet()) {
+            result.put(entry.getKey(), ProjectHelper.toKeyValueMap(entry.getValue()));
+        }
+        return result;
     }
 
     public void setFramework(final Dependency d) {

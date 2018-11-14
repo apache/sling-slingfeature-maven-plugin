@@ -63,7 +63,6 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     Map<String, Properties> handlerConfiguration = new HashMap<>();
 
-    @SuppressWarnings("unchecked")
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         ProjectHelper.checkPreprocessorRun(this.project);
@@ -77,12 +76,10 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "No features found for aggregate with classifier " + aggregate.classifier);
             }
 
-            KeyValueMap variableOverrides = new KeyValueMap();
-            if (aggregate.variables != null) {
-                for (Map.Entry<String, String> entry : aggregate.variables.entrySet()) {
-                    variableOverrides.put(entry.getKey(), entry.getValue());
-                }
-            }
+            final KeyValueMap variablesOverwrites = new KeyValueMap();
+            variablesOverwrites.putAll(aggregate.variables);
+            final KeyValueMap frameworkPropertiesOverwrites = new KeyValueMap();
+            frameworkPropertiesOverwrites.putAll(aggregate.frameworkProperties);
 
             final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
                 @Override
@@ -109,7 +106,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                     return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
                             artifactResolver, id);
                 }
-            }, new ArtifactProvider() {
+            }).setArtifactProvider(new ArtifactProvider() {
 
                 @Override
                 public File provide(final ArtifactId id) {
@@ -127,7 +124,8 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
                             .getFile();
                 }
-            }, variableOverrides, aggregate.frameworkProperties)
+            }).addVariablesOverwrites(variablesOverwrites)
+                    .addFrameworkPropertiesOverwrites(frameworkPropertiesOverwrites)
                             .addMergeExtensions(
                                     StreamSupport.stream(Spliterators
                                             .spliteratorUnknownSize(ServiceLoader.load(MergeHandler.class).iterator(),
@@ -137,9 +135,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                                     ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
                                     false).toArray(PostProcessHandler[]::new));
 
-            @SuppressWarnings("rawtypes")
-            Map<String, Map<String,String>> hc = (Map) handlerConfiguration;
-            builderContext.getHandlerConfiguration().putAll(hc);
+            for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
+                builderContext.setHandlerConfiguration(entry.getKey(), ProjectHelper.toKeyValueMap(entry.getValue()));
+            }
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                     project.getVersion(), aggregate.classifier, FeatureConstants.PACKAGING_FEATURE);
