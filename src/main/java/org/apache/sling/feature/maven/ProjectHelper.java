@@ -16,6 +16,24 @@
  */
 package org.apache.sling.feature.maven;
 
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
+import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.io.json.FeatureJSONWriter;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
+
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
@@ -32,25 +50,6 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
-
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DefaultArtifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.artifact.versioning.VersionRange;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.model.PluginExecution;
-import org.apache.maven.project.MavenProject;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.KeyValueMap;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.io.json.FeatureJSONWriter;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 /**
  * The project helper contains utility functions and provides access
@@ -434,11 +433,9 @@ public abstract class ProjectHelper {
     			&& id.getVersion().equals(project.getVersion());
     }
 
-    public static KeyValueMap toKeyValueMap(final Properties value) {
-        final KeyValueMap kvm = new KeyValueMap();
-        for (final Object key : value.keySet()) {
-            kvm.put(key.toString(), value.getProperty(key.toString()));
-        }
-        return kvm;
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    public static Map<String,String> propertiesToMap(final Properties value) {
+        Map m = value;
+        return m;
     }
 }

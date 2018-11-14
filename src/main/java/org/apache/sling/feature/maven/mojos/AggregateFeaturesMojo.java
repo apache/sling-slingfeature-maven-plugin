@@ -16,6 +16,23 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.builder.ArtifactProvider;
+import org.apache.sling.feature.builder.BuilderContext;
+import org.apache.sling.feature.builder.FeatureBuilder;
+import org.apache.sling.feature.builder.FeatureProvider;
+import org.apache.sling.feature.builder.MergeHandler;
+import org.apache.sling.feature.builder.PostProcessHandler;
+import org.apache.sling.feature.maven.FeatureConstants;
+import org.apache.sling.feature.maven.ProjectHelper;
+
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
@@ -25,24 +42,6 @@ import java.util.ServiceLoader;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
-
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.KeyValueMap;
-import org.apache.sling.feature.builder.ArtifactProvider;
-import org.apache.sling.feature.builder.BuilderContext;
-import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.FeatureProvider;
-import org.apache.sling.feature.builder.MergeHandler;
-import org.apache.sling.feature.builder.PostProcessHandler;
-import org.apache.sling.feature.maven.FeatureConstants;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
  * Aggregate multiple features into a single one.
@@ -76,10 +75,12 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "No features found for aggregate with classifier " + aggregate.classifier);
             }
 
-            final KeyValueMap variablesOverwrites = new KeyValueMap();
-            variablesOverwrites.putAll(aggregate.variables);
-            final KeyValueMap frameworkPropertiesOverwrites = new KeyValueMap();
-            frameworkPropertiesOverwrites.putAll(aggregate.frameworkProperties);
+            final Map<String,String> variablesOverwrites = new HashMap<>();
+            if (aggregate.variables != null)
+                variablesOverwrites.putAll(aggregate.variables);
+            final Map<String,String> frameworkPropertiesOverwrites = new HashMap<>();
+            if (aggregate.frameworkProperties != null)
+                frameworkPropertiesOverwrites.putAll(aggregate.frameworkProperties);
 
             final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
                 @Override
@@ -136,7 +137,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                                     false).toArray(PostProcessHandler[]::new));
 
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
-                builderContext.setHandlerConfiguration(entry.getKey(), ProjectHelper.toKeyValueMap(entry.getValue()));
+                builderContext.setHandlerConfiguration(entry.getKey(), ProjectHelper.propertiesToMap(entry.getValue()));
             }
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),

@@ -16,15 +16,14 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import org.apache.maven.model.Dependency;
+import org.apache.sling.feature.maven.ProjectHelper;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
-import org.apache.maven.model.Dependency;
-import org.apache.sling.feature.KeyValueMap;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 public class Scan extends FeatureSelectionConfig {
 
@@ -52,10 +51,10 @@ public class Scan extends FeatureSelectionConfig {
         return this.excludeTasks.isEmpty() ? null : this.excludeTasks;
     }
 
-    public Map<String, KeyValueMap> getTaskConfiguration() {
-        final Map<String, KeyValueMap> result = new HashMap<>();
+    public Map<String, Map<String,String>> getTaskConfiguration() {
+        final Map<String, Map<String,String>> result = new HashMap<>();
         for (final Map.Entry<String, Properties> entry : taskConfiguration.entrySet()) {
-            result.put(entry.getKey(), ProjectHelper.toKeyValueMap(entry.getValue()));
+            result.put(entry.getKey(), ProjectHelper.propertiesToMap(entry.getValue()));
         }
         return result;
     }
