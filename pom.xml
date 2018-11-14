@@ -109,9 +109,7 @@
                     <projectsDirectory>src/it</projectsDirectory>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
                     <pomIncludes>
-                        <pomInclude>**/attach-metadata-from-pom/pom.xml</pomInclude>
-                        <pomInclude>**/schema-validation-ko/pom.xml</pomInclude>
-                        <pomInclude>**/variables-interpolator/pom.xml</pomInclude>
+                        <pomInclude>**/pom.xml</pomInclude>
                     </pomIncludes>
                     <postBuildHookScript>verify</postBuildHookScript>
                 </configuration>
