@@ -24,7 +24,8 @@ Sample configuration:
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.1-SNAPSHOT</version>
+    <extensions>true</extensions>
     <executions>
       <execution>
         <id>merge-features</id>
@@ -32,41 +33,41 @@ Sample configuration:
           <goal>aggregate-features</goal>
         </goals>
         <configuration>
-          <aggregateClassifier>my-aggregated-feature</aggregateClassifier>
           <aggregates>
-            <directory>
-              <includes>*.json</includes>
-              <excludes>exclude-me.json</excludes>
-              <excludes>exclude-me-too.json</excludes>
-            </directory>
-            <artifact>
-              <groupId>org.apache.sling</groupId>
-              <artifactId>org.apache.sling.myfeatures</artifactId>
-              <version>1.2.3</version>
-              <type>slingfeature</type>
-              <classifier>someclassifier</classifier>
-            </artifact>
+               <!-- A list of feature aggregations, each aggregate creates a new feature: -->
+              <aggregate>
+                   <classifier/> <!-- optional classifier or main artifact (no classifier)-->
+                   <title/>          <!-- optional title-->
+                   <description/> <!-- optional description-->
+                   <vendor/> <!-- optional description-->
+                   <markAsFinal/> <!-- optional flag to mark the feature as final -->
+                   <markAsComplete/> <!-- optional flag to mark the feature as final -->
+                   <filesInclude/> <!-- optional include for local files, this can be specified more than once -->
+                   <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
+                   <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
+                   <includeClassifier/>   <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+                   <variables>
+                       <!-- Feature variables can be specified/overridden here -->
+                       <https.port>8443</https.port>
+                       <some.variable/> <!-- set some.variable to null -->
+                     </variables>
+                     <frameworkProperties>
+                       <!-- Framework property overrides go here -->
+                       <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
+                     </frameworkProperties>
+              </aggregate>
           </aggregates>
-          <variables>
-            <!-- Feature variables can be specified/overridden here -->
-            <https.port>8443</https.port>
-            <some.variable/> <!-- set some.variable to null -->
-          </variables>
-          <frameworkProperties>
-            <!-- Framework property overrides go here -->
-            <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
-          </frameworkProperties>
         </configuration>
       </execution>
     </executions>
-  </plugin>  
+  </plugin>
 ```
 
 All features found in the directory as well as the artifact sections of the plugin configuration are aggregated into a single feature. Includes are processed in the way they appear in the configuration. If an include contains a pattern which includes more than one feature, than the features are included based on their full alphabetical file path. The features are aggregated in the order they are included.
 
 If an include or an exclude is not using a pattern but directly specifying a file, this file must exists. Otherwise the build fails.
 
-The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which the aggregation is configured. It will have type `slingfeature` and as classifier the one specified in the configuration named `aggregateClassifier`.
+The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which the aggregation is configured. It will have type `slingosgifeature` and as classifier the one specified in the configuration named `classifier`.
 
 Variables and framework properties can be overridden using the `<variables>` and
 `<fraweworkProperties>` sections. If multiple definitions of the same variables are found
@@ -85,7 +86,7 @@ section of the plugin configuration:
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.1-SNAPSHOT</version>
     <executions>
       ...
     </executions>
@@ -96,33 +97,48 @@ section of the plugin configuration:
         <version>1.0.0</version>
       </dependency>
     </dependencies>
-  </plugin>  
+  </plugin>
 ```
 
 ### analyse-features
-Run feature model analysers on the feature models in the project. Analysers are defined in the 
-https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID, 
+Run feature model analysers on the feature models in the project. Analysers are defined in the
+https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID,
 which is obtained from the `getId()` method in
 https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/src/main/java/org/apache/sling/feature/analyser/task/AnalyserTask.java
 
 ```
 <execution>
   <id>analyze</id>
-  <phase>validate</phase>
   <goals>
     <goal>analyse-features</goal>
   </goals>
   <configuration>
     <scans>
+    <!-- A list of scans, each creates a new analysis: -->
       <scan>
         <!-- specify which feature files to include -->
-        <includes>**/*.json</includes>
+        <!-- optional include for local files, this can be specified more than once -->
+        <filesInclude>**/*.json</filesInclude>
+
+        <!-- optional exclude for local files, this can be specified more than once -->
+        <filesExclude>dontcheck.json</filesExclude>
+
+       <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+       <includeClassifier>aggregated</includeClassifier
+
+       <!-- optional artifact for external features, this can be specified more than once -->
+       <includeArtifact>
+           <groupId>org.apache.sling</groupId>
+          <artifactId>somefeature</artifactId>
+          <version>1.0.0</version>
+          <type>slingosgifeature</type>
+      </includeArtifact>
 
         <!-- if only a subset of tasks need to be run, specify them here -->
-        <includeTasks>api-regions-dependencies</includeTasks>
+        <includeTask>api-regions-dependencies</includeTask>
 
         <!-- can also exclude tasks -->
-        <excludeTasks>do-not-run-this-task</excludeTasks>
+        <excludeTask>do-not-run-this-task</excludeTask>
 
         <!-- taskConfiguration is a String, Properties map -->
         <taskConfiguration>
@@ -143,4 +159,26 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 
 ### attach-features
 Attach feature files found in the project to the projects produced artifacts. This includes features
-found in `src/main/features` as well as features produce with the `aggregate-features` goal.
+found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
+
+```
+<execution>
+  <id>repo</id>
+  <goals>
+    <goal>repository</goal>
+  </goals>
+  <configuration>
+      <repositories>
+          <!-- A list of repositories, each creates a new repository: -->
+         <repository>
+              <repositoryDir/> <!-- optional repository directory-->
+              <filesInclude/> <!-- optional include for local files, this can be specified more than once -->
+              <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
+              <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
+              <includeClassifier/>   <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+              <embedArtifact/> <!-- optional artifact to be embedded in the repository. This can be specified more than once -->
+         </repository>
+     </repositories>
+   </configuration>
+ </execution>
+```
