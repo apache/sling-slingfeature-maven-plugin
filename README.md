@@ -10,9 +10,15 @@ Maven Plugin for OSGi Applications
 
 # Global Configuration
 
-* features : The directory containing the feature files. The default is `src/main/features` and all files ending with `.json` are read including all sub directories.
+* features : The directory containing the feature files. The default is `src/main/features`.
+* featuresIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
+* featuresExcludes : The exclude pattern for feature files from the above directoryy. Empty by default.
+
+This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
 
 ## Supported goals
+
+Whenever a mojo can select from the above global list of features, `filesInclude` and `filesExclude` can be used to select from the above list. The patterns are relative to the specified features directory.
 
 ### aggregate-features
 
