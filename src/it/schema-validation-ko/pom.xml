@@ -28,15 +28,6 @@
         <artifactId>@project.artifactId@</artifactId>
         <version>@project.version@</version>
         <extensions>true</extensions>
-        <executions>
-          <execution>
-            <id>analyze</id>
-            <phase>validate</phase>
-            <goals>
-              <goal>features-schema-validation</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>

@@ -16,14 +16,14 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.model.Dependency;
-import org.apache.sling.feature.maven.ProjectHelper;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+
+import org.apache.maven.model.Dependency;
+import org.apache.sling.feature.maven.ProjectHelper;
 
 public class Scan extends FeatureSelectionConfig {
 
@@ -69,8 +69,9 @@ public class Scan extends FeatureSelectionConfig {
 
     @Override
     public String toString() {
-        return "Scan [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
-                + getArtifacts() + ", includeClassifier=" + getClassifiers() + "includeTasks=" + includeTasks
+        return "Scan [filesIncludes=" + getFilesIncludes() + ", filesExcludes=" + getFilesExcludes()
+                + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
+                + "includeTasks=" + includeTasks
                 + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + taskConfiguration + ", framework="
                 + ProjectHelper.toString(framework) + "]";
     }

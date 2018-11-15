@@ -53,7 +53,7 @@ public class RepositoryMojo extends AbstractRepositoryMojo {
             for (final Repository rep : this.repositories) {
                 final Map<String, Feature> selection = this.getSelectedFeatures(rep);
                 final File artifactDir = new File(this.project.getBuild().getDirectory(), rep.repositoryDir);
-                this.doExecute(artifactDir, selection, rep.getEmbeds());
+                this.doExecute(artifactDir, selection, rep.getEmbedArtifacts());
             }
         }
     }

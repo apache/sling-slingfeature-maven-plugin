@@ -57,12 +57,10 @@
               <goal>aggregate-features</goal>
             </goals>
             <configuration>
-              <aggregateClassifier>interpolator-test</aggregateClassifier>
               <aggregates>
-                <aggregate>
-                  <includes>
-                    <include>interpolated-variables.json</include>
-                  </includes>
+		<aggregate>
+	          <classifier>interpolator-test</classifier>
+                  <filesInclude>interpolated-variables.json</filesInclude>
                 </aggregate>
               </aggregates>
             </configuration>

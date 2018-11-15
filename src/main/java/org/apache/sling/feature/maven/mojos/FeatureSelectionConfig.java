@@ -23,52 +23,52 @@ import org.apache.maven.model.Dependency;
 
 public class FeatureSelectionConfig {
 
-    private List<String> includes = new ArrayList<>();
+    private List<String> filesIncludes = new ArrayList<>();
 
-    private List<String> excludes = new ArrayList<>();
+    private List<String> filesExcludes = new ArrayList<>();
 
-    private List<Dependency> artifacts = new ArrayList<>();
+    private List<Dependency> includeArtifacts = new ArrayList<>();
 
-    private List<String> featureClassifiers = new ArrayList<>();
+    private List<String> includeClassifiers = new ArrayList<>();
 
     public FeatureSelectionConfig() {
     }
 
     public void setFilesInclude(final String val) {
-        includes.add(val);
+        filesIncludes.add(val);
     }
 
     public void setFilesExclude(final String val) {
-        excludes.add(val);
+        filesExcludes.add(val);
     }
 
     public void setIncludeArtifact(final Dependency a) {
-        artifacts.add(a);
+        includeArtifacts.add(a);
     }
 
     public void setIncludeClassifier(final String classifier) {
-        featureClassifiers.add(classifier);
+        includeClassifiers.add(classifier);
     }
 
-    public List<String> getIncludes() {
-        return this.includes;
+    public List<String> getFilesIncludes() {
+        return this.filesIncludes;
     }
 
-    public List<String> getExcludes() {
-        return this.excludes;
+    public List<String> getFilesExcludes() {
+        return this.filesExcludes;
     }
 
-    public List<String> getClassifiers() {
-        return this.featureClassifiers;
+    public List<String> getIncludeClassifiers() {
+        return this.includeClassifiers;
     }
 
-    public List<Dependency> getArtifacts() {
-        return this.artifacts;
+    public List<Dependency> getIncludeArtifacts() {
+        return this.includeArtifacts;
     }
 
     @Override
     public String toString() {
-        return "FeatureSelectionConfig [filesIncludes=" + includes + ", filesExcludes=" + excludes
-                + ", includeArtifact=" + artifacts + ", includeClassifier=" + featureClassifiers + "]";
+        return "FeatureSelectionConfig [filesIncludes=" + filesIncludes + ", filesExcludes=" + filesExcludes
+                + ", includeArtifacts=" + includeArtifacts + ", includeClassifiers=" + includeClassifiers + "]";
     }
 }

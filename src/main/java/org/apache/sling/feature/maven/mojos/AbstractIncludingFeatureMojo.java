@@ -72,19 +72,19 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         boolean includeAll = false;
-        for (final String c : config.getClassifiers()) {
+        for (final String c : config.getIncludeClassifiers()) {
             if ("*".equals(c)) {
                 includeAll = true;
             }
         }
-        if (includeAll && config.getClassifiers().size() > 1) {
+        if (includeAll && config.getIncludeClassifiers().size() > 1) {
             throw new MojoExecutionException("Match all (*) and additional classifiers are specified.");
         }
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
             final String classifier = entry.getValue().getId().getClassifier();
             boolean include = includeAll;
             if (!include) {
-                for (final String c : config.getClassifiers()) {
+                for (final String c : config.getIncludeClassifiers()) {
                     if (c.trim().length() == 0 && classifier == null) {
                         include = true;
                     } else if (c.equals(classifier)) {
@@ -101,24 +101,24 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
     private void selectFeatureFiles(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
         // neither includes nor excludes - don't select any file
-        if (config.getIncludes().isEmpty() && config.getExcludes().isEmpty()) {
+        if (config.getFilesIncludes().isEmpty() && config.getFilesExcludes().isEmpty()) {
             return;
         }
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
         final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
-        if (config.getIncludes().isEmpty()) {
+        if (config.getFilesIncludes().isEmpty()) {
             final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
-            if (!config.getExcludes().isEmpty()) {
-                scanner.setExcludes(config.getExcludes().toArray(new String[config.getExcludes().size()]));
+            if (!config.getFilesExcludes().isEmpty()) {
+                scanner.setExcludes(config.getFilesExcludes().toArray(new String[config.getFilesExcludes().size()]));
             }
             scanner.scan();
             selection.putAll(scanner.getIncluded());
         } else {
-            for (final String include : config.getIncludes()) {
+            for (final String include : config.getFilesIncludes()) {
                 final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
-                if (!config.getExcludes().isEmpty()) {
-                    scanner.setExcludes(config.getExcludes().toArray(new String[config.getExcludes().size()]));
+                if (!config.getFilesExcludes().isEmpty()) {
+                    scanner.setExcludes(config.getFilesExcludes().toArray(new String[config.getFilesExcludes().size()]));
                 }
                 scanner.setIncludes(new String[] { include });
                 scanner.scan();
@@ -129,8 +129,8 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                 selection.putAll(scanner.getIncluded());
             }
         }
-        if (!config.getExcludes().isEmpty()) {
-            for (final String exclude : config.getExcludes()) {
+        if (!config.getFilesExcludes().isEmpty()) {
+            for (final String exclude : config.getFilesExcludes()) {
                 if (!exclude.contains("*")) {
                     final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
                     scanner.setIncludes(new String[] { exclude });
@@ -145,7 +145,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     private void selectFeatureArtifacts(final FeatureSelectionConfig config, final Map<String, Feature> selection)
             throws MojoExecutionException {
-        for (final Dependency dep : config.getArtifacts()) {
+        for (final Dependency dep : config.getIncludeArtifacts()) {
             final ArtifactId id = ProjectHelper.toArtifactId(dep);
             if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
                 throw new MojoExecutionException(

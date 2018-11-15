@@ -23,7 +23,7 @@ import org.apache.maven.model.Dependency;
 
 public class Repository extends FeatureSelectionConfig {
 
-    private List<Dependency> embeds = new ArrayList<>();
+    private List<Dependency> embedArtifacts = new ArrayList<>();
 
     /**
      * The directory for the repository to store. This directory is relative to the
@@ -32,17 +32,19 @@ public class Repository extends FeatureSelectionConfig {
     public String repositoryDir = "artifacts";
 
     public void setEmbedArtifact(final Dependency dep) {
-        this.embeds.add(dep);
+        this.embedArtifacts.add(dep);
     }
 
-    public List<Dependency> getEmbeds() {
-        return this.embeds;
+    public List<Dependency> getEmbedArtifacts() {
+        return this.embedArtifacts;
     }
 
     @Override
     public String toString() {
-        return "Repository [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
-                + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", embeds=" + embeds + ", repositoryDir="
+        return "Repository [filesIncludes=" + getFilesIncludes() + ", filesExcludes=" + getFilesExcludes()
+                + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
+                + ", embedArtifacts="
+                + embedArtifacts + ", repositoryDir="
                 + repositoryDir + "]";
     }
 }

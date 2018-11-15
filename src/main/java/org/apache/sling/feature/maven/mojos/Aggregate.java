@@ -57,8 +57,9 @@ public class Aggregate extends FeatureSelectionConfig {
 
     @Override
     public String toString() {
-        return "Aggregate [filesIncludes=" + getIncludes() + ", filesExcludes=" + getExcludes() + ", includeArtifact="
-                + getArtifacts() + ", includeClassifier=" + getClassifiers() + ", classifier=" + classifier
+        return "Aggregate [filesIncludes=" + getFilesIncludes() + ", filesExcludes=" + getFilesExcludes()
+                + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
+                + ", classifier=" + classifier
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", variables="
                 + variables + ", frameworkProperties=" + frameworkProperties + "]";

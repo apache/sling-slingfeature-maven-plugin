@@ -40,8 +40,8 @@
         <configuration>
           <scans>
             <scan>
-              <includes>**/*.json</includes>
-              <includeTasks>api-regions-dependencies</includeTasks>
+              <filesInclude>**/*.json</filesInclude>
+              <includeTask>api-regions-dependencies</includeTask>
               <taskConfiguration>
                 <api-regions-dependencies>
                   <property>
