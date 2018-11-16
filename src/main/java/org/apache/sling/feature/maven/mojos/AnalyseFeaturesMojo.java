@@ -42,7 +42,7 @@ import org.apache.sling.feature.scanner.Scanner;
  * Analyse the feature.
  */
 @Mojo(name = "analyse-features",
-      defaultPhase = LifecyclePhase.VALIDATE,
+        defaultPhase = LifecyclePhase.VERIFY,
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
