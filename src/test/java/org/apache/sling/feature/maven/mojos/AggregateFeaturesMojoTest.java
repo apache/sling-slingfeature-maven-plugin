@@ -16,10 +16,29 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
+import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Build;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.project.DefaultMavenProjectHelper;
+import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.FeatureConstants;
+import org.apache.sling.feature.maven.Preprocessor;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.File;
 import java.io.FileReader;
@@ -32,39 +51,14 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
-import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.artifact.resolver.ResolutionListener;
-import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
-import org.apache.maven.artifact.versioning.VersionRange;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Build;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.project.DefaultMavenProjectHelper;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.wagon.events.TransferListener;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.maven.FeatureConstants;
-import org.apache.sling.feature.maven.Preprocessor;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
 @SuppressWarnings("deprecation")
@@ -403,6 +397,7 @@ public class AggregateFeaturesMojoTest {
         assertEquals(expectedConfigs, actualConfigs);
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     public void testReadFeatureFromArtifact() throws Exception {
        File featureFile = new File(
@@ -447,97 +442,22 @@ public class AggregateFeaturesMojoTest {
         af.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
         af.features = featureFile.getParentFile();
 
-        af.artifactResolver = new ArtifactResolver() {
-
+        af.artifactResolver = Mockito.mock(ArtifactResolver.class);
+        Mockito.doAnswer(new Answer<Void>() {
             @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
-                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source, ArtifactFilter filter,
-                    List<ResolutionListener> listeners) throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
-                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source, ArtifactFilter filter)
-                    throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository,
-                    ArtifactMetadataSource source, List<ResolutionListener> listeners)
-                    throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    Map<String, Artifact> managedVersions, ArtifactRepository localRepository,
-                    List<ArtifactRepository> remoteRepositories, ArtifactMetadataSource source)
-                    throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    ArtifactRepository localRepository, List<ArtifactRepository> remoteRepositories,
-                    ArtifactMetadataSource source, ArtifactFilter filter)
-                    throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public ArtifactResolutionResult resolveTransitively(Set<Artifact> artifacts, Artifact originatingArtifact,
-                    List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository,
-                    ArtifactMetadataSource source) throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-                return null;
-            }
-
-            @Override
-            public void resolveAlways(Artifact artifact, List<ArtifactRepository> remoteRepositories,
-                    ArtifactRepository localRepository) throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void resolve(Artifact artifact, List<ArtifactRepository> remoteRepositories,
-                    ArtifactRepository localRepository, TransferListener downloadMonitor)
-                    throws ArtifactResolutionException, ArtifactNotFoundException {
-                // TODO Auto-generated method stub
-
-            }
-
-            @Override
-            public void resolve(Artifact artifact, List<ArtifactRepository> remoteRepositories,
-                    ArtifactRepository localRepository) throws ArtifactResolutionException, ArtifactNotFoundException {
+            public Void answer(InvocationOnMock invocation) throws Throwable {
+                Artifact artifact = invocation.getArgumentAt(0, Artifact.class);
                 if (artifact.getGroupId().equals(dep.getGroupId())
                         && artifact.getArtifactId().equals(dep.getArtifactId())
                         && artifact.getVersion().equals(dep.getVersion())
                         && artifact.getClassifier().equals(dep.getClassifier())
                         && artifact.getType().equals(dep.getType())) {
                     artifact.setFile(featureFile);
-                    return;
+                    return null;
                 }
                 throw new ArtifactResolutionException("Not found", artifact);
             }
-
-            @Override
-            public ArtifactResolutionResult resolve(ArtifactResolutionRequest request) {
-                // TODO Auto-generated method stub
-                return null;
-            }
-        };
-
+        }).when(af.artifactResolver).resolve(Mockito.any(Artifact.class), Mockito.anyList(), Mockito.any(ArtifactRepository.class));
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:mynewfeature");
