@@ -190,19 +190,19 @@ public class Preprocessor {
         	while ( iter.hasNext() ) {
         		final Map.Entry<String, Feature> entry = iter.next();
         		boolean process = false;
-        		if ( entry.getValue().getInclude() == null ) {
+                if ( entry.getValue().getPrototype() == null ) {
         			// no include we can process
         			process = true;
         		} else {
-        		    final ArtifactId include = entry.getValue().getInclude().getId();
-        		    if ( !include.getGroupId().equals(info.project.getGroupId())
-        		      || !include.getArtifactId().equals(info.project.getArtifactId())
-        		      || !include.getVersion().equals(info.project.getVersion()) ) {
+                    final ArtifactId prototype = entry.getValue().getPrototype().getId();
+                    if ( !prototype.getGroupId().equals(info.project.getGroupId())
+                      || !prototype.getArtifactId().equals(info.project.getArtifactId())
+                      || !prototype.getVersion().equals(info.project.getVersion()) ) {
         		    	process = true;
         		    } else {
         		    	// same project
         		    	for(final Feature f : aggregatedFeatures.values()) {
-        		    		if ( f.getId().equals(include) ) {
+                            if ( f.getId().equals(prototype) ) {
         		    			process = true;
         		    			break;
         		    		}

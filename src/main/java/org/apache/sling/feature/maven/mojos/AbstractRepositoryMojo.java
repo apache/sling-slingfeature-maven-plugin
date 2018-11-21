@@ -95,18 +95,18 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
         } catch (final IOException e) {
             throw new MojoExecutionException("Unable to write feature file  :" + f.getId().toMvnId(), e);
         }
-        if ( f.getInclude() != null ) {
-            if (ProjectHelper.isLocalProjectArtifact(this.project, f.getInclude().getId())) {
-                final Feature inc = this.getLocalFeature(f.getInclude().getId());
-                if (inc == null) {
+        if ( f.getPrototype() != null ) {
+            if (ProjectHelper.isLocalProjectArtifact(this.project, f.getPrototype().getId())) {
+                final Feature prototype = this.getLocalFeature(f.getPrototype().getId());
+                if (prototype == null) {
                     throw new MojoExecutionException(
-                            "Unable to find project feature " + f.getInclude().getId().toMvnId());
+                            "Unable to find project feature " + f.getPrototype().getId().toMvnId());
                 }
-                processFeature(artifactDir, inc);
+                processFeature(artifactDir, prototype);
             } else {
-                final Feature inc = ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                        artifactResolver, f.getInclude().getId());
-                processFeature(artifactDir, inc);
+                final Feature prototype = ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
+                        artifactResolver, f.getPrototype().getId());
+                processFeature(artifactDir, prototype);
             }
         }
     }
