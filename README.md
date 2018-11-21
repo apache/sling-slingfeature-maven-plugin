@@ -56,11 +56,11 @@ Sample configuration:
                        <!-- Feature variables can be specified/overridden here -->
                        <https.port>8443</https.port>
                        <some.variable/> <!-- set some.variable to null -->
-                     </variables>
-                     <frameworkProperties>
-                       <!-- Framework property overrides go here -->
-                       <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
-                     </frameworkProperties>
+                   </variables>
+                   <frameworkProperties>
+                     <!-- Framework property overrides go here -->
+                     <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
+                   </frameworkProperties>
               </aggregate>
           </aggregates>
         </configuration>

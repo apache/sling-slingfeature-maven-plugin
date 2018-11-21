@@ -76,15 +76,15 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "No features found for aggregate with classifier " + aggregate.classifier);
             }
 
-            final List<String> artifactOverrides = new ArrayList<>();
-            if (aggregate.artifactOverrides != null)
-                artifactOverrides.addAll(aggregate.artifactOverrides);
+            final List<String> artifactsOverrides = new ArrayList<>();
+            if (aggregate.artifactsOverrides != null)
+                artifactsOverrides.addAll(aggregate.artifactsOverrides);
             final Map<String,String> variablesOverwrites = new HashMap<>();
-            if (aggregate.variableOverrides != null)
-                variablesOverwrites.putAll(aggregate.variableOverrides);
+            if (aggregate.variablesOverrides != null)
+                variablesOverwrites.putAll(aggregate.variablesOverrides);
             final Map<String,String> frameworkPropertiesOverwrites = new HashMap<>();
-            if (aggregate.frameworkPropertyOverrides != null)
-                frameworkPropertiesOverwrites.putAll(aggregate.frameworkPropertyOverrides);
+            if (aggregate.frameworkPropertiesOverrides != null)
+                frameworkPropertiesOverwrites.putAll(aggregate.frameworkPropertiesOverrides);
 
             final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
                 @Override
@@ -129,7 +129,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
                             .getFile();
                 }
-            }).addArtifactsOverrides(artifactOverrides)
+            }).addArtifactsOverrides(artifactsOverrides)
                 .addVariablesOverrides(variablesOverwrites)
                 .addFrameworkPropertiesOverrides(frameworkPropertiesOverwrites)
                 .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(

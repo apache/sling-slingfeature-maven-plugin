@@ -52,11 +52,11 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     public String vendor;
 
-    public List<String> artifactOverrides;
+    public List<String> artifactsOverrides;
 
-    public Map<String, String> variableOverrides;
+    public Map<String, String> variablesOverrides;
 
-    public Map<String, String> frameworkPropertyOverrides;
+    public Map<String, String> frameworkPropertiesOverrides;
 
     @Override
     public String toString() {
@@ -64,7 +64,7 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
                 + ", classifier=" + classifier
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
-                + ", description=" + description + ", vendor=" + vendor + ", artifactOverrides=" + artifactOverrides
-                + ", variables=" + variableOverrides + ", frameworkProperties=" + frameworkPropertyOverrides + "]";
+                + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
+                + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides=" + frameworkPropertiesOverrides + "]";
     }
 }
