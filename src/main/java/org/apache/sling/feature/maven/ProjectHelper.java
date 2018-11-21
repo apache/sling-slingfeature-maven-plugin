@@ -90,7 +90,7 @@ public abstract class ProjectHelper {
         Map<String, Feature> result = null;
         try {
             result = (Map<String, Feature>) project.getContextValue(cacheKey);
-            if (!result.isEmpty() ) {
+            if (result != null && !result.isEmpty() ) {
                 final Feature f = result.values().iterator().next();
                 f.getId();
             }

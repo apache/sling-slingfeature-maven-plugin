@@ -16,6 +16,7 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.util.List;
 import java.util.Map;
 
 public class Aggregate extends FeatureSelectionConfig {
@@ -51,9 +52,11 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     public String vendor;
 
-    public Map<String, String> variables;
+    public List<String> artifactOverrides;
 
-    public Map<String, String> frameworkProperties;
+    public Map<String, String> variableOverrides;
+
+    public Map<String, String> frameworkPropertyOverrides;
 
     @Override
     public String toString() {
@@ -61,7 +64,7 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
                 + ", classifier=" + classifier
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
-                + ", description=" + description + ", vendor=" + vendor + ", variables="
-                + variables + ", frameworkProperties=" + frameworkProperties + "]";
+                + ", description=" + description + ", vendor=" + vendor + ", artifactOverrides=" + artifactOverrides
+                + ", variables=" + variableOverrides + ", frameworkProperties=" + frameworkPropertyOverrides + "]";
     }
 }
