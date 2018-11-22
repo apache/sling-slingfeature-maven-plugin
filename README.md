@@ -213,6 +213,10 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
+### repository
+
+With the repository mojo, a directory with all artifacts from the selected features will be created.
+
 ```
 <execution>
   <id>repo</id>
