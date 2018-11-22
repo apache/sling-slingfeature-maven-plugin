@@ -47,7 +47,7 @@ Sample configuration:
                    <description/> <!-- optional description-->
                    <vendor/> <!-- optional description-->
                    <markAsFinal/> <!-- optional flag to mark the feature as final -->
-                   <markAsComplete/> <!-- optional flag to mark the feature as final -->
+                   <markAsComplete/> <!-- optional flag to mark the feature as complete -->
                    <filesInclude/> <!-- optional include for local files, this can be specified more than once -->
                    <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
                    <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
