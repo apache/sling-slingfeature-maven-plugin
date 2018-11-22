@@ -69,8 +69,7 @@ public class Scan extends FeatureSelectionConfig {
 
     @Override
     public String toString() {
-        return "Scan [filesIncludes=" + getFilesIncludes() + ", filesExcludes=" + getFilesExcludes()
-                + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
+        return "Scan [selections=" + getSelections() + ", filesExcludes=" + getFilesExcludes()
                 + "includeTasks=" + includeTasks
                 + ", excludeTasks=" + excludeTasks + ", contextConfiguration=" + taskConfiguration + ", framework="
                 + ProjectHelper.toString(framework) + "]";

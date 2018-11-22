@@ -41,8 +41,7 @@ public class Repository extends FeatureSelectionConfig {
 
     @Override
     public String toString() {
-        return "Repository [filesIncludes=" + getFilesIncludes() + ", filesExcludes=" + getFilesExcludes()
-                + ", includeArtifacts=" + getIncludeArtifacts() + ", includeClassifiers=" + getIncludeClassifiers()
+        return "Repository [selections=" + getSelections() + ", filesExcludes=" + getFilesExcludes()
                 + ", embedArtifacts="
                 + embedArtifacts + ", repositoryDir="
                 + repositoryDir + "]";

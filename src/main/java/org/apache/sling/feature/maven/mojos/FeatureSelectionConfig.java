@@ -20,55 +20,62 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.model.Dependency;
+import org.apache.sling.feature.maven.ProjectHelper;
 
 public class FeatureSelectionConfig {
 
-    private List<String> filesIncludes = new ArrayList<>();
+    enum SelectionType {
+        FILE_INCLUDE, AGGREGATE_CLASSIFIER, ARTIFACT
+    }
 
-    private List<String> filesExcludes = new ArrayList<>();
+    static class Selection {
+        public final SelectionType type;
+        public final String instruction;
 
-    private List<Dependency> includeArtifacts = new ArrayList<>();
+        public Selection(final SelectionType type, final String instruction) {
+            this.type = type;
+            this.instruction = instruction;
+        }
 
-    private List<String> includeClassifiers = new ArrayList<>();
+        @Override
+        public String toString() {
+            return "Selection [type=" + type + ", instruction=" + instruction + "]";
+        }
+    }
+
+    private final List<Selection> selections = new ArrayList<>();
+
+    private final List<String> filesExcludes = new ArrayList<>();
 
     public FeatureSelectionConfig() {
     }
 
     public void setFilesInclude(final String val) {
-        filesIncludes.add(val);
+        selections.add(new Selection(SelectionType.FILE_INCLUDE, val));
     }
 
     public void setFilesExclude(final String val) {
-        filesExcludes.add(val);
+        this.filesExcludes.add(val);
     }
 
     public void setIncludeArtifact(final Dependency a) {
-        includeArtifacts.add(a);
+        selections.add(new Selection(SelectionType.ARTIFACT, ProjectHelper.toArtifactId(a).toMvnId()));
     }
 
     public void setIncludeClassifier(final String classifier) {
-        includeClassifiers.add(classifier);
-    }
-
-    public List<String> getFilesIncludes() {
-        return this.filesIncludes;
+        selections.add(new Selection(SelectionType.AGGREGATE_CLASSIFIER, classifier));
     }
 
     public List<String> getFilesExcludes() {
         return this.filesExcludes;
     }
 
-    public List<String> getIncludeClassifiers() {
-        return this.includeClassifiers;
-    }
-
-    public List<Dependency> getIncludeArtifacts() {
-        return this.includeArtifacts;
+    public List<Selection> getSelections() {
+        return this.selections;
     }
 
     @Override
     public String toString() {
-        return "FeatureSelectionConfig [filesIncludes=" + filesIncludes + ", filesExcludes=" + filesExcludes
-                + ", includeArtifacts=" + includeArtifacts + ", includeClassifiers=" + includeClassifiers + "]";
+        return "FeatureSelectionConfig [selections=" + selections + ", filesExcludes=" + filesExcludes + "]";
     }
 }

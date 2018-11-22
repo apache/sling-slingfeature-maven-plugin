@@ -26,7 +26,6 @@ import java.util.TreeMap;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.sling.feature.ArtifactId;
@@ -44,15 +43,23 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {
-        final Map<String, Feature> selection = new LinkedHashMap<>();
+        final Map<String, Feature> result = new LinkedHashMap<>();
 
-        selectFeatureFiles(config, selection);
+        for(final FeatureSelectionConfig.Selection selection : config.getSelections()) {
+            switch ( selection.type ) {
+            case FILE_INCLUDE:
+                selectFeatureFiles(selection.instruction, config.getFilesExcludes(), result);
+                break;
+            case AGGREGATE_CLASSIFIER:
+                selectFeatureClassifier(selection.instruction, result);
+                break;
+            case ARTIFACT:
+                selectFeatureArtifact(selection.instruction, result);
+                break;
+            }
+        }
 
-        selectFeatureClassifiers(config, selection);
-
-        selectFeatureArtifacts(config, selection);
-
-        return selection;
+        return result;
     }
 
     protected Map<String, Feature> selectAllFeatureFiles() throws MojoExecutionException {
@@ -69,76 +76,57 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         return this.getSelectedFeatures(config);
     }
 
-    private void selectFeatureClassifiers(final FeatureSelectionConfig config, final Map<String, Feature> selection)
+    private void selectFeatureClassifier(final String selection, final Map<String, Feature> result)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
-        boolean includeAll = false;
-        for (final String c : config.getIncludeClassifiers()) {
-            if ("*".equals(c)) {
-                includeAll = true;
-            }
-        }
-        if (includeAll && config.getIncludeClassifiers().size() > 1) {
-            throw new MojoExecutionException("Match all (*) and additional classifiers are specified.");
-        }
+        boolean includeAll = "*".equals(selection);
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
             if (ProjectHelper.isAggregate(entry.getKey())) {
                 final String classifier = entry.getValue().getId().getClassifier();
                 boolean include = includeAll;
                 if (!include) {
-                    for (final String c : config.getIncludeClassifiers()) {
-                        if (c.trim().length() == 0 && classifier == null) {
-                            include = true;
-                        } else if (c.equals(classifier)) {
-                            include = true;
-                        }
+                    if (selection.trim().length() == 0 && classifier == null) {
+                        include = true;
+                    } else if (selection.equals(classifier)) {
+                        include = true;
                     }
                 }
                 if (include) {
-                    selection.put(entry.getKey(), entry.getValue());
+                    result.put(entry.getKey(), entry.getValue());
                 }
             }
         }
     }
 
-    private void selectFeatureFiles(final FeatureSelectionConfig config, final Map<String, Feature> selection)
+    private void selectFeatureFiles(final String include, final List<String> excludes,
+            final Map<String, Feature> result)
             throws MojoExecutionException {
-        // neither includes nor excludes - don't select any file
-        if (config.getFilesIncludes().isEmpty() && config.getFilesExcludes().isEmpty()) {
-            return;
-        }
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
         final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
-        if (config.getFilesIncludes().isEmpty()) {
-            final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
-            if (!config.getFilesExcludes().isEmpty()) {
-                scanner.setExcludes(config.getFilesExcludes().toArray(new String[config.getFilesExcludes().size()]));
-            }
-            scanner.scan();
-            selection.putAll(scanner.getIncluded());
-        } else {
-            for (final String include : config.getFilesIncludes()) {
-                final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
-                if (!config.getFilesExcludes().isEmpty()) {
-                    scanner.setExcludes(config.getFilesExcludes().toArray(new String[config.getFilesExcludes().size()]));
-                }
-                scanner.setIncludes(new String[] { include });
-                scanner.scan();
+        final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
+        if (!excludes.isEmpty()) {
+            scanner.setExcludes(excludes.toArray(new String[excludes.size()]));
+        }
+        scanner.setIncludes(new String[] { include });
+        scanner.scan();
 
-                if (!include.contains("*") && scanner.getIncluded().isEmpty()) {
-                    throw new MojoExecutionException("FeatureInclude " + include + " not found.");
-                }
-                selection.putAll(scanner.getIncluded());
+        if (!include.contains("*") && scanner.getIncluded().isEmpty()) {
+            throw new MojoExecutionException("FeatureInclude " + include + " not found.");
+        }
+        for (Map.Entry<String, Feature> entry : scanner.getIncluded().entrySet()) {
+            if (!result.containsKey(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
             }
         }
-        if (!config.getFilesExcludes().isEmpty()) {
-            for (final String exclude : config.getFilesExcludes()) {
+
+        if (!excludes.isEmpty()) {
+            for (final String exclude : excludes) {
                 if (!exclude.contains("*")) {
-                    final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
-                    scanner.setIncludes(new String[] { exclude });
-                    scanner.scan();
-                    if (scanner.getIncluded().isEmpty()) {
+                    final FeatureScanner excludeScanner = new FeatureScanner(projectFeatures, prefix);
+                    excludeScanner.setIncludes(new String[] { exclude });
+                    excludeScanner.scan();
+                    if (excludeScanner.getIncluded().isEmpty()) {
                         throw new MojoExecutionException("FeatureExclude " + exclude + " not found.");
                     }
                 }
@@ -146,18 +134,16 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         }
     }
 
-    private void selectFeatureArtifacts(final FeatureSelectionConfig config, final Map<String, Feature> selection)
+    private void selectFeatureArtifact(final String artifactId, final Map<String, Feature> result)
             throws MojoExecutionException {
-        for (final Dependency dep : config.getIncludeArtifacts()) {
-            final ArtifactId id = ProjectHelper.toArtifactId(dep);
-            if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
-                throw new MojoExecutionException(
+        final ArtifactId id = ArtifactId.parse(artifactId);
+        if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
+            throw new MojoExecutionException(
                         "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
-            }
-            final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                    this.artifactHandlerManager, this.artifactResolver, id);
-            selection.put(id.toMvnUrl(), feature);
         }
+        final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
+                this.artifactHandlerManager, this.artifactResolver, id);
+        result.put(id.toMvnUrl(), feature);
     }
 
     public static class FeatureScanner extends AbstractScanner {
