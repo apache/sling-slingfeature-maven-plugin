@@ -51,7 +51,7 @@ Sample configuration:
                    <filesInclude/> <!-- optional include for local files, this can be specified more than once -->
                    <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
                    <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
-                   <includeClassifier/>   <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+                   <includeClassifier/>   <!-- optional classifier for aggregates, this can be specified more than once -->
                    <variablesOverrides>
                        <!-- Feature variables can be specified/overridden here -->
                        <https.port>8443</https.port>
@@ -134,7 +134,7 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
         <!-- optional exclude for local files, this can be specified more than once -->
         <filesExclude>dontcheck.json</filesExclude>
 
-       <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+       <!-- optional classifier for aggregates, this can be specified more than once -->
        <includeClassifier>aggregated</includeClassifier
 
        <!-- optional artifact for external features, this can be specified more than once -->
@@ -186,7 +186,7 @@ found in `src/main/features` as well as features produce with the `aggregate-fea
               <filesInclude/> <!-- optional include for local files, this can be specified more than once -->
               <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
               <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
-              <includeClassifier/>   <!-- optional classifier for local files or aggregates, this can be specified more than once -->
+              <includeClassifier/>   <!-- optional classifier for aggregates, this can be specified more than once -->
               <embedArtifact/> <!-- optional artifact to be embedded in the repository. This can be specified more than once -->
          </repository>
      </repositories>

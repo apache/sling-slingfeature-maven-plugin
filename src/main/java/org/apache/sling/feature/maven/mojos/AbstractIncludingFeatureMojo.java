@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.TreeMap;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
@@ -81,19 +82,21 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throw new MojoExecutionException("Match all (*) and additional classifiers are specified.");
         }
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
-            final String classifier = entry.getValue().getId().getClassifier();
-            boolean include = includeAll;
-            if (!include) {
-                for (final String c : config.getIncludeClassifiers()) {
-                    if (c.trim().length() == 0 && classifier == null) {
-                        include = true;
-                    } else if (c.equals(classifier)) {
-                        include = true;
+            if (ProjectHelper.isAggregate(entry.getKey())) {
+                final String classifier = entry.getValue().getId().getClassifier();
+                boolean include = includeAll;
+                if (!include) {
+                    for (final String c : config.getIncludeClassifiers()) {
+                        if (c.trim().length() == 0 && classifier == null) {
+                            include = true;
+                        } else if (c.equals(classifier)) {
+                            include = true;
+                        }
                     }
                 }
-            }
-            if (include) {
-                selection.put(entry.getKey(), entry.getValue());
+                if (include) {
+                    selection.put(entry.getKey(), entry.getValue());
+                }
             }
         }
     }
@@ -161,7 +164,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
         private final Map<String, Feature> features;
 
-        private final Map<String, Feature> included = new LinkedHashMap<>();
+        private final Map<String, Feature> included = new TreeMap<>();
 
         private final String prefix;
 
