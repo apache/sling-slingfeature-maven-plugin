@@ -63,8 +63,8 @@ Sample configuration:
                    </frameworkPropertiesOverrides>
                    <artifactsOverrides>
                        <!-- Artifact clash overrides go here -->
-                       org.apache.sling:abundle:LATEST
-                       org.apache.sling:anotherbundle
+                       <artifactsOverride>org.apache.sling:abundle:LATEST</artifactsOverride>
+                       <artifactsOverride>org.apache.sling:anotherbundle</artifactsOverride>
                    </artifactsOverrides>
               </aggregate>
           </aggregates>
