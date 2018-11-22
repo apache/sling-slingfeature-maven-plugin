@@ -581,15 +581,13 @@ public class AggregateFeaturesMojoTest {
         af.execute();
         Feature genFeat = featureMap.get(":aggregate:myagg");
         Bundles bundles = genFeat.getBundles();
-        assertEquals(4, bundles.size());
+        assertEquals(3, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
                 ArtifactId.fromMvnId("org.apache.sling:mybundle:2"))));
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
                 ArtifactId.fromMvnId("org.apache.sling:myotherbundle:3"))));
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:somebundle:1.1.0"))));
-        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:somebundle:2.0.0"))));
+                ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
     }
 
     private Artifact createMockArtifact() {

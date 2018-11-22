@@ -1,4 +1,4 @@
-[<img src="http://sling.apache.org/res/logos/sling.png"/>](http://sling.apache.org)
+variablesOverrides[<img src="http://sling.apache.org/res/logos/sling.png"/>](http://sling.apache.org)
 
  [![Build Status](https://builds.apache.org/buildStatus/icon?job=sling-slingfeature-maven-plugin-1.8)](https://builds.apache.org/view/S-Z/view/Sling/job/sling-slingfeature-maven-plugin-1.8) [![Test Status](https://img.shields.io/jenkins/t/https/builds.apache.org/view/S-Z/view/Sling/job/sling-slingfeature-maven-plugin-1.8.svg)](https://builds.apache.org/view/S-Z/view/Sling/job/sling-slingfeature-maven-plugin-1.8/test_results_analyzer/) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -52,15 +52,20 @@ Sample configuration:
                    <filesExclude/>  <!-- optional exclude for local files, this can be specified more than once -->
                    <includeArtifact/>       <!-- optional artifact for external features, this can be specified more than once -->
                    <includeClassifier/>   <!-- optional classifier for local files or aggregates, this can be specified more than once -->
-                   <variables>
+                   <variablesOverrides>
                        <!-- Feature variables can be specified/overridden here -->
                        <https.port>8443</https.port>
                        <some.variable/> <!-- set some.variable to null -->
-                   </variables>
-                   <frameworkProperties>
-                     <!-- Framework property overrides go here -->
-                     <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
-                   </frameworkProperties>
+                   </variablesOverrides>
+                   <frameworkPropertiesOverrides>
+                       <!-- Framework property overrides go here -->
+                       <org.osgi.framework.bootdelegation>sun.*,com.sun.*</org.osgi.framework.bootdelegation>
+                   </frameworkPropertiesOverrides>
+                   <artifactsOverrides>
+                       <!-- Artifact clash overrides go here -->
+                       org.apache.sling:abundle:LATEST
+                       org.apache.sling:anotherbundle
+                   </artifactsOverrides>
               </aggregate>
           </aggregates>
         </configuration>
