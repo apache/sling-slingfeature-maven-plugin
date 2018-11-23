@@ -45,9 +45,12 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throws MojoExecutionException {
         final Map<String, Feature> result = new LinkedHashMap<>();
 
+        boolean hasFileInclude = false;
+
         for(final FeatureSelectionConfig.Selection selection : config.getSelections()) {
             switch ( selection.type ) {
             case FILE_INCLUDE:
+                hasFileInclude = true;
                 selectFeatureFiles(selection.instruction, config.getFilesExcludes(), result);
                 break;
             case AGGREGATE_CLASSIFIER:
@@ -59,6 +62,9 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             }
         }
 
+        if (!hasFileInclude && !config.getFilesExcludes().isEmpty()) {
+            throw new MojoExecutionException("filesExclude configured without filesInclude in " + config);
+        }
         return result;
     }
 
