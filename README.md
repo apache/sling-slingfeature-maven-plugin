@@ -12,15 +12,16 @@ Maven Plugin for OSGi Applications
 
 * features : The directory containing the feature files. The default is `src/main/features`.
 * featuresIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
-* featuresExcludes : The exclude pattern for feature files from the above directoryy. Empty by default.
+* featuresExcludes : The exclude pattern for feature files from the above directory. Empty by default.
+* validateFeatures : Boolean switch defining whether the feature files should be validated against the schema. This is enabled by default.
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
 
 ## Supported goals
 
-Most of the plugin mojos take a selection of features as input, for example to aggregate a set of features to a new feature or to analyse a specific set of features according to some rules.
+Most of the plugin goals take a selection of features as input, for example to aggregate a set of features to a new feature or to analyse a specific set of features according to some rules.
 
-All of these mojos use the same way of selecting the features: Whenever a mojo can select from the above global list of features, `filesInclude` and `filesExclude` can be used to select from the above list of project files. The patterns are relative to the specified features directory:
+All of these goals use the same way of selecting the features: Whenever a goal can select from the above global list of features, `filesInclude` and `filesExclude` can be used to select from the above list of project files. The patterns are relative to the specified features directory:
 
 ```
    ...
@@ -35,7 +36,7 @@ All of these mojos use the same way of selecting the features: Whenever a mojo c
 
 The order of the above include statements defines the order in which the features are processed. If an include contains a pattern, all files matching that pattern are processed in alphabetical order based on their filename.
 
-In addition, most of the mojos can also be configured to select aggregated features (see below) based on their qualifier:
+In addition, most of the goals can also be configured to select aggregated features (see below) based on their qualifier:
 
 ```
    ...
@@ -46,7 +47,7 @@ In addition, most of the mojos can also be configured to select aggregated featu
 
 Again the order of the instructions defines the order of processing.
 
-Finally, most of the mojos also support to add features from other projects:
+Finally, most of the goals also support to add features from other projects:
 
 ```
    ...
@@ -59,7 +60,7 @@ Finally, most of the mojos also support to add features from other projects:
    ...
 ```
 
-All of the above ways to select features (project files, project aggregates and external features) can be mixed in the configuration. It's possible to first specify an artifact include, followed by a aggregate classifier, followed by file includes. And this is then the order of processing. Please note that file excludes can be placed anyware and regardless of their position, they are always applied to every files include.
+All of the above ways to select features (project files, project aggregates and external features) can be mixed in the configuration. It's possible to first specify an artifact include, followed by a aggregate classifier, followed by file includes. And this is then the order of processing. Please note that file excludes can be placed anywhere and regardless of their position, they are always applied to every files include.
 
 ### aggregate-features
 
@@ -215,7 +216,7 @@ found in `src/main/features` as well as features produce with the `aggregate-fea
 
 ### repository
 
-With the repository mojo, a directory with all artifacts from the selected features will be created.
+With the repository goal, a directory with all artifacts from the selected features will be created.
 
 ```
 <execution>
