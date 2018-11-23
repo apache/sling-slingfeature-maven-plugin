@@ -222,6 +222,11 @@ public abstract class ProjectHelper {
     /**
      * Get a resolved Artifact from the coordinates provided
      *
+     * @param project The maven project
+     * @param session The maven session
+     * @param artifactHandlerManager The artifact handler manager
+     * @param resolver The artifact resolver
+     * @param id The ID of the artifact to get/resolve.
      * @return the artifact, which has been resolved.
      */
     public static Artifact getOrResolveArtifact(final MavenProject project,

@@ -284,9 +284,8 @@ public class Preprocessor {
      * The feature is either inlined in the pom or stored in a file in the project.
      *
      * @param logger The logger
-     * @param project The current maven project
+     * @param info The project info
      * @param config The configuration
-     * @return The feature or {@code null}
      */
     protected void readProjectFeatures(
             final Logger logger,
