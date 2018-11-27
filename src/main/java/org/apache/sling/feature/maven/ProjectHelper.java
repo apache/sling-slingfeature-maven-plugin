@@ -235,15 +235,18 @@ public abstract class ProjectHelper {
             final ArtifactResolver resolver,
             final ArtifactId id) {
         final Set<Artifact> artifacts = project.getDependencyArtifacts();
-        for(final Artifact artifact : artifacts) {
-            if ( artifact.getGroupId().equals(id.getGroupId())
-               && artifact.getArtifactId().equals(id.getArtifactId())
-               && artifact.getVersion().equals(id.getVersion())
-               && artifact.getType().equals(id.getVersion())
-               && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
-                return artifact;
+        if (artifacts != null) {
+            for(final Artifact artifact : artifacts) {
+                if ( artifact.getGroupId().equals(id.getGroupId())
+                   && artifact.getArtifactId().equals(id.getArtifactId())
+                   && artifact.getVersion().equals(id.getVersion())
+                   && artifact.getType().equals(id.getVersion())
+                   && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
+                    return artifact;
+                }
             }
         }
+
         final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
                 id.getArtifactId(),
                 VersionRange.createFromVersion(id.getVersion()),
