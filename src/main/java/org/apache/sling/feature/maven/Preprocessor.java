@@ -40,6 +40,7 @@ import javax.json.stream.JsonGenerator;
 
 import org.apache.felix.configurator.impl.json.JSMin;
 import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Exclusion;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.Artifact;
@@ -516,6 +517,13 @@ public class Preprocessor {
 			if ( !found ) {
 				logger.debug("- adding dependency " + id.toMvnId());
 				final Dependency dep = ProjectHelper.toDependency(id, scope);
+
+				// Exclude all transitive dependencies coming from the feature model deps
+				Exclusion exclusion = new Exclusion();
+				exclusion.setGroupId("*");
+				exclusion.setArtifactId("*");
+				dep.addExclusion(exclusion);
+
 				project.getDependencies().add(dep);
 			}
         }
