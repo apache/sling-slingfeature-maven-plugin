@@ -84,7 +84,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String JAVADOC = "javadoc";
 
-    private static final String[] OUT_DIRS = { APIS, SOURCES, JAVADOC };
+    private static final String[] OUT_DIRS = { SOURCES, JAVADOC };
 
     @Parameter
     private FeatureSelectionConfig selection;
@@ -151,8 +151,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             return;
         }
 
+        if (!mainOutputDir.exists()) {
+            mainOutputDir.mkdirs();
+        }
+
         // first output level is the aggregated feature
-        File featureDir = new File(mainOutputDir, feature.getId().getClassifier());
+        File featureDir = new File(mainOutputDir, feature.getId().getArtifactId());
 
         File deflatedDir = new File(featureDir, "deflated-bin");
         deflatedDir.mkdirs();
@@ -183,13 +187,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             // calculate the exported versioned packages in the manifest file for each region
             computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
 
-            // TODO download the -sources artifact
-            // TODO collect the -sources artifact
+            // TODO download the -sources artifacts
         }
 
         // recollect and package stuff
         for (ApiRegion apiRegion : apiRegions) {
             recollect(feature.getId(), apiRegion, deflatedDir, featureDir);
+            // TODO collect the -sources artifact
+            // TODO create -javadoc artifacts
         }
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
@@ -310,31 +315,36 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             jarArchiver.addFile(new File(deflatedDir, includedFile), includedFile.substring(includedFile.indexOf(File.separator) + 1));
         }
 
+        String bundleName;
+        if (featureId.getClassifier() != null) {
+            bundleName = String.format("%s-%s-%s-%s",
+                    featureId.getArtifactId(),
+                    featureId.getClassifier(),
+                    apiRegion.getName(),
+                    APIS);
+        } else {
+            bundleName = String.format("%s-%s-%s",
+                    featureId.getArtifactId(),
+                    apiRegion.getName(),
+                    APIS);
+        }
+        String symbolicName = bundleName.replace('-', '.');
+
         // APIs need OSGi Manifest entry
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
         archiveConfiguration.addManifestEntry("Export-Package", StringUtils.join(apiRegion.getExportPackage(), ","));
         archiveConfiguration.addManifestEntry("Bundle-Description", project.getDescription());
         archiveConfiguration.addManifestEntry("Bundle-Version", featureId.getOSGiVersion().toString());
         archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
-        String symbolicName = String.format("%s.%s-%s-%s",
-                featureId.getArtifactId(),
-                featureId.getClassifier(),
-                apiRegion.getName(),
-                APIS);
         archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
-        String bundleName = String.format("%s-%s-%s-%s",
-                featureId.getArtifactId(),
-                featureId.getClassifier(),
-                apiRegion.getName(),
-                APIS);
         archiveConfiguration.addManifestEntry("Bundle-Name", bundleName);
-        archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
+        if (project.getOrganization() != null) {
+            archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
+        }
         archiveConfiguration.addManifestEntry("Specification-Version", featureId.getVersion());
         archiveConfiguration.addManifestEntry("Implementation-Title", bundleName);
 
-        String targetName = String.format("%s-%s.jar",
-                bundleName,
-                featureId.getVersion());
+        String targetName = String.format("%s-%s.jar", bundleName, featureId.getVersion());
         File target = new File(mainOutputDir, targetName);
         MavenArchiver archiver = new MavenArchiver();
         archiver.setArchiver(jarArchiver);
@@ -375,11 +385,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             apiRegion = new ApiRegion();
 
-            // inherit all APIs from previous region, if any
-            if (apiRegions.size() > 1) {
-                apiRegion.doInherit(apiRegions.get(apiRegions.size() - 1));
-            }
-
             while (Event.END_OBJECT != (event = parser.next())) {
                 if (Event.KEY_NAME == event) {
                     switch (parser.getString()) {
@@ -413,6 +418,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     && excludeRegions.contains(apiRegion.getName())) {
                 getLog().debug("API Region " + apiRegion.getName() + " will not processed since it is in the exclude list");
             } else {
+                // inherit all APIs from previous region, if any
+                if (apiRegions.size() > 0) {
+                    apiRegion.doInherit(apiRegions.get(apiRegions.size() - 1));
+                }
+
                 apiRegions.add(apiRegion);
             }
         }
@@ -440,10 +450,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             this.name = name;
         }
 
-        public Iterable<String> getApis() {
-            return apis;
-        }
-
         public String[] getFilteringApis() {
             return filteringApis.toArray(new String[filteringApis.size()]);
         }
@@ -467,9 +473,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         public void doInherit(ApiRegion parent) {
             inherits = parent.getName();
-            for (String api : parent.getApis()) {
-                addApi(api);
-            }
+            apis.addAll(parent.apis);
+            filteringApis.addAll(parent.filteringApis);
         }
 
         @Override
