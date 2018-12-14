@@ -192,6 +192,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // recollect and package stuff
         for (ApiRegion apiRegion : apiRegions) {
+            if (excludeRegions != null
+                    && !excludeRegions.isEmpty()
+                    && excludeRegions.contains(apiRegion.getName())) {
+                getLog().debug("API Region " + apiRegion.getName() + " will not processed since it is in the exclude list");
+                continue;
+            }
+
             recollect(feature.getId(), apiRegion, deflatedDir, featureDir);
             // TODO collect the -sources artifact
             // TODO create -javadoc artifacts
@@ -413,18 +420,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
 
-            if (excludeRegions != null
-                    && !excludeRegions.isEmpty()
-                    && excludeRegions.contains(apiRegion.getName())) {
-                getLog().debug("API Region " + apiRegion.getName() + " will not processed since it is in the exclude list");
-            } else {
-                // inherit all APIs from previous region, if any
-                if (apiRegions.size() > 0) {
-                    apiRegion.doInherit(apiRegions.get(apiRegions.size() - 1));
-                }
-
-                apiRegions.add(apiRegion);
+            // inherit all APIs from previous region, if any
+            if (apiRegions.size() > 0) {
+                apiRegion.doInherit(apiRegions.get(apiRegions.size() - 1));
             }
+
+            apiRegions.add(apiRegion);
         }
 
         return apiRegions;
