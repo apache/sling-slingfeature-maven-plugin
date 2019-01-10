@@ -21,6 +21,7 @@
         <pluginExecution>
             <pluginExecutionFilter>
                 <goals>
+                	<goal>analyse-features</goal>
                     <goal>process-resources</goal>
                     <goal>attach-features</goal>
                     <goal>aggregate-features</goal>
