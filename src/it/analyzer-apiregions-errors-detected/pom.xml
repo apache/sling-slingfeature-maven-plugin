@@ -42,18 +42,6 @@
             <scan>
               <filesInclude>**/*.json</filesInclude>
               <includeTask>api-regions-dependencies</includeTask>
-              <taskConfiguration>
-                <api-regions-dependencies>
-                  <property>
-                    <name>exporting-apis</name>
-                    <value>my-global</value>
-                  </property>
-                  <property>
-                    <name>hiding-apis</name>
-                    <value>my-deprecated</value>
-                  </property>
-                </api-regions-dependencies>
-              </taskConfiguration>
             </scan>
           </scans>
         </configuration>
