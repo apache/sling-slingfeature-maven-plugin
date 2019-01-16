@@ -113,6 +113,10 @@
                         <pomInclude>**/pom.xml</pomInclude>
                     </pomIncludes>
                     <postBuildHookScript>verify</postBuildHookScript>
+                    <properties>
+                        <!-- The API Region files are produced by the API Regions merge extension which is not run here -->
+                        <skipAPIRegionFileErrors>true</skipAPIRegionFileErrors>
+                    </properties>
                 </configuration>
                 <executions>
                     <execution>

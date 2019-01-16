@@ -16,12 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -38,6 +32,14 @@ import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Analyse the feature.
  */
@@ -47,6 +49,10 @@ import org.apache.sling.feature.scanner.Scanner;
       threadSafe = true
     )
 public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
+
+    private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
+
+    private static final String ANALYSER_CONFIG_WILDCARD = "*";
 
     @Parameter
     private List<Scan> scans;
@@ -85,12 +91,14 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         boolean hasErrors = false;
         for (final Scan an : list) {
             try {
+                Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
+                addTaskConfigurationDefaults(taskConfiguration);
 
                 getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a(" with following configuration:").toString());
-                getLog().debug(" * Task Configuration = " + an.getTaskConfiguration());
+                getLog().debug(" * Task Configuration = " + taskConfiguration);
                 getLog().debug(" * Include Tasks = " + an.getIncludeTasks());
                 getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
-                final Analyser analyser = new Analyser(scanner, an.getTaskConfiguration(), an.getIncludeTasks(), an.getExcludeTasks());
+                final Analyser analyser = new Analyser(scanner, taskConfiguration, an.getIncludeTasks(), an.getExcludeTasks());
                 getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
 
                 getLog().debug("Retrieving Feature files...");
@@ -143,6 +151,19 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
         if (hasErrors) {
             throw new MojoFailureException("One or more features Analyzer detected Feature error(s), please read the plugin log for more datils");
+        }
+    }
+
+    private void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
+        String featureModelFileStorage = project.getBuild().getDirectory() + "/sling-slingfeature-maven-plugin-fmtmp";
+        Map<String, String> wildCardCfg = taskConfiguration.get(ANALYSER_CONFIG_WILDCARD);
+        if (wildCardCfg == null) {
+            wildCardCfg = new HashMap<String, String>();
+            taskConfiguration.put(ANALYSER_CONFIG_WILDCARD, wildCardCfg);
+        }
+        if (!wildCardCfg.containsKey(FILE_STORAGE_CONFIG_KEY)) {
+            new File(featureModelFileStorage).mkdirs();
+            wildCardCfg.put(FILE_STORAGE_CONFIG_KEY, featureModelFileStorage);
         }
     }
 }

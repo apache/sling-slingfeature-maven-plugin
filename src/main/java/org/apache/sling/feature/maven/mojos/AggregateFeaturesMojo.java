@@ -35,6 +35,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,8 @@ import java.util.stream.StreamSupport;
     threadSafe = true
 )
 public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
+    private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
+    private static final String HANDLER_CONFIG_WILDCARD = "*";
 
     /**
      * The definition of the features used to create the new feature.
@@ -139,8 +142,24 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                     ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
                     false).toArray(PostProcessHandler[]::new));
 
+            boolean wildcardSet = false;
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
-                builderContext.setHandlerConfiguration(entry.getKey(), ProjectHelper.propertiesToMap(entry.getValue()));
+                String key = entry.getKey();
+                Properties props = entry.getValue();
+
+                if (HANDLER_CONFIG_WILDCARD.equals(key)) {
+                    if (!props.containsKey(FILE_STORAGE_CONFIG_KEY)) {
+                        props.put(FILE_STORAGE_CONFIG_KEY, getFeatureModelStorage());
+                    }
+                    wildcardSet = true;
+                }
+
+                builderContext.setHandlerConfiguration(key, ProjectHelper.propertiesToMap(props));
+            }
+
+            if (!wildcardSet) {
+                builderContext.setHandlerConfiguration(HANDLER_CONFIG_WILDCARD,
+                        Collections.singletonMap(FILE_STORAGE_CONFIG_KEY, getFeatureModelStorage()));
             }
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
@@ -171,5 +190,11 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.getAssembledFeatures(project).put(key, result);
             ProjectHelper.getFeatures(this.project).put(key, result);
         }
+    }
+
+    private String getFeatureModelStorage() {
+        String featureModelFileStorage = project.getBuild().getDirectory() + "/sling-slingfeature-maven-plugin-fmtmp";
+        new File(featureModelFileStorage).mkdirs();
+        return featureModelFileStorage;
     }
 }
