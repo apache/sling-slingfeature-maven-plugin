@@ -16,9 +16,6 @@
  */
 package org.apache.sling.feature.maven;
 
-import java.util.Collections;
-import java.util.List;
-
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.osgi.DefaultMaven2OsgiConverter;
@@ -31,10 +28,14 @@ import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 import org.codehaus.plexus.interpolation.RecursionInterceptor;
 import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
 
+import java.util.Collections;
+import java.util.List;
+
 public class Substitution {
     public static String replaceMavenVars(MavenProject project, String s) {
         RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
         project.getProperties().setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
+        interpolator.addValueSource(new PropertiesBasedValueSource(System.getProperties()));
         interpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
 
         List<String> synonymPrefixes = Collections.singletonList("project.");

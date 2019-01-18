@@ -16,13 +16,43 @@
  */
 package org.apache.sling.feature.maven;
 
-import static org.junit.Assert.assertEquals;
-
+import org.apache.maven.project.MavenProject;
 import org.junit.Test;
 
-public class SubstitutionTest {
+import java.util.Properties;
 
-    @Test public void testOSGiVersion() {
+import static org.junit.Assert.assertEquals;
+
+public class SubstitutionTest {
+    @Test
+    public void testReplaceMavenVars() {
+        MavenProject proj = new MavenProject();
+        Properties p = proj.getProperties();
+        p.put("test", "foo");
+        assertEquals("hellofoogoodbyefoo", Substitution.replaceMavenVars(proj, "hello${test}goodbye${test}"));
+    }
+
+    @Test
+    public void testReplaceMavenVarsWithSystemProperties() {
+        Properties storedProps = new Properties();
+        storedProps.putAll(System.getProperties());
+
+        try {
+            MavenProject proj = new MavenProject();
+            Properties p = proj.getProperties();
+            p.put("test", "foo");
+
+            System.setProperty("test", "bar");
+
+            assertEquals("hellobargoodbyebar", Substitution.replaceMavenVars(proj, "hello${test}goodbye${test}"));
+        } finally {
+            // Restore the system properties
+            System.setProperties(storedProps);
+        }
+    }
+
+    @Test
+    public void testOSGiVersion() {
     	assertEquals("1.2.3", Substitution.getOSGiVersion("1.2.3"));
     	assertEquals("1.2.0.SNAPSHOT", Substitution.getOSGiVersion("1.2-SNAPSHOT"));
     	assertEquals("4.5.6.SNAPSHOT", Substitution.getOSGiVersion("4.5.6-SNAPSHOT"));
