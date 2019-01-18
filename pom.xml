@@ -112,9 +112,6 @@
                     <pomIncludes>
                         <pomInclude>**/pom.xml</pomInclude>
                     </pomIncludes>
-                    <pomExcludes>
-                        <pomExclude>analyzer-errors-detected/pom.xml</pomExclude>
-                    </pomExcludes>
                     <postBuildHookScript>verify</postBuildHookScript>
                 </configuration>
                 <executions>

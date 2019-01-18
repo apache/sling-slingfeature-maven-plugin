@@ -34,6 +34,21 @@
             <goals>
               <goal>analyse-features</goal>
             </goals>
+            <configuration>
+              <scans>
+                <scan>
+                  <filesInclude>*.json</filesInclude>
+                  <includeTasks>
+                    <includeTask>api-regions-check-order</includeTask>
+                  </includeTasks>
+                  <taskConfiguration>
+                    <api-regions-check-order>
+                      <order>asf,global</order>
+                    </api-regions-check-order>
+                  </taskConfiguration>
+                </scan>
+              </scans>
+            </configuration>
           </execution>
         </executions>
       </plugin>
