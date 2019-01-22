@@ -590,6 +590,105 @@ public class AggregateFeaturesMojoTest {
                 ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
     }
 
+    @Test
+    public void testOverrideWithManualArtifactIDNoOverride() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir6").getFile());
+
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "myagg";
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArt = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
+        af.aggregates = Collections.singletonList(ag);
+        af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        af.features = featuresDir;
+        af.handlerConfiguration = new HashMap<>();
+
+        try {
+            af.execute();
+            fail("Should have thrown an exception as "
+                    + "org.apache.sling:somebundle has as alias org.apache.sling:myotherbundle");
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            assertTrue(msg.contains("override rule required"));
+            assertTrue(msg.contains("org.apache.sling:myotherbundle:"));
+            assertTrue(msg.contains("org.apache.sling:somebundle:"));
+        }
+    }
+
+    @Test
+    public void testOverrideWithManualArtifactID() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir6").getFile());
+
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("test_c.json");
+        ag.setFilesInclude("test_d.json");
+        ag.classifier = "myagg";
+        ag.artifactsOverrides = Arrays.asList("org.apache.sling:myotherbundle:LATEST");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArt = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
+        af.aggregates = Collections.singletonList(ag);
+        af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        af.features = featuresDir;
+        af.handlerConfiguration = new HashMap<>();
+
+        af.execute();
+
+        Feature genFeat = featureMap.get(":aggregate:myagg");
+        Bundles bundles = genFeat.getBundles();
+        assertEquals(1, bundles.size());
+        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
+                ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
+    }
+
     private Artifact createMockArtifact() {
         Artifact parentArtifact = Mockito.mock(Artifact.class);
         Mockito.when(parentArtifact.getGroupId()).thenReturn("gid");
