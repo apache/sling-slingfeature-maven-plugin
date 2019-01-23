@@ -37,6 +37,20 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
+import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
+import org.apache.maven.model.Repository;
+import org.apache.maven.model.Scm;
+import org.apache.maven.model.building.DefaultModelBuildingRequest;
+import org.apache.maven.model.building.FileModelSource;
+import org.apache.maven.model.building.ModelBuilder;
+import org.apache.maven.model.building.ModelBuildingRequest;
+import org.apache.maven.model.building.ModelBuildingResult;
+import org.apache.maven.model.building.ModelSource;
+import org.apache.maven.model.resolution.InvalidRepositoryException;
+import org.apache.maven.model.resolution.ModelResolver;
+import org.apache.maven.model.resolution.UnresolvableModelException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -44,8 +58,13 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.scm.ScmFileSet;
+import org.apache.maven.scm.command.checkout.CheckOutScmResult;
+import org.apache.maven.scm.manager.ScmManager;
+import org.apache.maven.scm.repository.ScmRepository;
 import org.apache.maven.shared.utils.StringUtils;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
+import org.apache.maven.shared.utils.io.FileUtils;
 import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
@@ -70,7 +89,11 @@ import edu.emory.mathcs.backport.java.util.Arrays;
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
-public class ApisJarMojo extends AbstractIncludingFeatureMojo {
+public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelResolver {
+
+    private static final String CLASSIFIER_EMPTY = "";
+
+    private static final String TYPE_POM = "pom";
 
     private static final String API_REGIONS_KEY = "api-regions";
 
@@ -98,8 +121,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private Set<String> excludeRegions;
 
-    //@Component
-    //private ScmManager scmManager;
+    @Component(hint = "default")
+    private ModelBuilder modelBuilder;
+
+    @Component
+    private ScmManager scmManager;
 
     @Component
     private ArchiverManager archiverManager;
@@ -158,8 +184,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // first output level is the aggregated feature
         File featureDir = new File(mainOutputDir, feature.getId().getArtifactId());
 
-        File deflatedDir = new File(featureDir, "deflated-bin");
-        deflatedDir.mkdirs();
+        File deflatedBinDir = newDir(featureDir, "deflated-bin");
+        File deflatedSourcesDir = newDir(featureDir, "deflated-sources");
+        File checkedOutSourcesDir = newDir(featureDir, "checkouts");
 
         // calculate all api-regions first, taking the inheritance in account
         List<ApiRegion> apiRegions = fromJson(feature, jsonRepresentation);
@@ -177,9 +204,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // for each artifact included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
             ArtifactId artifactId = artifact.getId();
-
+            File bundle = retrieve(artifactId);
             // deflate all bundles first, in order to copy APIs and resources later, depending to the region
-            File deflatedBundleDirectory = deflate(deflatedDir, artifactId);
+            File deflatedBundleDirectory = deflate(deflatedBinDir, bundle);
 
             // renaming potential name-collapsing resources
             renameResources(deflatedBundleDirectory, artifactId);
@@ -187,7 +214,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             // calculate the exported versioned packages in the manifest file for each region
             computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
 
-            // TODO download the -sources artifacts
+            // download sources
+            downloadSources(artifactId, deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
@@ -199,8 +227,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 continue;
             }
 
-            recollect(feature.getId(), apiRegion, deflatedDir, featureDir);
-            // TODO collect the -sources artifact
+            recollect(feature.getId(), apiRegion, deflatedBinDir, featureDir, APIS);
+            recollect(feature.getId(), apiRegion, deflatedSourcesDir, featureDir, SOURCES);
             // TODO create -javadoc artifacts
         }
 
@@ -208,33 +236,34 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 .a(" succesfully created").toString());
     }
 
-    private File deflate(File deflatedDir, ArtifactId artifactId) throws MojoExecutionException {
-        getLog().debug("Retrieving bundle " + artifactId + "...");
-
+    private File retrieve(ArtifactId artifactId) {
+        getLog().debug("Retrieving artifact " + artifactId + "...");
         File sourceFile = artifactProvider.provide(artifactId);
+        getLog().debug("Artifact " + artifactId + " successfully retrieved");
+        return sourceFile;
+    }
 
-        getLog().debug("Bundle " + artifactId + " successfully retrieved");
+    private File deflate(File deflatedDir, File artifact) throws MojoExecutionException {
+        getLog().debug("Deflating bundle " + artifact + "...");
 
-        getLog().debug("Deflating bundle " + sourceFile + "...");
-
-        File destDirectory = new File(deflatedDir, sourceFile.getName());
+        File destDirectory = new File(deflatedDir, artifact.getName());
         destDirectory.mkdirs();
 
         // unarchive the bundle first
 
         try {
-            UnArchiver unArchiver = archiverManager.getUnArchiver(sourceFile);
-            unArchiver.setSourceFile(sourceFile);
+            UnArchiver unArchiver = archiverManager.getUnArchiver(artifact);
+            unArchiver.setSourceFile(artifact);
             unArchiver.setDestDirectory(destDirectory);
             unArchiver.extract();
         } catch (NoSuchArchiverException e) {
             throw new MojoExecutionException("An error occurred while deflating file "
-                                             + sourceFile
+                                             + artifact
                                              + " to directory "
                                              + destDirectory, e);
         }
 
-        getLog().debug("Bundle " + sourceFile + " successfully deflated");
+        getLog().debug("Bundle " + artifact + " successfully deflated");
 
         return destDirectory;
     }
@@ -272,6 +301,86 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         getLog().debug(Arrays.toString(includeResources) + " resources in " + destDirectory + " successfully renamed");
     }
 
+    private void downloadSources(ArtifactId artifactId, File deflatedSourcesDir, File checkedOutSourcesDir) throws MojoExecutionException {
+        ArtifactId sourcesArtifactId = newArtifacId(artifactId,
+                                                    "sources",
+                                                    "jar");
+        try {
+            File sourcesBundle = retrieve(sourcesArtifactId);
+            deflate(deflatedSourcesDir, sourcesBundle);
+        } catch (Throwable t) {
+            getLog().warn("Impossible to download -sources bundle " + sourcesArtifactId + ", see nested errors: ", t);
+
+            // -sources artifact is not available, let's checkout sources
+            ArtifactId pomArtifactId = newArtifacId(artifactId,
+                                                    null,
+                                                    "pom");
+            getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
+            // POM file must exist, let the plugin fail otherwise
+            File pomFile = retrieve(pomArtifactId);
+            getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
+
+            // read the real model (automatically include parent and so on...)
+            ModelBuildingRequest request = new DefaultModelBuildingRequest();
+            request.setProcessPlugins(false);
+            request.setPomFile(pomFile);
+            // check later if we still need to suppress profiles in order to resolve models
+            // request.setInactiveProfileIds(suppressResolvedProfiles);
+            request.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
+            request.setModelResolver(this);
+
+            try {
+                ModelBuildingResult modelBuildingResult = modelBuilder.build(request);
+                Model pomModel = modelBuildingResult.getEffectiveModel();
+
+                getLog().debug("POM model " + pomArtifactId + " successfully read, processing the SCM...");
+
+                Scm scm = pomModel.getScm();
+                if (scm == null) {
+                    throw new MojoExecutionException("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved");
+                }
+
+                ScmRepository repository = scmManager.makeScmRepository(scm.getConnection());
+
+                File basedir = newDir(checkedOutSourcesDir, artifactId.toMvnId());
+                ScmFileSet fileSet = new ScmFileSet(basedir);
+
+                CheckOutScmResult result = scmManager.checkOut(repository, fileSet);
+                if (!result.isSuccess()) {
+                    throw new MojoExecutionException("An error occurred while checking out sources from "
+                                                     + scm.getConnection()
+                                                     + ": "
+                                                     + result.getProviderMessage());
+                }
+
+                File javaSources = new File(basedir, "src/main/java");
+                if (!javaSources.exists()) { // old modules could still use src/java
+                    javaSources = new File(basedir, "src/java");
+                }
+
+                File destDirectory = newDir(deflatedSourcesDir, artifactId.toMvnId());
+
+                DirectoryScanner directoryScanner = new DirectoryScanner();
+                directoryScanner.setBasedir(javaSources);
+                directoryScanner.setIncludes("*");
+                directoryScanner.scan();
+
+                for (String file : directoryScanner.getIncludedFiles()) {
+                    File source = new File(javaSources, file);
+                    File destination = new File(destDirectory, file);
+                    destination.getParentFile().mkdirs();
+                    try {
+                        FileUtils.copyFile(source, destination);
+                    } catch (IOException e) {
+                        throw new MojoExecutionException("An error occurred while copying sources from " + source + " to " + destination, e);
+                    }
+                }
+            } catch (Exception e) {
+                throw new MojoExecutionException("An error occurred while processing SCM by reading " + pomArtifactId + " model", e);
+            }
+        }
+    }
+
     private void computeExportPackage(List<ApiRegion> apiRegions, File destDirectory, ArtifactId artifactId) throws MojoExecutionException {
         File manifestFile = new File(destDirectory, "META-INF/MANIFEST.MF");
 
@@ -307,12 +416,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private void recollect(ArtifactId featureId, ApiRegion apiRegion, File deflatedDir, File featureDir) throws MojoExecutionException {
+    private void recollect(ArtifactId featureId, ApiRegion apiRegion, File deflatedDir, File featureDir, String classifier) throws MojoExecutionException {
         DirectoryScanner directoryScanner = new DirectoryScanner();
         directoryScanner.setBasedir(deflatedDir);
 
         // for each region, include both APIs and resources
-        String[] includes = concatenate(apiRegion.getFilteringApis(), includeResources);
+        String[] includes;
+        if (APIS.equals(classifier)) {
+            includes = concatenate(apiRegion.getFilteringApis(), includeResources);
+        } else {
+            includes = apiRegion.getFilteringApis();
+        }
         directoryScanner.setIncludes(includes);
         directoryScanner.scan();
 
@@ -328,23 +442,25 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     featureId.getArtifactId(),
                     featureId.getClassifier(),
                     apiRegion.getName(),
-                    APIS);
+                    classifier);
         } else {
             bundleName = String.format("%s-%s-%s",
                     featureId.getArtifactId(),
                     apiRegion.getName(),
-                    APIS);
+                    classifier);
         }
         String symbolicName = bundleName.replace('-', '.');
 
-        // APIs need OSGi Manifest entry
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
-        archiveConfiguration.addManifestEntry("Export-Package", StringUtils.join(apiRegion.getExportPackage(), ","));
-        archiveConfiguration.addManifestEntry("Bundle-Description", project.getDescription());
-        archiveConfiguration.addManifestEntry("Bundle-Version", featureId.getOSGiVersion().toString());
-        archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
-        archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
-        archiveConfiguration.addManifestEntry("Bundle-Name", bundleName);
+        if (APIS.equals(classifier)) {
+            // APIs need OSGi Manifest entry
+            archiveConfiguration.addManifestEntry("Export-Package", StringUtils.join(apiRegion.getExportPackage(), ","));
+            archiveConfiguration.addManifestEntry("Bundle-Description", project.getDescription());
+            archiveConfiguration.addManifestEntry("Bundle-Version", featureId.getOSGiVersion().toString());
+            archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
+            archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
+            archiveConfiguration.addManifestEntry("Bundle-Name", bundleName);
+        }
         if (project.getOrganization() != null) {
             archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
         }
@@ -367,7 +483,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private List<ApiRegion> fromJson(Feature feature, String jsonRepresentation) throws MojoExecutionException {
+    private static ArtifactId newArtifacId(ArtifactId original, String classifier, String type) {
+        return new ArtifactId(original.getGroupId(),
+                              original.getArtifactId(),
+                              original.getVersion(),
+                              classifier,
+                              type);
+    }
+
+    private static List<ApiRegion> fromJson(Feature feature, String jsonRepresentation) throws MojoExecutionException {
         List<ApiRegion> apiRegions = new ArrayList<>();
 
         // pointers
@@ -506,6 +630,48 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         System.arraycopy(a, 0, result, 0, a.length);
         System.arraycopy(b, 0, result, a.length, b.length);
         return result;
+    }
+
+    private static File newDir(File parent, String child) {
+        File dir = new File(parent, child);
+        dir.mkdirs();
+        return dir;
+    }
+
+    // model resolver methods
+
+    @Override
+    public void addRepository(Repository repository) throws InvalidRepositoryException {
+        // not needed in this version
+    }
+
+    @Override
+    public void addRepository(Repository repository, boolean replace) throws InvalidRepositoryException {
+        // not needed in this version
+    }
+
+    @Override
+    public ModelResolver newCopy() {
+        // should not be used in this version
+        return this;
+    }
+
+    @Override
+    public ModelSource resolveModel(Dependency dependency) throws UnresolvableModelException {
+        return resolveModel(dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
+    }
+
+    @Override
+    public ModelSource resolveModel(Parent parent) throws UnresolvableModelException {
+        return resolveModel(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
+    }
+
+    @Override
+    public ModelSource resolveModel(String groupId, String artifactId, String version)
+            throws UnresolvableModelException {
+        ArtifactId pomArtifactId = new ArtifactId(groupId, artifactId, version, CLASSIFIER_EMPTY, TYPE_POM);
+        File pomFile = retrieve(pomArtifactId);
+        return new FileModelSource(pomFile);
     }
 
 }

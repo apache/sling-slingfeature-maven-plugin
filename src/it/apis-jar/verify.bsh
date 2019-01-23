@@ -29,14 +29,17 @@ import org.codehaus.plexus.util.*;
         }
 
         JarFile jarFile = new JarFile(file);
-        Manifest manifest= jarFile.getManifest();
 
-        String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
-        for (String exportPackage : exportPackages) {
-            if (exportPackageHeader.indexOf(exportPackage) < 0) {
-                System.out.println("FAILED!");
-                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain " + exportPackage + " in bundle " + file);
-                return false;
+        if (exportPackages != null) {
+            Manifest manifest= jarFile.getManifest();
+
+            String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
+            for (String exportPackage : exportPackages) {
+                if (exportPackageHeader.indexOf(exportPackage) < 0) {
+                    System.out.println("FAILED!");
+                    System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain " + exportPackage + " in bundle " + file);
+                    return false;
+                }
             }
         }
 
@@ -55,6 +58,8 @@ import org.codehaus.plexus.util.*;
     boolean check() throws Exception {
         File apisJarDir = new File(basedir, "target/apis-jars");
 
+        // base
+
         File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-base-apis-1.0.0-SNAPSHOT.jar");
         if (!checkBundle(baseApiJar,
                          new String[] {
@@ -68,6 +73,18 @@ import org.codehaus.plexus.util.*;
             return false;
         }
 
+        File baseSourcesJar = new File(apisJarDir, "slingfeature-maven-plugin-test-base-sources-1.0.0-SNAPSHOT.jar");
+        if (!checkBundle(baseSourcesJar,
+                         null,
+                         new String[] {
+                             "org/apache/felix/metatype/",
+                             "org/apache/felix/inventory/"
+                         })) {
+            return false;
+        }
+
+        // extended
+
         File extendedApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-extended-apis-1.0.0-SNAPSHOT.jar");
         if (!checkBundle(extendedApiJar,
                          new String[] {
@@ -76,6 +93,18 @@ import org.codehaus.plexus.util.*;
                              "org.apache.felix.scr.component;uses:=org.osgi.service.component;version=1.1.0",
                              "org.apache.felix.scr.info;version=1.0.0"
                          },
+                         new String[] {
+                             "org/apache/felix/metatype/",
+                             "org/apache/felix/inventory/",
+                             "org/apache/felix/scr/component/",
+                             "org/apache/felix/scr/info/"
+                         })) {
+            return false;
+        }
+
+        File extendedSourcesJar = new File(apisJarDir, "slingfeature-maven-plugin-test-extended-sources-1.0.0-SNAPSHOT.jar");
+        if (!checkBundle(extendedApiJar,
+                         null,
                          new String[] {
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/",
