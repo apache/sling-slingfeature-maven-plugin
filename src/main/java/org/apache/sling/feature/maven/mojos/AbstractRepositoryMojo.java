@@ -25,7 +25,6 @@ import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -45,9 +44,6 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
      */
     @Parameter(defaultValue = "artifacts", property = "repositoryDir")
     String repositoryDir;
-
-    @Component
-    ArtifactHandlerManager artifactHandlerManager;
 
     @Override
     public abstract void execute() throws MojoExecutionException, MojoFailureException;
