@@ -137,6 +137,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
     @Parameter
     private Set<String> suppressSCMResolutions;
 
+    @Parameter
+    private List<String> suppressResolvedProfiles;
+
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
 
@@ -344,8 +347,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
             ModelBuildingRequest request = new DefaultModelBuildingRequest();
             request.setProcessPlugins(false);
             request.setPomFile(pomFile);
-            // check later if we still need to suppress profiles in order to resolve models
-            // request.setInactiveProfileIds(suppressResolvedProfiles);
+            request.setInactiveProfileIds(suppressResolvedProfiles);
             request.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
             request.setModelResolver(this);
 
