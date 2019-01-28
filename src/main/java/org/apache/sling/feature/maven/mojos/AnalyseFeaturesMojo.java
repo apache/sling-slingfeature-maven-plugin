@@ -52,7 +52,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
 
-    private static final String ANALYSER_CONFIG_WILDCARD = "*";
+    private static final String ANALYSER_CONFIG_WILDCARD = "all";
 
     @Parameter
     private List<Scan> scans;

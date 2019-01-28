@@ -31,6 +31,7 @@ import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Bundles;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.Preprocessor;
@@ -43,8 +44,10 @@ import org.mockito.stubbing.Answer;
 
 import java.io.File;
 import java.io.FileReader;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -52,6 +55,7 @@ import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -60,7 +64,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
 
 @SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
@@ -536,6 +539,68 @@ public class AggregateFeaturesMojoTest {
 
         ArtifactId id2 = new ArtifactId("test", "test", "9.9.9", "y", "slingosgifeature");
         assertEquals(id2, pluginCallbacks.get("TestPlugin3 - myval-Hi there"));
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Test
+    public void testHandlerConfiguration() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir3").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "aggregated";
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArtifact = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        List<BuilderContext> capturedBuilderContext = new ArrayList<>();
+        AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
+            @Override
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+                capturedBuilderContext.add(builderContext);
+                return super.assembleFeature(newFeatureID, builderContext, selection);
+            }
+        };
+        afm.aggregates = Collections.singletonList(ag);
+        afm.project = mockProj;
+        afm.projectHelper = new DefaultMavenProjectHelper();
+        afm.features = featuresDir;
+        afm.handlerConfiguration = new HashMap<>();
+
+        assertEquals("Precondition", 0, capturedBuilderContext.size());
+        afm.execute();
+        assertEquals(1, capturedBuilderContext.size());
+        BuilderContext bc = capturedBuilderContext.iterator().next();
+
+        Map hc = (Map) invokePrivateMethod(bc, "getHandlerConfigurations");
+        Map allConfig = (Map) hc.get("all");
+        assertTrue(((String) allConfig.get("fileStorage")).length() > 0);
+    }
+
+    private Object invokePrivateMethod(Object obj, String name) throws Exception {
+        Method m = obj.getClass().getDeclaredMethod(name);
+        m.setAccessible(true);
+        return m.invoke(obj);
     }
 
     @Test

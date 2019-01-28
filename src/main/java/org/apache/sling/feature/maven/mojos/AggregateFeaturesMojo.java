@@ -55,7 +55,7 @@ import java.util.stream.StreamSupport;
 )
 public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
-    private static final String HANDLER_CONFIG_WILDCARD = "*";
+    private static final String HANDLER_CONFIG_WILDCARD = "all";
 
     /**
      * The definition of the features used to create the new feature.
@@ -164,8 +164,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
                     project.getVersion(), aggregate.classifier, FeatureConstants.PACKAGING_FEATURE);
-            final Feature result = FeatureBuilder.assemble(newFeatureID, builderContext,
-                    selection.values().toArray(new Feature[selection.size()]));
+            final Feature result = assembleFeature(newFeatureID, builderContext, selection);
 
             if (aggregate.markAsFinal) {
                 result.setFinal(true);
@@ -190,6 +189,12 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.getAssembledFeatures(project).put(key, result);
             ProjectHelper.getFeatures(this.project).put(key, result);
         }
+    }
+
+    Feature assembleFeature(final ArtifactId newFeatureID, final BuilderContext builderContext,
+            final Map<String, Feature> selection) {
+        return FeatureBuilder.assemble(newFeatureID, builderContext,
+                selection.values().toArray(new Feature[selection.size()]));
     }
 
     private String getFeatureModelStorage() {
