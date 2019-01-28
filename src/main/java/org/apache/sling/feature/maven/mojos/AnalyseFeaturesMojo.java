@@ -154,7 +154,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
+    void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
         String featureModelFileStorage = project.getBuild().getDirectory() + "/sling-slingfeature-maven-plugin-fmtmp";
         Map<String, String> wildCardCfg = taskConfiguration.get(ANALYSER_CONFIG_WILDCARD);
         if (wildCardCfg == null) {

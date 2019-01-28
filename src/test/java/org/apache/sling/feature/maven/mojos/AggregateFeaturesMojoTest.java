@@ -597,6 +597,131 @@ public class AggregateFeaturesMojoTest {
         assertTrue(((String) allConfig.get("fileStorage")).length() > 0);
     }
 
+    @SuppressWarnings("rawtypes")
+    @Test
+    public void testHandlerConfiguration2() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir3").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "aggregated";
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArtifact = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        List<BuilderContext> capturedBuilderContext = new ArrayList<>();
+        AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
+            @Override
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+                capturedBuilderContext.add(builderContext);
+                return super.assembleFeature(newFeatureID, builderContext, selection);
+            }
+        };
+        afm.aggregates = Collections.singletonList(ag);
+        afm.project = mockProj;
+        afm.projectHelper = new DefaultMavenProjectHelper();
+        afm.features = featuresDir;
+        afm.handlerConfiguration = new HashMap<>();
+
+        Properties allProps = new Properties();
+        allProps.put("a", "a aa a");
+        afm.handlerConfiguration.put("all", allProps);
+        Properties specProps = new Properties();
+        specProps.put("zz", "z");
+        afm.handlerConfiguration.put("specific", specProps);
+
+        assertEquals("Precondition", 0, capturedBuilderContext.size());
+        afm.execute();
+        assertEquals(1, capturedBuilderContext.size());
+        BuilderContext bc = capturedBuilderContext.iterator().next();
+
+        Map hc = (Map) invokePrivateMethod(bc, "getHandlerConfigurations");
+        Map allConfig = (Map) hc.get("all");
+        assertEquals("a aa a", allConfig.get("a"));
+        assertTrue(((String) allConfig.get("fileStorage")).length() > 0);
+        assertEquals("z", ((Map) hc.get("specific")).get("zz"));
+    }
+
+    @SuppressWarnings("rawtypes")
+    @Test
+    public void testHandlerConfiguration3() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir3").getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "aggregated";
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArtifact = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        List<BuilderContext> capturedBuilderContext = new ArrayList<>();
+        AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
+            @Override
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+                capturedBuilderContext.add(builderContext);
+                return super.assembleFeature(newFeatureID, builderContext, selection);
+            }
+        };
+        afm.aggregates = Collections.singletonList(ag);
+        afm.project = mockProj;
+        afm.projectHelper = new DefaultMavenProjectHelper();
+        afm.features = featuresDir;
+        afm.handlerConfiguration = new HashMap<>();
+
+        Properties allProps = new Properties();
+        allProps.put("fileStorage", "/somewhere");
+        afm.handlerConfiguration.put("all", allProps);
+
+        assertEquals("Precondition", 0, capturedBuilderContext.size());
+        afm.execute();
+        assertEquals(1, capturedBuilderContext.size());
+        BuilderContext bc = capturedBuilderContext.iterator().next();
+
+        Map hc = (Map) invokePrivateMethod(bc, "getHandlerConfigurations");
+        Map allConfig = (Map) hc.get("all");
+        assertEquals("/somewhere", allConfig.get("fileStorage"));
+    }
+
     private Object invokePrivateMethod(Object obj, String name) throws Exception {
         Method m = obj.getClass().getDeclaredMethod(name);
         m.setAccessible(true);
