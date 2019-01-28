@@ -25,9 +25,13 @@ import java.util.Collection;
 import java.util.Formatter;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.Manifest;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.json.Json;
 import javax.json.stream.JsonParser;
@@ -59,6 +63,9 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.scm.ScmFileSet;
+import org.apache.maven.scm.ScmRevision;
+import org.apache.maven.scm.ScmTag;
+import org.apache.maven.scm.ScmVersion;
 import org.apache.maven.scm.command.checkout.CheckOutScmResult;
 import org.apache.maven.scm.manager.ScmManager;
 import org.apache.maven.scm.repository.ScmRepository;
@@ -120,6 +127,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
 
     @Parameter
     private Set<String> excludeRegions;
+
+    @Parameter
+    private Properties scmRewrite;
+
+    @Parameter(defaultValue = "-Rev, -REV, -R")
+    private String[] revisionMarkers;
+
+    @Parameter
+    private Set<String> suppressSCMResolutions;
 
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
@@ -309,7 +325,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
             File sourcesBundle = retrieve(sourcesArtifactId);
             deflate(deflatedSourcesDir, sourcesBundle);
         } catch (Throwable t) {
-            getLog().warn("Impossible to download -sources bundle " + sourcesArtifactId + ", see nested errors: ", t);
+            getLog().warn("Impossible to download -sources bundle "
+                          + sourcesArtifactId
+                          + " due to "
+                          + t.getMessage()
+                          + ", following back to source checkout...");
 
             // -sources artifact is not available, let's checkout sources
             ArtifactId pomArtifactId = newArtifacId(artifactId,
@@ -337,15 +357,61 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
 
                 Scm scm = pomModel.getScm();
                 if (scm == null) {
-                    throw new MojoExecutionException("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved");
+                    if (suppressSCMResolutions != null && suppressSCMResolutions.contains(pomArtifactId.toMvnId())) {
+                        getLog().warn("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved, but ignored due to the suppressSCMResolutions configuration");
+                        return;
+                    } else {
+                        throw new MojoExecutionException("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved");
+                    }
                 }
 
-                ScmRepository repository = scmManager.makeScmRepository(scm.getConnection());
+                String connection = scm.getConnection();
+                String tag = scm.getTag();
 
-                File basedir = newDir(checkedOutSourcesDir, artifactId.toMvnId());
+                if (scmRewrite != null && !scmRewrite.isEmpty()) {
+                    dance : for (Entry<Object, Object> rewrite : scmRewrite.entrySet()) {
+                        Pattern pattern = Pattern.compile((String) rewrite.getKey());
+                        Matcher matcher = pattern.matcher(connection);
+                        if (matcher.matches()) {
+                            if (matcher.groupCount() > 0) {
+                                tag = matcher.group(1);
+                            }
+
+                            connection = matcher.replaceAll((String) rewrite.getValue());
+
+                            break dance;
+                        }
+                    }
+                }
+
+                ScmRepository repository = scmManager.makeScmRepository(connection);
+
+                ScmVersion scmVersion = null;
+                String modelVersion = artifactId.getVersion();
+                if (tag != null) {
+                    scmVersion = new ScmTag(tag);
+                } else if (revisionMarkers != null && revisionMarkers.length > 0) {
+                    dance : for (String revisionMarker : revisionMarkers) {
+                        int i = modelVersion.indexOf(revisionMarker);
+                        if (i == -1) {
+                            i = modelVersion.indexOf(revisionMarker);
+                            String revision = modelVersion.substring(i + revisionMarker.length());
+                            scmVersion = new ScmRevision(revision);
+                            break dance;
+                        }
+                    }
+                }
+
+                File basedir = newDir(checkedOutSourcesDir, artifactId.getArtifactId());
                 ScmFileSet fileSet = new ScmFileSet(basedir);
 
-                CheckOutScmResult result = scmManager.checkOut(repository, fileSet);
+                CheckOutScmResult result = null;
+                if (scmVersion != null) {
+                    result = scmManager.checkOut(repository, fileSet, true);
+                } else {
+                    result = scmManager.checkOut(repository, fileSet, scmVersion, true);
+                }
+
                 if (!result.isSuccess()) {
                     throw new MojoExecutionException("An error occurred while checking out sources from "
                                                      + scm.getConnection()
@@ -353,9 +419,30 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                                                      + result.getProviderMessage());
                 }
 
+                // retrieve the exact pom location
+                DirectoryScanner pomScanner = new DirectoryScanner();
+                pomScanner.setBasedir(basedir);
+                pomScanner.setIncludes("**/pom.xml");
+                pomScanner.scan();
+                for (String pomFileLocation : pomScanner.getIncludedFiles()) {
+                    pomFile = new File(basedir, pomFileLocation);
+                    pomModel = modelBuilder.buildRawModel(pomFile, 0, false).get();
+
+                    if (artifactId.getArtifactId().equals(pomModel.getArtifactId())) {
+                        basedir = pomFile.getParentFile();
+                        break;
+                    }
+                }
+
+                // copy all interested sources to the proper location
                 File javaSources = new File(basedir, "src/main/java");
                 if (!javaSources.exists()) { // old modules could still use src/java
                     javaSources = new File(basedir, "src/java");
+
+                    // there could be just resources artifacts
+                    if (!javaSources.exists()) {
+                        return;
+                    }
                 }
 
                 File destDirectory = newDir(deflatedSourcesDir, artifactId.toMvnId());
