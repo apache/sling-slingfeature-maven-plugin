@@ -49,6 +49,7 @@ import org.apache.maven.model.Scm;
 import org.apache.maven.model.building.DefaultModelBuildingRequest;
 import org.apache.maven.model.building.FileModelSource;
 import org.apache.maven.model.building.ModelBuilder;
+import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.model.building.ModelBuildingResult;
 import org.apache.maven.model.building.ModelSource;
@@ -62,13 +63,16 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.scm.ScmException;
 import org.apache.maven.scm.ScmFileSet;
 import org.apache.maven.scm.ScmRevision;
 import org.apache.maven.scm.ScmTag;
 import org.apache.maven.scm.ScmVersion;
 import org.apache.maven.scm.command.checkout.CheckOutScmResult;
+import org.apache.maven.scm.manager.NoSuchScmProviderException;
 import org.apache.maven.scm.manager.ScmManager;
 import org.apache.maven.scm.repository.ScmRepository;
+import org.apache.maven.scm.repository.ScmRepositoryException;
 import org.apache.maven.shared.utils.StringUtils;
 import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.maven.shared.utils.io.FileUtils;
@@ -408,10 +412,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                 ScmFileSet fileSet = new ScmFileSet(basedir);
 
                 CheckOutScmResult result = null;
-                if (scmVersion != null) {
-                    result = scmManager.checkOut(repository, fileSet, true);
-                } else {
-                    result = scmManager.checkOut(repository, fileSet, scmVersion, true);
+                try {
+                    if (scmVersion != null) {
+                        result = scmManager.checkOut(repository, fileSet, true);
+                    } else {
+                        result = scmManager.checkOut(repository, fileSet, scmVersion, true);
+                    }
+                } catch (ScmException se) {
+                    throw new MojoExecutionException("An error occurred while checking sources from "
+                                                     + repository
+                                                     + " for artifact "
+                                                     + pomArtifactId
+                                                     + " model", se);
                 }
 
                 if (!result.isSuccess()) {
@@ -464,8 +476,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                         throw new MojoExecutionException("An error occurred while copying sources from " + source + " to " + destination, e);
                     }
                 }
-            } catch (Exception e) {
-                throw new MojoExecutionException("An error occurred while processing SCM by reading " + pomArtifactId + " model", e);
+            } catch (ModelBuildingException mbe) {
+                throw new MojoExecutionException("An error occurred while building " + pomArtifactId + " model", mbe);
+            } catch (ScmRepositoryException se) {
+                throw new MojoExecutionException("An error occurred while reading SCM from " + pomArtifactId + " model", se);
+            } catch (NoSuchScmProviderException nsspe) {
+                getLog().error(pomArtifactId + " model does not specify SCM provider", nsspe);
             }
         }
     }
