@@ -25,13 +25,9 @@ import java.util.Collection;
 import java.util.Formatter;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.Manifest;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.json.Json;
 import javax.json.stream.JsonParser;
@@ -41,21 +37,10 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
-import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Model;
-import org.apache.maven.model.Parent;
-import org.apache.maven.model.Repository;
 import org.apache.maven.model.Scm;
-import org.apache.maven.model.building.DefaultModelBuildingRequest;
-import org.apache.maven.model.building.FileModelSource;
 import org.apache.maven.model.building.ModelBuilder;
-import org.apache.maven.model.building.ModelBuildingException;
 import org.apache.maven.model.building.ModelBuildingRequest;
-import org.apache.maven.model.building.ModelBuildingResult;
-import org.apache.maven.model.building.ModelSource;
-import org.apache.maven.model.resolution.InvalidRepositoryException;
-import org.apache.maven.model.resolution.ModelResolver;
-import org.apache.maven.model.resolution.UnresolvableModelException;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -65,7 +50,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.scm.ScmException;
 import org.apache.maven.scm.ScmFileSet;
-import org.apache.maven.scm.ScmRevision;
 import org.apache.maven.scm.ScmTag;
 import org.apache.maven.scm.ScmVersion;
 import org.apache.maven.scm.command.checkout.CheckOutScmResult;
@@ -100,13 +84,13 @@ import edu.emory.mathcs.backport.java.util.Arrays;
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
-public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelResolver {
-
-    private static final String CLASSIFIER_EMPTY = "";
-
-    private static final String TYPE_POM = "pom";
+public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String API_REGIONS_KEY = "api-regions";
+
+    private static final String SCM_TAG = "scm-tag";
+
+    private static final String SCM_LOCATION = "scm-location";
 
     private static final String NAME_KEY = "name";
 
@@ -131,18 +115,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
 
     @Parameter
     private Set<String> excludeRegions;
-
-    @Parameter
-    private Properties scmRewrite;
-
-    @Parameter(defaultValue = "-Rev, -REV, -R")
-    private String[] revisionMarkers;
-
-    @Parameter
-    private Set<String> suppressSCMResolutions;
-
-    @Parameter
-    private List<String> suppressResolvedProfiles;
 
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
@@ -238,7 +210,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
             computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
 
             // download sources
-            downloadSources(artifactId, deflatedSourcesDir, checkedOutSourcesDir);
+            downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
@@ -324,7 +296,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
         getLog().debug(Arrays.toString(includeResources) + " resources in " + destDirectory + " successfully renamed");
     }
 
-    private void downloadSources(ArtifactId artifactId, File deflatedSourcesDir, File checkedOutSourcesDir) throws MojoExecutionException {
+    private void downloadSources(Artifact artifact, File deflatedSourcesDir, File checkedOutSourcesDir) throws MojoExecutionException {
+        ArtifactId artifactId = artifact.getId();
         ArtifactId sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
@@ -338,74 +311,42 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                           + t.getMessage()
                           + ", following back to source checkout...");
 
-            // -sources artifact is not available, let's checkout sources
-            ArtifactId pomArtifactId = newArtifacId(artifactId,
-                                                    null,
-                                                    "pom");
+            // fallback to Artifacts SCM metadata first
+            String connection = artifact.getMetadata().get(SCM_LOCATION);
+            String tag = artifact.getMetadata().get(SCM_TAG);
+
+            // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
+            ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
             File pomFile = retrieve(pomArtifactId);
             getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
 
-            // read the real model (automatically include parent and so on...)
-            ModelBuildingRequest request = new DefaultModelBuildingRequest();
-            request.setProcessPlugins(false);
-            request.setPomFile(pomFile);
-            request.setInactiveProfileIds(suppressResolvedProfiles);
-            request.setValidationLevel(ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL);
-            request.setModelResolver(this);
+            // read model
+            Model pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
+            getLog().debug("POM model " + pomArtifactId + " successfully read, processing the SCM...");
+
+            Scm scm = pomModel.getScm();
+            if (scm != null) {
+                connection = setIfNull(connection, scm.getConnection());
+                tag = setIfNull(tag, scm.getTag());
+            }
+
+            if (connection == null) {
+                getLog().warn("SCM not defined in "
+                              + artifactId
+                              + " bundle neither in "
+                              + pomArtifactId
+                              + " POM file, sources can not be retrieved, then will be ignored");
+                return;
+            }
 
             try {
-                ModelBuildingResult modelBuildingResult = modelBuilder.build(request);
-                Model pomModel = modelBuildingResult.getEffectiveModel();
-
-                getLog().debug("POM model " + pomArtifactId + " successfully read, processing the SCM...");
-
-                Scm scm = pomModel.getScm();
-                if (scm == null) {
-                    if (suppressSCMResolutions != null && suppressSCMResolutions.contains(pomArtifactId.toMvnId())) {
-                        getLog().warn("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved, but ignored due to the suppressSCMResolutions configuration");
-                        return;
-                    } else {
-                        throw new MojoExecutionException("SCM not defined in POM " + pomArtifactId + ", sources can not be retrieved");
-                    }
-                }
-
-                String connection = scm.getConnection();
-                String tag = scm.getTag();
-
-                if (scmRewrite != null && !scmRewrite.isEmpty()) {
-                    dance : for (Entry<Object, Object> rewrite : scmRewrite.entrySet()) {
-                        Pattern pattern = Pattern.compile((String) rewrite.getKey());
-                        Matcher matcher = pattern.matcher(connection);
-                        if (matcher.matches()) {
-                            if (matcher.groupCount() > 0) {
-                                tag = matcher.group(1);
-                            }
-
-                            connection = matcher.replaceAll((String) rewrite.getValue());
-
-                            break dance;
-                        }
-                    }
-                }
-
                 ScmRepository repository = scmManager.makeScmRepository(connection);
 
                 ScmVersion scmVersion = null;
-                String modelVersion = artifactId.getVersion();
                 if (tag != null) {
                     scmVersion = new ScmTag(tag);
-                } else if (revisionMarkers != null && revisionMarkers.length > 0) {
-                    dance : for (String revisionMarker : revisionMarkers) {
-                        int i = modelVersion.indexOf(revisionMarker);
-                        if (i == -1) {
-                            i = modelVersion.indexOf(revisionMarker);
-                            String revision = modelVersion.substring(i + revisionMarker.length());
-                            scmVersion = new ScmRevision(revision);
-                            break dance;
-                        }
-                    }
                 }
 
                 File basedir = newDir(checkedOutSourcesDir, artifactId.getArtifactId());
@@ -422,25 +363,25 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                     throw new MojoExecutionException("An error occurred while checking sources from "
                                                      + repository
                                                      + " for artifact "
-                                                     + pomArtifactId
+                                                     + artifactId
                                                      + " model", se);
                 }
 
                 if (!result.isSuccess()) {
                     throw new MojoExecutionException("An error occurred while checking out sources from "
-                                                     + scm.getConnection()
+                                                     + connection
                                                      + ": "
                                                      + result.getProviderMessage());
                 }
 
-                // retrieve the exact pom location
+                // retrieve the exact pom location to detect the bundle path in the repo
                 DirectoryScanner pomScanner = new DirectoryScanner();
                 pomScanner.setBasedir(basedir);
                 pomScanner.setIncludes("**/pom.xml");
                 pomScanner.scan();
                 for (String pomFileLocation : pomScanner.getIncludedFiles()) {
                     pomFile = new File(basedir, pomFileLocation);
-                    pomModel = modelBuilder.buildRawModel(pomFile, 0, false).get();
+                    pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
 
                     if (artifactId.getArtifactId().equals(pomModel.getArtifactId())) {
                         basedir = pomFile.getParentFile();
@@ -455,6 +396,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
 
                     // there could be just resources artifacts
                     if (!javaSources.exists()) {
+                        getLog().debug(artifactId + " does not contain any source, will be ignored");
                         return;
                     }
                 }
@@ -476,12 +418,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
                         throw new MojoExecutionException("An error occurred while copying sources from " + source + " to " + destination, e);
                     }
                 }
-            } catch (ModelBuildingException mbe) {
-                throw new MojoExecutionException("An error occurred while building " + pomArtifactId + " model", mbe);
             } catch (ScmRepositoryException se) {
-                throw new MojoExecutionException("An error occurred while reading SCM from " + pomArtifactId + " model", se);
+                throw new MojoExecutionException("An error occurred while reading SCM from "
+                                                 + connection
+                                                 + " connection for bundle "
+                                                 + artifactId, se);
             } catch (NoSuchScmProviderException nsspe) {
-                getLog().error(pomArtifactId + " model does not specify SCM provider", nsspe);
+                getLog().error(artifactId
+                               + " bundle points to an SCM connection "
+                               + connection
+                               + " which does not specify a valid or supported SCM provider", nsspe);
             }
         }
     }
@@ -743,40 +689,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ModelRe
         return dir;
     }
 
-    // model resolver methods
-
-    @Override
-    public void addRepository(Repository repository) throws InvalidRepositoryException {
-        // not needed in this version
-    }
-
-    @Override
-    public void addRepository(Repository repository, boolean replace) throws InvalidRepositoryException {
-        // not needed in this version
-    }
-
-    @Override
-    public ModelResolver newCopy() {
-        // should not be used in this version
-        return this;
-    }
-
-    @Override
-    public ModelSource resolveModel(Dependency dependency) throws UnresolvableModelException {
-        return resolveModel(dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
-    }
-
-    @Override
-    public ModelSource resolveModel(Parent parent) throws UnresolvableModelException {
-        return resolveModel(parent.getGroupId(), parent.getArtifactId(), parent.getVersion());
-    }
-
-    @Override
-    public ModelSource resolveModel(String groupId, String artifactId, String version)
-            throws UnresolvableModelException {
-        ArtifactId pomArtifactId = new ArtifactId(groupId, artifactId, version, CLASSIFIER_EMPTY, TYPE_POM);
-        File pomFile = retrieve(pomArtifactId);
-        return new FileModelSource(pomFile);
+    private static <T> T setIfNull(T what, T with) {
+        if (what == null) {
+            return with;
+        }
+        return what;
     }
 
 }
