@@ -1,0 +1,178 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with this
+ * work for additional information regarding copyright ownership. The ASF
+ * licenses this file to You under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package org.apache.sling.feature.maven.mojos;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.Arrays;
+import java.util.Collection;
+
+import org.apache.commons.exec.CommandLine;
+import org.apache.commons.exec.DefaultExecutor;
+import org.apache.commons.lang3.SystemUtils;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
+import org.codehaus.plexus.util.StringUtils;
+
+final class JavadocExecutor {
+
+    private static final char QUOTE_CHAR = '"';
+
+    private final CommandLine javadocCommand;
+
+    public JavadocExecutor() throws MojoExecutionException {
+        javadocCommand = new CommandLine(getJavadocExecutable());
+        addArgument("-J-Xmx2048m");
+    }
+
+    public <T> JavadocExecutor addArgument(T value) {
+        javadocCommand.addArgument(String.valueOf(value));
+        return this;
+    }
+
+    public <T> JavadocExecutor addQuotedArgument(T value) {
+        return addArgument(StringUtils.quoteAndEscape(String.valueOf(value), QUOTE_CHAR));
+    }
+
+    public <T> JavadocExecutor addArgument(Collection<T> value, String valueSeparator) {
+        return addArgument(StringUtils.join(value.iterator(), valueSeparator));
+    }
+
+    public <T> JavadocExecutor addArguments(Collection<T> value) {
+        for (T current : value) {
+            addArgument(current);
+        }
+        return this;
+    }
+
+    public <T> JavadocExecutor addArguments(String key, T[] values) {
+        return addArguments(key, Arrays.asList(values));
+    }
+
+    public <T> JavadocExecutor addArguments(String key, Collection<T> value) {
+        for (T current : value) {
+            addArgument(key);
+            addArgument(current);
+        }
+        return this;
+    }
+
+    public void execute(File workingDir, Log logger) throws MojoExecutionException {
+        logger.info("Executing javadoc tool: " + javadocCommand);
+
+        DefaultExecutor executor = new DefaultExecutor();
+        executor.setWorkingDirectory(workingDir);
+        executor.setExitValues(new int[] { 1, 0, -1 });
+        try {
+            executor.getStreamHandler().setProcessInputStream(new LoggerOutputStream(logger));
+            executor.execute(javadocCommand);
+        } catch (IOException ioe) {
+            throw new MojoExecutionException("Javadoc tool cannot be invoked on that machine", ioe);
+        }
+    }
+
+    /**
+     * Try to find javadocExe from System.getProperty( "java.home" ) By default,
+     * System.getProperty( "java.home" ) = JRE_HOME and JRE_HOME should be in the
+     * JDK_HOME.
+     *
+     * @return
+     */
+    private static File getJavadocExecutable() throws MojoExecutionException {
+        String javadocCommand = "javadoc" + (SystemUtils.IS_OS_WINDOWS ? ".exe" : "");
+
+        File javadocExe;
+
+        // For IBM's JDK 1.2
+        if (SystemUtils.IS_OS_AIX) {
+            javadocExe = getFile(SystemUtils.getJavaHome(), "..", "sh", javadocCommand);
+        }
+        // For Apple's JDK 1.6.x (and older?) on Mac OSX
+        else if (SystemUtils.IS_OS_MAC_OSX && org.apache.commons.lang.SystemUtils.JAVA_VERSION_FLOAT < 1.7f) {
+            javadocExe = getFile(SystemUtils.getJavaHome(), "bin", javadocCommand);
+        } else {
+            javadocExe = getFile(SystemUtils.getJavaHome(), "..", "bin", javadocCommand);
+        }
+
+        // ----------------------------------------------------------------------
+        // Try to find javadocExe from JAVA_HOME environment variable
+        // ----------------------------------------------------------------------
+        if (!javadocExe.exists() || !javadocExe.isFile()) {
+            String javaHome = System.getenv().get("JAVA_HOME");
+            if (StringUtils.isEmpty(javaHome)) {
+                throw new MojoExecutionException("The environment variable JAVA_HOME is not correctly set.");
+            }
+
+            File javaHomeDir = new File(javaHome);
+            if ((!javaHomeDir.exists()) || javaHomeDir.isFile()) {
+                throw new MojoExecutionException("The environment variable JAVA_HOME=" + javaHome
+                        + " doesn't exist or is not a valid directory.");
+            }
+
+            javadocExe = getFile(javaHomeDir, "bin", javadocCommand);
+        }
+
+        if (!javadocExe.exists() || !javadocExe.isFile()) {
+            throw new MojoExecutionException("The javadoc executable '" + javadocExe
+                    + "' doesn't exist or is not a file. Verify the JAVA_HOME environment variable.");
+        }
+
+        return javadocExe;
+    }
+
+    private static File getFile(File parent, String... path) {
+        File tmp = parent;
+        for (String current : path) {
+            tmp = new File(tmp, current);
+        }
+        return tmp;
+    }
+
+    private static final class LoggerOutputStream extends OutputStream {
+
+        private final StringBuilder output = new StringBuilder();
+
+        private final Log log;
+
+        public LoggerOutputStream(Log log) {
+            this.log = log;
+        }
+
+        @Override
+        public void write(int data) throws IOException {
+            output.append((char) data);
+            if ('\n' == data) {
+                flush();
+            }
+        }
+
+        @Override
+        public void flush() throws IOException {
+            log.info(output);
+            output.setLength(0);
+        }
+
+        @Override
+        public void close() throws IOException {
+            flush();
+            super.close();
+        }
+
+    }
+
+}
