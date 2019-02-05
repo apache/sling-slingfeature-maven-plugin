@@ -20,7 +20,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Formatter;
 import java.util.Iterator;
@@ -33,6 +35,8 @@ import javax.json.Json;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 
+import org.apache.commons.lang3.JavaVersion;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
@@ -102,7 +106,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String JAVADOC = "javadoc";
 
-    private static final String[] OUT_DIRS = { SOURCES, JAVADOC };
+    private static final String CLASS_EXTENSION = ".class";
 
     @Parameter
     private FeatureSelectionConfig selection;
@@ -115,6 +119,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
     private Set<String> excludeRegions;
+
+    @Parameter
+    private String[] javadocLinks;
 
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
@@ -186,16 +193,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // calculate all api-regions first, taking the inheritance in account
         List<ApiRegion> apiRegions = fromJson(feature, jsonRepresentation);
 
-        // setup all output directories
-        for (ApiRegion apiRegion : apiRegions) {
-            File regionDir = new File(featureDir, apiRegion.getName());
-            regionDir.mkdirs();
-
-            for (String dirName : OUT_DIRS) {
-                new File(regionDir, dirName).mkdir();
-            }
-        }
-
         // for each artifact included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
             ArtifactId artifactId = artifact.getId();
@@ -222,9 +219,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 continue;
             }
 
-            recollect(feature.getId(), apiRegion, deflatedBinDir, featureDir, APIS);
-            recollect(feature.getId(), apiRegion, deflatedSourcesDir, featureDir, SOURCES);
-            // TODO create -javadoc artifacts
+            File regionDir = new File(featureDir, apiRegion.getName());
+
+            File apisDir = new File(regionDir, APIS);
+            recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
+            inflate(feature.getId(), apisDir, apiRegion, APIS);
+
+            File sourcesDir = new File(regionDir, SOURCES);
+            recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
+            inflate(feature.getId(), sourcesDir, apiRegion, SOURCES);
+
+            File javadocsDir = new File(regionDir, JAVADOC);
+            generateJavadoc(apiRegion, sourcesDir, javadocsDir);
+            inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC);
         }
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
@@ -467,13 +474,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private void recollect(ArtifactId featureId, ApiRegion apiRegion, File deflatedDir, File featureDir, String classifier) throws MojoExecutionException {
+    private void recollect(File featureDir, File deflatedDir, ApiRegion apiRegion, File destination) throws MojoExecutionException {
+        destination.mkdirs();
+
         DirectoryScanner directoryScanner = new DirectoryScanner();
         directoryScanner.setBasedir(deflatedDir);
 
         // for each region, include both APIs and resources
         String[] includes;
-        if (APIS.equals(classifier)) {
+        if (APIS.equals(destination.getName())) {
             includes = concatenate(apiRegion.getFilteringApis(), includeResources);
         } else {
             includes = apiRegion.getFilteringApis();
@@ -481,10 +490,34 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         directoryScanner.setIncludes(includes);
         directoryScanner.scan();
 
+        for (String includedFile : directoryScanner.getIncludedFiles()) {
+            File target = new File(destination, includedFile.substring(includedFile.indexOf(File.separator) + 1));
+            target.getParentFile().mkdirs();
+
+            try {
+                if (includedFile.endsWith(CLASS_EXTENSION)) {
+                    FileUtils.copyFile(new File(deflatedDir, includedFile), target);
+                } else {
+                    FileUtils.copyFile(new File(deflatedDir, includedFile), target, StandardCharsets.UTF_8.name());
+                }
+            } catch (IOException e) {
+                throw new MojoExecutionException("An error occurred while copying file "
+                                                 + includedFile
+                                                 + " to "
+                                                 + destination, e);
+            }
+        }
+    }
+
+    private void inflate(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier) throws MojoExecutionException {
+        DirectoryScanner directoryScanner = new DirectoryScanner();
+        directoryScanner.setBasedir(collectedDir);
+        directoryScanner.setIncludes("**/*.*");
+        directoryScanner.scan();
+
         JarArchiver jarArchiver = new JarArchiver();
         for (String includedFile : directoryScanner.getIncludedFiles()) {
-            // first level is always the filename...
-            jarArchiver.addFile(new File(deflatedDir, includedFile), includedFile.substring(includedFile.indexOf(File.separator) + 1));
+            jarArchiver.addFile(new File(collectedDir, includedFile), includedFile);
         }
 
         String bundleName;
@@ -532,6 +565,52 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     + target
                     +" archive", e);
         }
+    }
+
+    private void generateJavadoc(ApiRegion apiRegion, File sourcesDir, File javadocDir) throws MojoExecutionException {
+        javadocDir.mkdirs();
+
+        JavadocExecutor javadocExecutor = new JavadocExecutor()
+                                          .addArgument("-public")
+                                          .addArgument("-d")
+                                          .addArgument(javadocDir.getAbsolutePath())
+                                          .addArgument("-sourcepath")
+                                          .addArgument(sourcesDir.getAbsolutePath());
+
+        if (isNotEmpty(project.getName())) {
+            javadocExecutor.addArgument("-doctitle")
+                           .addQuotedArgument(project.getName());
+        }
+
+        if (isNotEmpty(project.getDescription())) {
+            javadocExecutor.addArgument("-windowtitle")
+                           .addQuotedArgument(project.getDescription());
+        }
+
+        if (isNotEmpty(project.getInceptionYear())
+                && project.getOrganization() != null
+                && isNotEmpty(project.getOrganization().getName())) {
+            javadocExecutor.addArgument("-bottom")
+                           .addQuotedArgument(String.format("Copyright &copy; %s - %s %s. All Rights Reserved",
+                                              project.getInceptionYear(),
+                                              Calendar.getInstance().get(Calendar.YEAR),
+                                              project.getOrganization().getName()));
+        }
+
+        if (javadocLinks != null && javadocLinks.length > 0) {
+            javadocExecutor.addArguments("-link", javadocLinks);
+        }
+
+        //javadocExecutor.addArgument("-classpath")
+        //               .addArgument(javadocClasspath, File.pathSeparator);
+
+        // turn off doclint when running Java8
+        // http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
+        if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8)) {
+            javadocExecutor.addArgument("-Xdoclint:none").addArgument("-quiet");
+        }
+
+        javadocExecutor.addArguments(apiRegion.apis).execute(javadocDir, getLog());
     }
 
     private static ArtifactId newArtifacId(ArtifactId original, String classifier, String type) {
@@ -694,6 +773,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             return with;
         }
         return what;
+    }
+
+    private static boolean isNotEmpty(String s) {
+        return s != null && !s.isEmpty();
     }
 
 }
