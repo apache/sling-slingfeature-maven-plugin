@@ -106,7 +106,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String JAVADOC = "javadoc";
 
-    private static final String CLASS_EXTENSION = ".class";
+    private static final String JAVA_EXTENSION = ".java";
+
+    private static final String NON_ASCII_PATTERN = "[^\\p{ASCII}]";
+
+    private static final String EMPTY_STRING = "";
 
     @Parameter
     private FeatureSelectionConfig selection;
@@ -495,10 +499,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             target.getParentFile().mkdirs();
 
             try {
-                if (includedFile.endsWith(CLASS_EXTENSION)) {
-                    FileUtils.copyFile(new File(deflatedDir, includedFile), target);
+                File source = new File(deflatedDir, includedFile);
+
+                // this to prevent 'unmappable character for encoding UTF8' error
+                if (includedFile.endsWith(JAVA_EXTENSION)) {
+                    String javaSource = FileUtils.fileRead(source, StandardCharsets.UTF_8.name())
+                                                 .replaceAll(NON_ASCII_PATTERN, EMPTY_STRING);
+                    FileUtils.fileWrite(target, StandardCharsets.UTF_8.name(), javaSource);
                 } else {
-                    FileUtils.copyFile(new File(deflatedDir, includedFile), target, StandardCharsets.UTF_8.name());
+                    FileUtils.copyFile(source, target);
                 }
             } catch (IOException e) {
                 throw new MojoExecutionException("An error occurred while copying file "
