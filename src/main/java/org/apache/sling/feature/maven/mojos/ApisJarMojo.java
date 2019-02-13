@@ -110,7 +110,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String NON_ASCII_PATTERN = "[^\\p{ASCII}]";
 
-    private static final String EMPTY_STRING = "";
+    private static final String SPACE = " ";
 
     @Parameter
     private FeatureSelectionConfig selection;
@@ -504,7 +504,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 // this to prevent 'unmappable character for encoding UTF8' error
                 if (includedFile.endsWith(JAVA_EXTENSION)) {
                     String javaSource = FileUtils.fileRead(source, StandardCharsets.UTF_8.name())
-                                                 .replaceAll(NON_ASCII_PATTERN, EMPTY_STRING);
+                                                 .replaceAll(NON_ASCII_PATTERN, SPACE);
                     FileUtils.fileWrite(target, StandardCharsets.UTF_8.name(), javaSource);
                 } else {
                     FileUtils.copyFile(source, target);
