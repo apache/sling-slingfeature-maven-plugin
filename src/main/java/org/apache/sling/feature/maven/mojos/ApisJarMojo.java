@@ -110,7 +110,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String NON_ASCII_PATTERN = "[^\\p{ASCII}]";
 
-    private static final String EMPTY_STRING = "";
+    private static final String EMPTY_STRING = " ";
 
     @Parameter
     private FeatureSelectionConfig selection;
