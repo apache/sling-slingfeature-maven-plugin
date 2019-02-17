@@ -25,11 +25,13 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.jar.Manifest;
+import java.util.regex.Pattern;
 
 import javax.json.Json;
 import javax.json.stream.JsonParser;
@@ -696,6 +698,62 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final class ApiRegion {
 
+        private static final Pattern PACKAGE_NAME_VALIDATION =
+                Pattern.compile("^[a-z]+(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
+
+        private static final Set<String> KEYWORDS = new HashSet<>();
+
+        static {
+            KEYWORDS.add("abstract");
+            KEYWORDS.add("continue");
+            KEYWORDS.add("for");
+            KEYWORDS.add("new");
+            KEYWORDS.add("switch");
+            KEYWORDS.add("assert");
+            KEYWORDS.add("default");
+            KEYWORDS.add("package");
+            KEYWORDS.add("synchronized");
+            KEYWORDS.add("boolean");
+            KEYWORDS.add("do");
+            KEYWORDS.add("if");
+            KEYWORDS.add("private");
+            KEYWORDS.add("this");
+            KEYWORDS.add("break");
+            KEYWORDS.add("double");
+            KEYWORDS.add("implements");
+            KEYWORDS.add("protected");
+            KEYWORDS.add("throw");
+            KEYWORDS.add("byte");
+            KEYWORDS.add("else");
+            KEYWORDS.add("import");
+            KEYWORDS.add("public");
+            KEYWORDS.add("throws");
+            KEYWORDS.add("case");
+            KEYWORDS.add("enum");
+            KEYWORDS.add("instanceof");
+            KEYWORDS.add("return");
+            KEYWORDS.add("transient");
+            KEYWORDS.add("catch");
+            KEYWORDS.add("extends");
+            KEYWORDS.add("int");
+            KEYWORDS.add("short");
+            KEYWORDS.add("try");
+            KEYWORDS.add("char");
+            KEYWORDS.add("final");
+            KEYWORDS.add("interface");
+            KEYWORDS.add("static");
+            KEYWORDS.add("void");
+            KEYWORDS.add("class");
+            KEYWORDS.add("finally");
+            KEYWORDS.add("long");
+            KEYWORDS.add("strictfp");
+            KEYWORDS.add("volatile");
+            KEYWORDS.add("float");
+            KEYWORDS.add("native");
+            KEYWORDS.add("super");
+            KEYWORDS.add("while");
+        }
+
         private final Set<String> apis = new TreeSet<>();
 
         private final Set<String> filteringApis = new TreeSet<>();
@@ -719,6 +777,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         public void addApi(String api) {
+            // ignore non well-formed packages names, i.e. javax.jms.doc-files
+            if (!PACKAGE_NAME_VALIDATION.matcher(api).matches()) {
+                // ignore it
+                return;
+            }
+
+            // ignore packages with reserved keywords, i.e. org.apache.commons.lang.enum
+            for (String apiPart : api.split("\\.")) {
+                if (KEYWORDS.contains(apiPart)) {
+                    return;
+                }
+            }
+
             apis.add(api);
             filteringApis.add("**/" + api.replace('.', '/') + "/*");
         }
