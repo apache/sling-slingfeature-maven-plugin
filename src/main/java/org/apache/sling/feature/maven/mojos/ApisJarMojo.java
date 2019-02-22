@@ -43,6 +43,9 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
+import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.handler.ArtifactHandler;
+import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
 import org.apache.maven.model.building.ModelBuilder;
@@ -54,6 +57,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.artifact.AttachedArtifact;
 import org.apache.maven.scm.ScmException;
 import org.apache.maven.scm.ScmFileSet;
 import org.apache.maven.scm.ScmTag;
@@ -108,6 +112,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static final String JAVADOC = "javadoc";
 
+    private static final String JAR_TYPE = "jar";
+
     private static final String JAVA_EXTENSION = ".java";
 
     private static final String NON_ASCII_PATTERN = "[^\\p{ASCII}]";
@@ -139,6 +145,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private ArchiverManager archiverManager;
 
     private ArtifactProvider artifactProvider;
+
+    private ArtifactHandler artifactHandler = new DefaultArtifactHandler(JAR_TYPE);
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -531,20 +539,27 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             jarArchiver.addFile(new File(collectedDir, includedFile), includedFile);
         }
 
-        String bundleName;
+        String artifactId;
         if (featureId.getClassifier() != null) {
-            bundleName = String.format("%s-%s-%s-%s",
-                    featureId.getArtifactId(),
-                    featureId.getClassifier(),
-                    apiRegion.getName(),
-                    classifier);
+            artifactId = String.format("%s-%s-%s",
+                                       featureId.getArtifactId(),
+                                       featureId.getClassifier(),
+                                       apiRegion.getName());
         } else {
-            bundleName = String.format("%s-%s-%s",
-                    featureId.getArtifactId(),
-                    apiRegion.getName(),
-                    classifier);
+            artifactId = String.format("%s-%s",
+                                       featureId.getArtifactId(),
+                                       apiRegion.getName());
         }
-        String symbolicName = bundleName.replace('-', '.');
+        org.apache.maven.artifact.Artifact parentArtifact = new DefaultArtifact(featureId.getGroupId(),
+                                                                                artifactId,
+                                                                                featureId.getVersion(),
+                                                                                org.apache.maven.artifact.Artifact.SCOPE_PROVIDED,
+                                                                                JAR_TYPE,
+                                                                                featureId.getClassifier(),
+                                                                                artifactHandler);
+        org.apache.maven.artifact.Artifact attachedArtifact = new AttachedArtifact(parentArtifact, JAR_TYPE, classifier, artifactHandler);
+
+        String symbolicName = artifactId.replace('-', '.');
 
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
         if (APIS.equals(classifier)) {
@@ -554,15 +569,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Bundle-Version", featureId.getOSGiVersion().toString());
             archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
             archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
-            archiveConfiguration.addManifestEntry("Bundle-Name", bundleName);
+            archiveConfiguration.addManifestEntry("Bundle-Name", artifactId);
         }
         if (project.getOrganization() != null) {
             archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
         }
         archiveConfiguration.addManifestEntry("Specification-Version", featureId.getVersion());
-        archiveConfiguration.addManifestEntry("Implementation-Title", bundleName);
+        archiveConfiguration.addManifestEntry("Implementation-Title", artifactId);
 
-        String targetName = String.format("%s-%s.jar", bundleName, featureId.getVersion());
+        String targetName = String.format("%s-%s-%s.jar", artifactId, featureId.getVersion(), classifier);
         File target = new File(mainOutputDir, targetName);
         MavenArchiver archiver = new MavenArchiver();
         archiver.setArchiver(jarArchiver);
@@ -570,11 +585,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         try {
             archiver.createArchive(mavenSession, project, archiveConfiguration);
-            projectHelper.attachArtifact(project, "jar", featureId.getClassifier() + APIS, target);
+
+            attachedArtifact.setFile(target);
+            project.addAttachedArtifact(attachedArtifact);
         } catch (Exception e) {
             throw new MojoExecutionException("An error occurred while creating APIs "
                     + target
-                    +" archive", e);
+                    + " archive", e);
         }
     }
 
