@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.Formatter;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -111,6 +112,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private static final String JAR_TYPE = "jar";
 
     private static final String JAVA_EXTENSION = ".java";
+
+    private static final String CND_EXTENSION = ".cnd";
 
     private static final String NON_ASCII_PATTERN = "[^\\p{ASCII}]";
 
@@ -230,16 +233,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             File regionDir = new File(featureDir, apiRegion.getName());
 
             File apisDir = new File(regionDir, APIS);
-            recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
-            inflate(feature.getId(), apisDir, apiRegion, APIS);
+            List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
+            inflate(feature.getId(), apisDir, apiRegion, APIS, nodeTypes);
 
             File sourcesDir = new File(regionDir, SOURCES);
             recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
-            inflate(feature.getId(), sourcesDir, apiRegion, SOURCES);
+            inflate(feature.getId(), sourcesDir, apiRegion, SOURCES, null);
 
             File javadocsDir = new File(regionDir, JAVADOC);
             generateJavadoc(apiRegion, sourcesDir, javadocsDir);
-            inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC);
+            inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC, null);
         }
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
@@ -482,7 +485,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private void recollect(File featureDir, File deflatedDir, ApiRegion apiRegion, File destination) throws MojoExecutionException {
+    private List<String> recollect(File featureDir, File deflatedDir, ApiRegion apiRegion, File destination) throws MojoExecutionException {
+        final List<String> nodeTypes = new LinkedList<>();
+
         destination.mkdirs();
 
         DirectoryScanner directoryScanner = new DirectoryScanner();
@@ -499,7 +504,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         directoryScanner.scan();
 
         for (String includedFile : directoryScanner.getIncludedFiles()) {
-            File target = new File(destination, includedFile.substring(includedFile.indexOf(File.separator) + 1));
+            String fileName = includedFile.substring(includedFile.indexOf(File.separator) + 1);
+
+            File target = new File(destination, fileName);
             target.getParentFile().mkdirs();
 
             try {
@@ -511,6 +518,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                                  .replaceAll(NON_ASCII_PATTERN, SPACE);
                     FileUtils.fileWrite(target, StandardCharsets.UTF_8.name(), javaSource);
                 } else {
+                    if (includedFile.endsWith(CND_EXTENSION)) {
+                        nodeTypes.add(fileName);
+                    }
+
                     FileUtils.copyFile(source, target);
                 }
             } catch (IOException e) {
@@ -520,9 +531,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                                  + destination, e);
             }
         }
+
+        return nodeTypes;
     }
 
-    private void inflate(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier) throws MojoExecutionException {
+    private void inflate(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier, List<String> nodeTypes) throws MojoExecutionException {
         DirectoryScanner directoryScanner = new DirectoryScanner();
         directoryScanner.setBasedir(collectedDir);
         directoryScanner.setIncludes("**/*.*");
@@ -555,6 +568,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
             archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
             archiveConfiguration.addManifestEntry("Bundle-Name", bundleName);
+
+            if (nodeTypes != null && !nodeTypes.isEmpty()) {
+                archiveConfiguration.addManifestEntry("Sling-Nodetypes", StringUtils.join(nodeTypes.iterator(), ","));
+            }
         }
         if (project.getOrganization() != null) {
             archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
