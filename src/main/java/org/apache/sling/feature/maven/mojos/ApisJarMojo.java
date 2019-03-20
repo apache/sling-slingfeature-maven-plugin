@@ -44,6 +44,10 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
+import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
+import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
+import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
 import org.apache.maven.model.building.ModelBuilder;
@@ -55,6 +59,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.repository.RepositorySystem;
 import org.apache.maven.scm.ScmException;
 import org.apache.maven.scm.ScmFileSet;
 import org.apache.maven.scm.ScmTag;
@@ -91,7 +96,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
-public class ApisJarMojo extends AbstractIncludingFeatureMojo {
+public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ArtifactFilter {
 
     private static final String API_REGIONS_KEY = "api-regions";
 
@@ -142,6 +147,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     @Component
     private ArchiverManager archiverManager;
+
+    @Component
+    private RepositorySystem repositorySystem;
 
     private ArtifactProvider artifactProvider;
 
@@ -204,6 +212,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // calculate all api-regions first, taking the inheritance in account
         List<ApiRegion> apiRegions = fromJson(feature, jsonRepresentation);
 
+        Set<String> javadocClasspath = new HashSet<>();
+
         // for each artifact included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
             ArtifactId artifactId = artifact.getId();
@@ -219,6 +229,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             // download sources
             downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir);
+
+            // to suppress any javadoc error
+
+            buildJavadocClasspath(javadocClasspath, artifactId);
         }
 
         // recollect and package stuff
@@ -241,12 +255,81 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             inflate(feature.getId(), sourcesDir, apiRegion, SOURCES, null);
 
             File javadocsDir = new File(regionDir, JAVADOC);
-            generateJavadoc(apiRegion, sourcesDir, javadocsDir);
+            generateJavadoc(apiRegion, sourcesDir, javadocsDir, javadocClasspath);
             inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC, null);
         }
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
                 .a(" succesfully created").toString());
+    }
+
+    private void buildJavadocClasspath(Set<String> javadocClasspath, ArtifactId artifactId)
+            throws MojoExecutionException {
+        getLog().debug("Retrieving " + artifactId + " and related dependencies...");
+
+        org.apache.maven.artifact.Artifact toBeResolvedArtifact = repositorySystem.createArtifactWithClassifier(artifactId.getGroupId(),
+                                                                                                                artifactId.getArtifactId(),
+                                                                                                                artifactId.getVersion(),
+                                                                                                                artifactId.getType(),
+                                                                                                                artifactId.getClassifier());
+        ArtifactResolutionRequest request = new ArtifactResolutionRequest()
+                                            .setArtifact(toBeResolvedArtifact)
+                                            .setServers(mavenSession.getRequest().getServers())
+                                            .setMirrors(mavenSession.getRequest().getMirrors())
+                                            .setProxies(mavenSession.getRequest().getProxies())
+                                            .setLocalRepository(mavenSession.getLocalRepository())
+                                            .setRemoteRepositories(mavenSession.getRequest().getRemoteRepositories())
+                                            .setForceUpdate(false)
+                                            .setResolveRoot(true)
+                                            .setResolveTransitively(true)
+                                            .setCollectionFilter(this);
+
+        ArtifactResolutionResult result = repositorySystem.resolve(request);
+
+        if (!result.isSuccess()) {
+            if (result.hasCircularDependencyExceptions()) {
+                getLog().warn("Cyclic dependency errors detected:");
+                reportWarningMessages(result.getCircularDependencyExceptions());
+            }
+
+            if (result.hasErrorArtifactExceptions()) {
+                getLog().warn("Resolution errors detected:");
+                reportWarningMessages(result.getErrorArtifactExceptions());
+            }
+
+            if (result.hasMetadataResolutionExceptions()) {
+                getLog().warn("Metadata resolution errors detected:");
+                reportWarningMessages(result.getMetadataResolutionExceptions());
+            }
+
+            if (result.hasMissingArtifacts()) {
+                getLog().warn("Missing artifacts detected:");
+                for (org.apache.maven.artifact.Artifact missingArtifact : result.getMissingArtifacts()) {
+                    getLog().warn(" - " + missingArtifact.getId());
+                }
+            }
+
+            if (result.hasExceptions()) {
+                getLog().warn("Generic errors detected:");
+                for (Exception exception : result.getExceptions()) {
+                    getLog().warn(" - " + exception.getMessage());
+                }
+            }
+        }
+
+        for (org.apache.maven.artifact.Artifact resolvedArtifact : result.getArtifacts()) {
+            javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
+        }
+    }
+
+    private <E extends ArtifactResolutionException> void reportWarningMessages(Collection<E> exceptions) {
+        for (E exception : exceptions) {
+            getLog().warn(" - "
+                          + exception.getMessage()
+                          + " ("
+                          + exception.getArtifact().getId()
+                          + ")");
+        }
     }
 
     private File retrieve(ArtifactId artifactId) {
@@ -354,7 +437,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 getLog().warn("SCM not defined in "
                               + artifactId
                               + " bundle neither in "
-                              + pomArtifactId
+                              + pomModel
                               + " POM file, sources can not be retrieved, then will be ignored");
                 return;
             }
@@ -595,30 +678,30 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private void generateJavadoc(ApiRegion apiRegion, File sourcesDir, File javadocDir) throws MojoExecutionException {
+    private void generateJavadoc(ApiRegion apiRegion, File sourcesDir, File javadocDir, Set<String> javadocClasspath) throws MojoExecutionException {
         javadocDir.mkdirs();
 
-        JavadocExecutor javadocExecutor = new JavadocExecutor()
+        JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
                                           .addArgument("-public")
-                                          .addArgument("-d")
+                                          .addArgument("-d", false)
                                           .addArgument(javadocDir.getAbsolutePath())
-                                          .addArgument("-sourcepath")
+                                          .addArgument("-sourcepath", false)
                                           .addArgument(sourcesDir.getAbsolutePath());
 
         if (isNotEmpty(project.getName())) {
-            javadocExecutor.addArgument("-doctitle")
+            javadocExecutor.addArgument("-doctitle", false)
                            .addQuotedArgument(project.getName());
         }
 
         if (isNotEmpty(project.getDescription())) {
-            javadocExecutor.addArgument("-windowtitle")
+            javadocExecutor.addArgument("-windowtitle", false)
                            .addQuotedArgument(project.getDescription());
         }
 
         if (isNotEmpty(project.getInceptionYear())
                 && project.getOrganization() != null
                 && isNotEmpty(project.getOrganization().getName())) {
-            javadocExecutor.addArgument("-bottom")
+            javadocExecutor.addArgument("-bottom", false)
                            .addQuotedArgument(String.format("Copyright &copy; %s - %s %s. All Rights Reserved",
                                               project.getInceptionYear(),
                                               Calendar.getInstance().get(Calendar.YEAR),
@@ -629,16 +712,24 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             javadocExecutor.addArguments("-link", javadocLinks);
         }
 
-        //javadocExecutor.addArgument("-classpath")
-        //               .addArgument(javadocClasspath, File.pathSeparator);
+        if (!javadocClasspath.isEmpty()) {
+            javadocExecutor.addArgument("-classpath", false)
+                           .addArgument(javadocClasspath, File.pathSeparator);
+        }
 
         // turn off doclint when running Java8
         // http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
         if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8)) {
-            javadocExecutor.addArgument("-Xdoclint:none").addArgument("-quiet");
+            javadocExecutor.addArgument("-Xdoclint:none");
         }
 
-        javadocExecutor.addArguments(apiRegion.apis).execute(javadocDir, getLog());
+        // use the -subpackages to reduce the list of the arguments
+
+        javadocExecutor.addArgument("--allow-script-in-comments")
+                       .addArgument("-subpackages", false)
+                       .addArgument(sourcesDir.list(), File.pathSeparator)
+                       //.addArgument("-J-Xmx2048m")
+                       .execute(javadocDir, getLog());
     }
 
     private static ArtifactId newArtifacId(ArtifactId original, String classifier, String type) {
@@ -874,6 +965,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private static boolean isNotEmpty(String s) {
         return s != null && !s.isEmpty();
+    }
+
+    // artifact filter
+
+    @Override
+    public boolean include(org.apache.maven.artifact.Artifact artifact) {
+        if (org.apache.maven.artifact.Artifact.SCOPE_TEST.equals(artifact.getScope())) {
+            return false;
+        }
+        return true;
     }
 
 }

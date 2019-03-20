@@ -17,8 +17,10 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -33,20 +35,41 @@ final class JavadocExecutor {
 
     private static final char QUOTE_CHAR = '"';
 
-    private final CommandLine javadocCommand;
+    private final File argFile;
 
-    public JavadocExecutor() throws MojoExecutionException {
-        javadocCommand = new CommandLine(getJavadocExecutable());
-        addArgument("-J-Xmx2048m");
+    private final PrintWriter argFileWriter;
+
+    public JavadocExecutor(File regionDir) throws MojoExecutionException {
+        argFile = new File(regionDir, regionDir.getName() + "-javadoc");
+        try {
+            argFileWriter = new PrintWriter(argFile);
+        } catch (FileNotFoundException e) {
+            throw new MojoExecutionException("Impossible to create the javadoc arg file on " + argFile, e);
+        }
     }
 
     public <T> JavadocExecutor addArgument(T value) {
-        javadocCommand.addArgument(String.valueOf(value));
+        return this.addArgument(value, true);
+    }
+
+    public <T> JavadocExecutor addArgument(T value, boolean newLine) {
+        String stringValue = String.valueOf(value);
+
+        if (newLine) {
+            argFileWriter.println(stringValue);
+        } else {
+            argFileWriter.print(stringValue);
+            argFileWriter.print(' ');
+        }
         return this;
     }
 
     public <T> JavadocExecutor addQuotedArgument(T value) {
         return addArgument(StringUtils.quoteAndEscape(String.valueOf(value), QUOTE_CHAR));
+    }
+
+    public <T> JavadocExecutor addArgument(T[] value, String valueSeparator) {
+        return addArgument(StringUtils.join(value, valueSeparator));
     }
 
     public <T> JavadocExecutor addArgument(Collection<T> value, String valueSeparator) {
@@ -66,13 +89,18 @@ final class JavadocExecutor {
 
     public <T> JavadocExecutor addArguments(String key, Collection<T> value) {
         for (T current : value) {
-            addArgument(key);
+            addArgument(key, false);
             addArgument(current);
         }
         return this;
     }
 
     public void execute(File workingDir, Log logger) throws MojoExecutionException {
+        argFileWriter.close();
+
+        CommandLine javadocCommand = new CommandLine(getJavadocExecutable());
+        javadocCommand.addArgument('@' + argFile.getAbsolutePath(), false);
+
         logger.info("Executing javadoc tool: " + javadocCommand);
 
         DefaultExecutor executor = new DefaultExecutor();
