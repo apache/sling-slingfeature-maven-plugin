@@ -24,13 +24,18 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Enumeration;
 import java.util.Formatter;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
+import java.util.StringTokenizer;
 import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 
@@ -38,6 +43,7 @@ import javax.json.Json;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.felix.utils.manifest.Clause;
@@ -153,6 +159,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private ArtifactProvider artifactProvider;
 
+    private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         ProjectHelper.checkPreprocessorRun(this.project);
@@ -216,23 +224,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // for each artifact included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
-            ArtifactId artifactId = artifact.getId();
-            File bundle = retrieve(artifactId);
-            // deflate all bundles first, in order to copy APIs and resources later, depending to the region
-            File deflatedBundleDirectory = deflate(deflatedBinDir, bundle);
-
-            // renaming potential name-collapsing resources
-            renameResources(deflatedBundleDirectory, artifactId);
-
-            // calculate the exported versioned packages in the manifest file for each region
-            computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
-
-            // download sources
-            downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir);
-
-            // to suppress any javadoc error
-
-            buildJavadocClasspath(javadocClasspath, artifactId);
+            onArtifact(artifact, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
@@ -261,6 +253,112 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
                 .a(" succesfully created").toString());
+    }
+
+    private void onArtifact(Artifact artifact,
+                            List<ApiRegion> apiRegions,
+                            Set<String> javadocClasspath,
+                            File deflatedBinDir,
+                            File deflatedSourcesDir,
+                            File checkedOutSourcesDir) throws MojoExecutionException {
+        ArtifactId artifactId = artifact.getId();
+        File bundle = retrieve(artifactId);
+
+        // deflate all bundles first, in order to copy APIs and resources later, depending to the region
+        File deflatedBundleDirectory = deflate(deflatedBinDir, bundle);
+
+        // check if the bundle wraps other bundles
+        computeWrappedBundles(deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+
+        // renaming potential name-collapsing resources
+        renameResources(deflatedBundleDirectory, artifactId);
+
+        // calculate the exported versioned packages in the manifest file for each region
+        computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
+
+        // download sources
+        downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir);
+
+        // to suppress any javadoc error
+        buildJavadocClasspath(javadocClasspath, artifactId);
+    }
+
+    private void computeWrappedBundles(File deflatedBundleDirectory,
+                                       List<ApiRegion> apiRegions,
+                                       Set<String> javadocClasspath,
+                                       File deflatedBinDir,
+                                       File deflatedSourcesDir,
+                                       File checkedOutSourcesDir) throws MojoExecutionException {
+        File manifestFile = new File(deflatedBundleDirectory, "META-INF/MANIFEST.MF");
+
+        getLog().debug("Reading Manifest headers from file " + manifestFile);
+
+        if (!manifestFile.exists()) {
+            throw new MojoExecutionException("Manifest file "
+                    + manifestFile
+                    + " does not exist, make sure "
+                    + deflatedBundleDirectory
+                    + " contains the valid META-INF/MANIFEST.MF file");
+        }
+
+        String bundleClassPath;
+
+        try (FileInputStream input = new FileInputStream(manifestFile)) {
+            Manifest manifest = new Manifest(input);
+            bundleClassPath = manifest.getMainAttributes().getValue("Bundle-ClassPath");
+        } catch (IOException e) {
+            throw new MojoExecutionException("An error occurred while reading " + manifestFile + " file", e);
+        }
+
+        if (bundleClassPath == null || bundleClassPath.isEmpty()) {
+            return;
+        }
+
+        StringTokenizer tokenizer = new StringTokenizer(bundleClassPath, ",");
+        while (tokenizer.hasMoreTokens()) {
+            String bundleName = tokenizer.nextToken();
+            if (".".equals(bundleName)) {
+                continue;
+            }
+
+            File wrappedJar = new File(deflatedBundleDirectory, bundleName);
+
+            getLog().info("Processing wrapped bundle " + wrappedJar);
+
+            Properties properties = new Properties();
+
+            JarFile jarFile = null;
+            try {
+                jarFile = new JarFile(wrappedJar);
+                Enumeration<JarEntry> jarEntries = jarFile.entries();
+                while (jarEntries.hasMoreElements()) {
+                    JarEntry jarEntry = jarEntries.nextElement();
+                    if (!jarEntry.isDirectory()
+                            && pomPropertiesPattern.matcher(jarEntry.getName()).matches()) {
+                        getLog().info("Loading Maven GAV from " + wrappedJar + '!' + jarEntry.getName());
+                        properties.load(jarFile.getInputStream(jarEntry));
+                    }
+                }
+            } catch (IOException e) {
+                throw new MojoExecutionException("An error occurred while processing wrapped bundle " + wrappedJar, e);
+            } finally {
+                IOUtils.closeQuietly(jarFile);
+            }
+
+            if (properties.isEmpty()) {
+                getLog().info("No Maven GAV info attached to wrapped bundle " + wrappedJar + ", it will be ignored");
+                return;
+            }
+
+            getLog().info("Handling synthetic artifacts from Maven GAV: " + properties);
+
+            String groupId = properties.getProperty("groupId");
+            String artifactId = properties.getProperty("artifactId");
+            String version = properties.getProperty("version");
+
+            Artifact syntheticArtifact = new Artifact(new ArtifactId(groupId, artifactId, version, null, null));
+            onArtifact(syntheticArtifact, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+        }
     }
 
     private void buildJavadocClasspath(Set<String> javadocClasspath, ArtifactId artifactId)
@@ -469,10 +567,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 }
 
                 if (!result.isSuccess()) {
-                    throw new MojoExecutionException("An error occurred while checking out sources from "
-                                                     + connection
-                                                     + ": "
-                                                     + result.getProviderMessage());
+                    getLog().error("An error occurred while checking out sources from "
+                                   + connection
+                                   + ": "
+                                   + result.getProviderMessage()
+                                   + "\nSources may be missing from collecting public APIs.");
+                    return;
                 }
 
                 // retrieve the exact pom location to detect the bundle path in the repo
