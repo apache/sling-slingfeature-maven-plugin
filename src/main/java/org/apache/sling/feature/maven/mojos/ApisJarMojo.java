@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -91,8 +92,6 @@ import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
 import org.codehaus.plexus.archiver.manager.NoSuchArchiverException;
 import org.osgi.framework.Constants;
-
-import edu.emory.mathcs.backport.java.util.Arrays;
 
 /**
  * Generates the APIs JARs for each selected Feature file.
@@ -355,10 +354,41 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             String groupId = properties.getProperty("groupId");
             String artifactId = properties.getProperty("artifactId");
             String version = properties.getProperty("version");
+            String classifier = properties.getProperty("classifier");
+            if (classifier == null) {
+                classifier = inferClassifier(bundleName, artifactId, version);
+            }
 
-            Artifact syntheticArtifact = new Artifact(new ArtifactId(groupId, artifactId, version, null, null));
+            Artifact syntheticArtifact = new Artifact(new ArtifactId(groupId, artifactId, version, classifier, null));
             onArtifact(syntheticArtifact, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
         }
+    }
+
+    // Guess the classifier based on the file name
+    String inferClassifier(String bundleName, String artifactId, String version) {
+        if (bundleName == null || artifactId == null || version == null)
+            return null;
+
+        int idx = bundleName.lastIndexOf('/');
+        if (idx >= 0)
+            bundleName = bundleName.substring(idx + 1);
+
+        int edx = bundleName.lastIndexOf('.');
+        if (edx > 0)
+            bundleName = bundleName.substring(0, edx);
+
+        // bundleName is now the bare name without extension
+        String synthesized = artifactId + "-" + version;
+        if (synthesized.length() < bundleName.length() &&
+                bundleName.startsWith(synthesized)) {
+            String suffix = bundleName.substring(synthesized.length());
+            if (suffix.length() > 1 && suffix.startsWith("-")) {
+                String classifier = suffix.substring(1);
+                getLog().info("Inferred classifier of '" + artifactId + ":" + version + "' to be '" + classifier + "'");
+                return classifier;
+            }
+        }
+        return null;
     }
 
     private void buildJavadocClasspath(Set<String> javadocClasspath, ArtifactId artifactId)
