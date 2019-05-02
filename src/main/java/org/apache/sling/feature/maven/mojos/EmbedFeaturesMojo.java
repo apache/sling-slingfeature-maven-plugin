@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Map;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -32,15 +33,22 @@ import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
- * Include the features in the resources
+ * Embed the features in the resources
  */
-@Mojo(name = "include-features", defaultPhase = LifecyclePhase.PREPARE_PACKAGE,
+@Mojo(name = "embed-features", defaultPhase = LifecyclePhase.PREPARE_PACKAGE,
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
-public class IncludeFeaturesMojo extends AbstractFeatureMojo {
+public class EmbedFeaturesMojo extends AbstractIncludingFeatureMojo {
 
-    /** Path where the features are included. */
+    /**
+     * Configuration to define the features to be embedded, by default all features
+     * are embedded.
+     */
+    @Parameter
+    private FeatureSelectionConfig embed;
+
+    /** Path where the features are embedded in the target/classes directory. */
     @Parameter(defaultValue = "META-INF/features")
     private String resourcesPath;
 
@@ -69,11 +77,17 @@ public class IncludeFeaturesMojo extends AbstractFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         ProjectHelper.checkPreprocessorRun(this.project);
 
-        getLog().info("Including features at " + this.resourcesPath);
+        final Map<String, Feature> features = embed == null ? this.selectAllFeatureFilesAndAggregates()
+                : this.getSelectedFeatures(embed);
+        if (features.isEmpty()) {
+            getLog().info("No features to embed");
+        } else {
+            getLog().info("Embedding " + features.size() + " features at " + this.resourcesPath);
 
-        final File directory = new File(buildOutputDirectory, this.resourcesPath.replace('/', File.separatorChar));
-        for (final Feature f : ProjectHelper.getFeatures(this.project).values()) {
-            this.include(directory, f);
+            final File directory = new File(buildOutputDirectory, this.resourcesPath.replace('/', File.separatorChar));
+            for (final Feature f : features.values()) {
+                this.include(directory, f);
+            }
         }
     }
 }
