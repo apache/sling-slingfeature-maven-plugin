@@ -33,7 +33,7 @@ import org.codehaus.plexus.logging.Logger;
 /**
  * Maven lifecycle participant which adds the artifacts of the model to the dependencies.
  */
-@Component(role = AbstractMavenLifecycleParticipant.class)
+@Component(role = AbstractMavenLifecycleParticipant.class, hint = "featureparticipant")
 public class DependencyLifecycleParticipant extends AbstractMavenLifecycleParticipant {
 
     /**
