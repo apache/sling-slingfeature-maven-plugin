@@ -17,7 +17,6 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
@@ -39,12 +38,12 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import javax.json.Json;
 import javax.json.stream.JsonParser;
 import javax.json.stream.JsonParser.Event;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.felix.utils.manifest.Clause;
@@ -91,6 +90,8 @@ import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
 import org.codehaus.plexus.archiver.manager.NoSuchArchiverException;
+import org.codehaus.plexus.components.io.fileselectors.FileSelector;
+import org.codehaus.plexus.components.io.fileselectors.IncludeExcludeFileSelector;
 import org.osgi.framework.Constants;
 
 /**
@@ -261,53 +262,54 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             File deflatedSourcesDir,
                             File checkedOutSourcesDir) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
-        File bundle = retrieve(artifactId);
+        File bundleFile = retrieve(artifactId);
 
-        // deflate all bundles first, in order to copy APIs and resources later, depending to the region
-        File deflatedBundleDirectory = deflate(deflatedBinDir, bundle);
+        try (JarFile bundle = new JarFile(bundleFile)) {
+            getLog().debug("Reading Manifest headers from bundle " + bundleFile);
 
-        // check if the bundle wraps other bundles
-        computeWrappedBundles(deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            Manifest manifest = bundle.getManifest();
 
-        // renaming potential name-collapsing resources
-        renameResources(deflatedBundleDirectory, artifactId);
+            if (manifest == null) {
+                throw new MojoExecutionException("Manifest file not included in "
+                        + bundleFile
+                        + " bundle");
+            }
 
-        // calculate the exported versioned packages in the manifest file for each region
-        computeExportPackage(apiRegions, deflatedBundleDirectory, artifactId);
+            // calculate the exported versioned packages in the manifest file for each region
+            // and calculate the exported versioned packages in the manifest file for each region
+            String[] exportedPackages = computeExportPackage(apiRegions, manifest);
 
-        // download sources
-        downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir);
+            // deflate all bundles first, in order to copy APIs and resources later, depending to the region
+            String[] exportedPackagesAndWrappedBundles = Stream.concat(Stream.concat(Stream.of(exportedPackages), Stream.of("**/*.jar")),
+                                                                       Stream.of(includeResources))
+                                                               .toArray(String[]::new);
+            File deflatedBundleDirectory = deflate(deflatedBinDir, bundleFile, exportedPackagesAndWrappedBundles);
 
-        // to suppress any javadoc error
-        buildJavadocClasspath(javadocClasspath, artifactId);
+            // check if the bundle wraps other bundles
+            computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+
+            // renaming potential name-collapsing resources
+            renameResources(deflatedBundleDirectory, artifactId);
+
+            // download sources
+            downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir, exportedPackages);
+
+            // to suppress any javadoc error
+            buildJavadocClasspath(javadocClasspath, artifactId);
+        } catch (IOException e) {
+            throw new MojoExecutionException("An error occurred while reading " + bundleFile + " file", e);
+        }
     }
 
-    private void computeWrappedBundles(File deflatedBundleDirectory,
+    private void computeWrappedBundles(Manifest manifest,
+                                       File deflatedBundleDirectory,
                                        List<ApiRegion> apiRegions,
                                        Set<String> javadocClasspath,
                                        File deflatedBinDir,
                                        File deflatedSourcesDir,
                                        File checkedOutSourcesDir) throws MojoExecutionException {
-        File manifestFile = new File(deflatedBundleDirectory, "META-INF/MANIFEST.MF");
 
-        getLog().debug("Reading Manifest headers from file " + manifestFile);
-
-        if (!manifestFile.exists()) {
-            throw new MojoExecutionException("Manifest file "
-                    + manifestFile
-                    + " does not exist, make sure "
-                    + deflatedBundleDirectory
-                    + " contains the valid META-INF/MANIFEST.MF file");
-        }
-
-        String bundleClassPath;
-
-        try (FileInputStream input = new FileInputStream(manifestFile)) {
-            Manifest manifest = new Manifest(input);
-            bundleClassPath = manifest.getMainAttributes().getValue("Bundle-ClassPath");
-        } catch (IOException e) {
-            throw new MojoExecutionException("An error occurred while reading " + manifestFile + " file", e);
-        }
+        String bundleClassPath = manifest.getMainAttributes().getValue("Bundle-ClassPath");
 
         if (bundleClassPath == null || bundleClassPath.isEmpty()) {
             return;
@@ -326,9 +328,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             Properties properties = new Properties();
 
-            JarFile jarFile = null;
-            try {
-                jarFile = new JarFile(wrappedJar);
+            try (JarFile jarFile = new JarFile(wrappedJar)) {
                 Enumeration<JarEntry> jarEntries = jarFile.entries();
                 while (jarEntries.hasMoreElements()) {
                     JarEntry jarEntry = jarEntries.nextElement();
@@ -340,8 +340,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 }
             } catch (IOException e) {
                 throw new MojoExecutionException("An error occurred while processing wrapped bundle " + wrappedJar, e);
-            } finally {
-                IOUtils.closeQuietly(jarFile);
             }
 
             if (properties.isEmpty()) {
@@ -467,7 +465,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return sourceFile;
     }
 
-    private File deflate(File deflatedDir, File artifact) throws MojoExecutionException {
+    private File deflate(File deflatedDir, File artifact, String...includes) throws MojoExecutionException {
         getLog().debug("Deflating bundle " + artifact + "...");
 
         File destDirectory = new File(deflatedDir, artifact.getName());
@@ -479,6 +477,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             UnArchiver unArchiver = archiverManager.getUnArchiver(artifact);
             unArchiver.setSourceFile(artifact);
             unArchiver.setDestDirectory(destDirectory);
+            IncludeExcludeFileSelector selector = new IncludeExcludeFileSelector();
+            selector.setIncludes(includes);
+            selector.setExcludes(new String[] { "OSGI-OPT/**" });
+            unArchiver.setFileSelectors(new FileSelector[] { selector });
             unArchiver.extract();
         } catch (NoSuchArchiverException e) {
             throw new MojoExecutionException("An error occurred while deflating file "
@@ -525,14 +527,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         getLog().debug(Arrays.toString(includeResources) + " resources in " + destDirectory + " successfully renamed");
     }
 
-    private void downloadSources(Artifact artifact, File deflatedSourcesDir, File checkedOutSourcesDir) throws MojoExecutionException {
+    private void downloadSources(Artifact artifact, File deflatedSourcesDir, File checkedOutSourcesDir, String...exportedPackages) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
         ArtifactId sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
         try {
             File sourcesBundle = retrieve(sourcesArtifactId);
-            deflate(deflatedSourcesDir, sourcesBundle);
+            deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
         } catch (Throwable t) {
             getLog().warn("Impossible to download -sources bundle "
                           + sourcesArtifactId
@@ -636,7 +638,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
                 DirectoryScanner directoryScanner = new DirectoryScanner();
                 directoryScanner.setBasedir(javaSources);
-                directoryScanner.setIncludes("*");
+                directoryScanner.setIncludes(exportedPackages);
                 directoryScanner.scan();
 
                 for (String file : directoryScanner.getIncludedFiles()) {
@@ -663,39 +665,26 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private void computeExportPackage(List<ApiRegion> apiRegions, File destDirectory, ArtifactId artifactId) throws MojoExecutionException {
-        File manifestFile = new File(destDirectory, "META-INF/MANIFEST.MF");
+    private String[] computeExportPackage(List<ApiRegion> apiRegions, Manifest manifest) throws MojoExecutionException {
+        Set<String> exports = new HashSet<>();
 
-        getLog().debug("Reading Manifest headers from file " + manifestFile);
+        String exportPackageHeader = manifest.getMainAttributes().getValue(Constants.EXPORT_PACKAGE);
+        Clause[] exportPackages = Parser.parseHeader(exportPackageHeader);
 
-        if (!manifestFile.exists()) {
-            throw new MojoExecutionException("Manifest file "
-                    + manifestFile
-                    + " does not exist, make sure "
-                    + destDirectory
-                    + " contains the valid deflated "
-                    + artifactId
-                    + " bundle");
-        }
+        // filter for each region
+        for (Clause exportPackage : exportPackages) {
+            String api = exportPackage.getName();
 
-        try (FileInputStream input = new FileInputStream(manifestFile)) {
-            Manifest manifest = new Manifest(input);
-            String exportPackageHeader = manifest.getMainAttributes().getValue(Constants.EXPORT_PACKAGE);
-            Clause[] exportPackages = Parser.parseHeader(exportPackageHeader);
+            exports.add(packageToScannerFiler(api));
 
-            // filter for each region
-            for (Clause exportPackage : exportPackages) {
-                String api = exportPackage.getName();
-
-                for (ApiRegion apiRegion : apiRegions) {
-                    if (apiRegion.containsApi(api)) {
-                        apiRegion.addExportPackage(exportPackage);
-                    }
+            for (ApiRegion apiRegion : apiRegions) {
+                if (apiRegion.containsApi(api)) {
+                    apiRegion.addExportPackage(exportPackage);
                 }
             }
-        } catch (IOException e) {
-            throw new MojoExecutionException("An error occurred while reading " + manifestFile + " file", e);
         }
+
+        return exports.toArray(new String[exports.size()]);
     }
 
     private List<String> recollect(File featureDir, File deflatedDir, ApiRegion apiRegion, File destination) throws MojoExecutionException {
@@ -1029,7 +1018,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             apis.add(api);
-            filteringApis.add("**/" + api.replace('.', '/') + "/*");
+            filteringApis.add(packageToScannerFiler(api));
         }
 
         public boolean containsApi(String api) {
@@ -1071,6 +1060,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             return toString;
         }
 
+    }
+
+    private static String packageToScannerFiler(String api) {
+        return "**/" + api.replace('.', '/') + "/*";
     }
 
     private static String[] concatenate(String[] a, String[] b) {
