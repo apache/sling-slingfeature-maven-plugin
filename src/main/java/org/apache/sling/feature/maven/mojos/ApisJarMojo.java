@@ -224,7 +224,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // for each artifact included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
-            onArtifact(artifact, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            onArtifact(artifact, null, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
@@ -256,6 +256,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     }
 
     private void onArtifact(Artifact artifact,
+                            Manifest wrappingBundleManifest,
                             List<ApiRegion> apiRegions,
                             Set<String> javadocClasspath,
                             File deflatedBinDir,
@@ -264,41 +265,46 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         ArtifactId artifactId = artifact.getId();
         File bundleFile = retrieve(artifactId);
 
-        try (JarFile bundle = new JarFile(bundleFile)) {
-            getLog().debug("Reading Manifest headers from bundle " + bundleFile);
+        Manifest manifest;
+        if (wrappingBundleManifest == null) {
+            try (JarFile bundle = new JarFile(bundleFile)) {
+                getLog().debug("Reading Manifest headers from bundle " + bundleFile);
 
-            Manifest manifest = bundle.getManifest();
+                manifest = bundle.getManifest();
 
-            if (manifest == null) {
-                throw new MojoExecutionException("Manifest file not included in "
-                        + bundleFile
-                        + " bundle");
+                if (manifest == null) {
+                    throw new MojoExecutionException("Manifest file not included in "
+                            + bundleFile
+                            + " bundle");
+                }
+            } catch (IOException e) {
+                throw new MojoExecutionException("An error occurred while reading " + bundleFile + " file", e);
             }
-
-            // calculate the exported versioned packages in the manifest file for each region
-            // and calculate the exported versioned packages in the manifest file for each region
-            String[] exportedPackages = computeExportPackage(apiRegions, manifest);
-
-            // deflate all bundles first, in order to copy APIs and resources later, depending to the region
-            String[] exportedPackagesAndWrappedBundles = Stream.concat(Stream.concat(Stream.of(exportedPackages), Stream.of("**/*.jar")),
-                                                                       Stream.of(includeResources))
-                                                               .toArray(String[]::new);
-            File deflatedBundleDirectory = deflate(deflatedBinDir, bundleFile, exportedPackagesAndWrappedBundles);
-
-            // check if the bundle wraps other bundles
-            computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
-
-            // renaming potential name-collapsing resources
-            renameResources(deflatedBundleDirectory, artifactId);
-
-            // download sources
-            downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir, exportedPackages);
-
-            // to suppress any javadoc error
-            buildJavadocClasspath(javadocClasspath, artifactId);
-        } catch (IOException e) {
-            throw new MojoExecutionException("An error occurred while reading " + bundleFile + " file", e);
+        } else {
+            manifest = wrappingBundleManifest;
         }
+
+        // calculate the exported versioned packages in the manifest file for each region
+        // and calculate the exported versioned packages in the manifest file for each region
+        String[] exportedPackages = computeExportPackage(apiRegions, manifest);
+
+        // deflate all bundles first, in order to copy APIs and resources later, depending to the region
+        String[] exportedPackagesAndWrappedBundles = Stream.concat(Stream.concat(Stream.of(exportedPackages), Stream.of("**/*.jar")),
+                                                                   Stream.of(includeResources))
+                                                           .toArray(String[]::new);
+        File deflatedBundleDirectory = deflate(deflatedBinDir, bundleFile, exportedPackagesAndWrappedBundles);
+
+        // check if the bundle wraps other bundles
+        computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+
+        // renaming potential name-collapsing resources
+        renameResources(deflatedBundleDirectory, artifactId);
+
+        // download sources
+        downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir, exportedPackages);
+
+        // to suppress any javadoc error
+        buildJavadocClasspath(javadocClasspath, artifactId);
     }
 
     private void computeWrappedBundles(Manifest manifest,
@@ -358,7 +364,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             Artifact syntheticArtifact = new Artifact(new ArtifactId(groupId, artifactId, version, classifier, null));
-            onArtifact(syntheticArtifact, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            onArtifact(syntheticArtifact, manifest, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
         }
     }
 
