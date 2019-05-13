@@ -295,7 +295,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         File deflatedBundleDirectory = deflate(deflatedBinDir, bundleFile, exportedPackagesAndWrappedBundles);
 
         // check if the bundle wraps other bundles
-        computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+        if (wrappingBundleManifest == null) { // wrappers of wrappers do not exist
+            computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+        }
 
         // renaming potential name-collapsing resources
         renameResources(deflatedBundleDirectory, artifactId);
