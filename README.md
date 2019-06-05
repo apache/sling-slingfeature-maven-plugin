@@ -127,6 +127,34 @@ Variables and framework properties can be overridden using the `<variables>` and
 in the feature that are to be aggregated and the values for these variables are different,
 they *must* be overridden, otherwise the aggregation will generate an error.
 
+If the aggregation sources contain the same artifact more than once in different versions, 
+a conflict resolution override 
+must be specified using the `<artifactsOverride>` tag. In most cases the desired result will
+only contain one version of the artifact, although it's also possible to state that all versions
+must be kept. 
+
+The following syntax is supported for `<artifactsOverride>`:
+
+To provide a conflict resolution for a specific artifact:
+
+    groupid1:artifactid1:<resolution>
+
+To apply the same override rule for all clashes, a wildcard using '*' for
+groupID and artifactID can be used:
+
+    *:*:<resolution>
+
+This means always select the same resolution in case of a clash.
+
+Where `<resolution>` is one of the following:
+
+* `ALL` - select all the artifacts, i.e. keep them side-by-side.
+* `HIGHEST` - select only the artifact with the highest version number.
+* `LATEST` - select only the artifact provided latest, so the version used in the last feature file merged in.
+* `<version>` - selects this specific version.
+
+When comparing version numbers these are converted to OSGi version
+numbers and the OSGi version number ordering is applied.
 
 #### Extension merging
 
