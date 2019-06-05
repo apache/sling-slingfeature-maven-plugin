@@ -20,7 +20,9 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -29,6 +31,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -48,6 +51,18 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     @Parameter(name = "attachTestFeatures",
             defaultValue = "false")
     private boolean attachTestFeatures;
+
+    /**
+     * Create reference file
+     */
+    @Parameter(name = "createReferenceFile", defaultValue = "false")
+    private boolean createReferenceFile;
+
+    /**
+     * Classifier for the reference file (if any)
+     */
+    @Parameter(name = "referenceFileClassifier")
+    private String referenceFileClassifier;
 
     private void attach(final Feature feature,
             final String classifier)
@@ -76,10 +91,39 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         ProjectHelper.checkPreprocessorRun(this.project);
-        this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values());
+        final List<String> featureUrls = new ArrayList<>();
+        this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values(), featureUrls);
 
         if ( this.attachTestFeatures ) {
-        	this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values());
+            this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values(), featureUrls);
+        }
+        if (this.createReferenceFile) {
+            this.createReferenceFile(featureUrls);
+        }
+    }
+
+    private void createReferenceFile(final List<String> featureUrls) throws MojoExecutionException {
+        if (featureUrls.isEmpty()) {
+            getLog().warn(
+                    "Create reference file is enabled but no features are attached. Skipping reference file generation.");
+        } else {
+            String fileName = "references";
+            if (this.referenceFileClassifier != null) {
+                fileName = fileName.concat("-").concat(this.referenceFileClassifier);
+            }
+            fileName = fileName.concat(IOUtils.EXTENSION_REF_FILE);
+            final File outputFile = new File(this.getTmpDir(), fileName);
+            outputFile.getParentFile().mkdirs();
+
+            try (final Writer w = new FileWriter(outputFile)) {
+                for (final String url : featureUrls) {
+                    w.write(url);
+                    w.write('\n');
+                }
+            } catch (final IOException e) {
+                throw new MojoExecutionException("Unable to write feature reference file to " + outputFile, e);
+            }
+            projectHelper.attachArtifact(project, "ref", this.referenceFileClassifier, outputFile);
         }
     }
 
@@ -87,9 +131,11 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
      * Attach all features
      * @throws MojoExecutionException
      */
-    void attachClassifierFeatures(final Collection<Feature> features) throws MojoExecutionException {
+    void attachClassifierFeatures(final Collection<Feature> features, final List<String> featureUrls)
+            throws MojoExecutionException {
         for (final Feature f : features) {
             attach(f, f.getId().getClassifier());
+            featureUrls.add(f.getId().toMvnUrl());
         }
     }
 }

@@ -61,7 +61,7 @@ public class AttachFeaturesMojoTest {
         MavenProjectHelper helper = Mockito.mock(MavenProjectHelper.class);
         af.projectHelper = helper;
 
-        af.attachClassifierFeatures(features);
+        af.attachClassifierFeatures(features, new ArrayList<>());
         Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testa.json"));
         Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testd.json"));
         Mockito.verifyNoMoreInteractions(helper);
