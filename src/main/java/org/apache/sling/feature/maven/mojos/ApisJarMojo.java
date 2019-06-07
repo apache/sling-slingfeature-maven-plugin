@@ -19,6 +19,8 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -168,10 +170,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         artifactProvider = new ArtifactProvider() {
 
             @Override
-            public File provide(final ArtifactId id) {
-                return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile();
+            public URL provide(final ArtifactId id) {
+                try
+                {
+                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
+                }
+                catch (Exception e)
+                {
+                    getLog().error(e);
+                    return null;
+                }
             }
-
         };
 
         getLog().debug("Retrieving Feature files...");
@@ -263,7 +272,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             File deflatedSourcesDir,
                             File checkedOutSourcesDir) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
-        File bundleFile = retrieve(artifactId);
+        File bundleFile = new File(retrieve(artifactId).getPath());
 
         Manifest manifest;
         if (wrappingBundleManifest == null) {
@@ -466,9 +475,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private File retrieve(ArtifactId artifactId) {
+    private URL retrieve(ArtifactId artifactId) {
         getLog().debug("Retrieving artifact " + artifactId + "...");
-        File sourceFile = artifactProvider.provide(artifactId);
+        URL sourceFile = artifactProvider.provide(artifactId);
         getLog().debug("Artifact " + artifactId + " successfully retrieved");
         return sourceFile;
     }
@@ -541,7 +550,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                                     "sources",
                                                     "jar");
         try {
-            File sourcesBundle = retrieve(sourcesArtifactId);
+            File sourcesBundle = new File(retrieve(sourcesArtifactId).getPath());
             deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
         } catch (Throwable t) {
             getLog().warn("Impossible to download -sources bundle "
@@ -558,7 +567,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
-            File pomFile = retrieve(pomArtifactId);
+            File pomFile = new File(retrieve(pomArtifactId).getPath());
             getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
 
             // read model

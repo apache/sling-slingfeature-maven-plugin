@@ -23,6 +23,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
@@ -218,10 +219,21 @@ public class Preprocessor {
     		                config.isSkipAddDependencies(),
                                     config.getScope(), null))
                                             .setArtifactProvider(
-                                                    aid -> ProjectHelper
-                                                            .getOrResolveArtifact(info.project, env.session,
-                                                                    env.artifactHandlerManager, env.resolver, aid)
-                                                            .getFile()));
+                                                    aid ->
+                                                    {
+                                                        try
+                                                        {
+                                                            return ProjectHelper
+                                                                    .getOrResolveArtifact(info.project, env.session,
+                                                                            env.artifactHandlerManager, env.resolver, aid)
+                                                                    .getFile().toURI().toURL();
+                                                        }
+                                                        catch (Exception e)
+                                                        {
+                                                            env.logger.error(e.getMessage(), e);
+                                                            return null;
+                                                        }
+                                                    }));
     	            aggregatedFeatures.put(entry.getKey(), assembledFeature);
     	            break;
         		}
