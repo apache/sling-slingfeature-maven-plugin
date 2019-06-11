@@ -34,6 +34,8 @@ import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -117,7 +119,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             }).setArtifactProvider(new ArtifactProvider() {
 
                 @Override
-                public File provide(final ArtifactId id) {
+                public URL provide(final ArtifactId id) {
                     if (ProjectHelper.isLocalProjectArtifact(project, id)) {
                         for (final Map.Entry<String, Feature> entry : ProjectHelper.getAssembledFeatures(project)
                                 .entrySet()) {
@@ -128,9 +130,17 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             }
                         }
                     }
-                    return ProjectHelper
-                            .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
-                            .getFile();
+                    try
+                    {
+                        return ProjectHelper
+                                .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
+                                .getFile().toURI().toURL();
+                    }
+                    catch (Exception e)
+                    {
+                        getLog().error(e);
+                        return null;
+                    }
                 }
             }).addArtifactsOverrides(artifactsOverrides)
                 .addVariablesOverrides(variablesOverwrites)

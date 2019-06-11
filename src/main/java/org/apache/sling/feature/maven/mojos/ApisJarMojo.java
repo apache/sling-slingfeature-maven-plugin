@@ -19,6 +19,8 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,6 +87,7 @@ import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
+import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
@@ -168,10 +171,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         artifactProvider = new ArtifactProvider() {
 
             @Override
-            public File provide(final ArtifactId id) {
-                return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile();
+            public URL provide(final ArtifactId id) {
+                try
+                {
+                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
+                }
+                catch (Exception e)
+                {
+                    getLog().error(e);
+                    return null;
+                }
             }
-
         };
 
         getLog().debug("Retrieving Feature files...");
@@ -263,7 +273,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             File deflatedSourcesDir,
                             File checkedOutSourcesDir) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
-        File bundleFile = retrieve(artifactId);
+        File bundleFile = null;
+        try
+        {
+            bundleFile = IOUtils.getFileFromURL(retrieve(artifactId), true, null);
+        }
+        catch (IOException e)
+        {
+            throw new MojoExecutionException(e.getMessage());
+        }
 
         Manifest manifest;
         if (wrappingBundleManifest == null) {
@@ -466,9 +484,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private File retrieve(ArtifactId artifactId) {
+    private URL retrieve(ArtifactId artifactId) {
         getLog().debug("Retrieving artifact " + artifactId + "...");
-        File sourceFile = artifactProvider.provide(artifactId);
+        URL sourceFile = artifactProvider.provide(artifactId);
         getLog().debug("Artifact " + artifactId + " successfully retrieved");
         return sourceFile;
     }
@@ -541,7 +559,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                                     "sources",
                                                     "jar");
         try {
-            File sourcesBundle = retrieve(sourcesArtifactId);
+            File sourcesBundle = IOUtils.getFileFromURL(retrieve(sourcesArtifactId), true, null);
             deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
         } catch (Throwable t) {
             getLog().warn("Impossible to download -sources bundle "
@@ -558,7 +576,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
-            File pomFile = retrieve(pomArtifactId);
+            File pomFile = null;
+            try
+            {
+                pomFile = IOUtils.getFileFromURL(retrieve(pomArtifactId), true, null);
+            }
+            catch (IOException e)
+            {
+                throw new MojoExecutionException(e.getMessage());
+            }
             getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
 
             // read model
