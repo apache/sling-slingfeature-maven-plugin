@@ -87,6 +87,7 @@ import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
+import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
@@ -272,7 +273,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             File deflatedSourcesDir,
                             File checkedOutSourcesDir) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
-        File bundleFile = new File(retrieve(artifactId).getPath());
+        File bundleFile = null;
+        try
+        {
+            bundleFile = IOUtils.getFileFromURL(retrieve(artifactId), true, null);
+        }
+        catch (IOException e)
+        {
+            throw new MojoExecutionException(e.getMessage());
+        }
 
         Manifest manifest;
         if (wrappingBundleManifest == null) {
@@ -550,7 +559,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                                     "sources",
                                                     "jar");
         try {
-            File sourcesBundle = new File(retrieve(sourcesArtifactId).getPath());
+            File sourcesBundle = IOUtils.getFileFromURL(retrieve(sourcesArtifactId), true, null);
             deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
         } catch (Throwable t) {
             getLog().warn("Impossible to download -sources bundle "
@@ -567,7 +576,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
-            File pomFile = new File(retrieve(pomArtifactId).getPath());
+            File pomFile = null;
+            try
+            {
+                pomFile = IOUtils.getFileFromURL(retrieve(pomArtifactId), true, null);
+            }
+            catch (IOException e)
+            {
+                throw new MojoExecutionException(e.getMessage());
+            }
             getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
 
             // read model
