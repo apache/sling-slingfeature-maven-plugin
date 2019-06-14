@@ -63,7 +63,7 @@ public class FeatureSelectionConfig {
     }
 
     public void setIncludeClassifier(final String classifier) {
-        selections.add(new Selection(SelectionType.AGGREGATE_CLASSIFIER, classifier));
+        selections.add(new Selection(SelectionType.AGGREGATE_CLASSIFIER, ":".equals(classifier) ? "" : classifier));
     }
 
     public List<String> getFilesExcludes() {
