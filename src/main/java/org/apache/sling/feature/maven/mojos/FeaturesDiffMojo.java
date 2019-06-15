@@ -16,9 +16,12 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import static org.apache.sling.feature.diff.FeatureDiff.compareFeatures;
+import static org.apache.sling.feature.io.json.FeatureJSONWriter.write;
+
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
@@ -42,9 +45,9 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.diff.FeatureDiff;
-import org.apache.sling.feature.diff.io.json.FeatureDiffJSONSerializer;
+import org.apache.sling.feature.diff.DefaultDiffRequest;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 
 /**
@@ -107,19 +110,29 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
         getLog().info("Comparing current " + current + " to previous " + previous);
 
-        FeatureDiff featureDiff = FeatureDiff.compareFeatures(previous, current);
+        StringBuilder classifier = new StringBuilder()
+                                   .append(previous.getId().getVersion())
+                                   .append("-to-")
+                                   .append(current.getId().getVersion())
+                                   .append('-')
+                                   .append(current.getId().getClassifier())
+                                   .append("-upgrade");
 
-        if (featureDiff.isEmpty()) {
-            getLog().info("There are no differences between current " + current + " and previous " + previous + " models");
-            return;
-        }
+        Feature featureDiff = compareFeatures(new DefaultDiffRequest()
+                                              .setPrevious(previous)
+                                              .setCurrent(current)
+                                              .setResultId(new ArtifactId(current.getId().getGroupId(),
+                                                                          current.getId().getArtifactId(), 
+                                                                          current.getId().getVersion(),
+                                                                          classifier.toString(),
+                                                                          current.getId().getType())));
 
-        File outputDiffFile = new File(mainOutputDir, current.getId().getClassifier() + ".diff.json");
+        File outputDiffFile = new File(mainOutputDir, classifier.append(".json").toString());
 
         getLog().info("Rendering differences to file " + outputDiffFile);
 
-        try (FileOutputStream output = new FileOutputStream(outputDiffFile)) {
-            FeatureDiffJSONSerializer.serializeFeatureDiff(featureDiff, output);
+        try (FileWriter writer = new FileWriter(outputDiffFile)) {
+            write(writer, featureDiff);
         } catch (IOException e) {
             throw new MojoExecutionException("An error occurred while serializing Feature diff to " + outputDiffFile, e);
         }
