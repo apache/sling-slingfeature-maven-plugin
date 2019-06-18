@@ -16,6 +16,18 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.net.URL;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.ServiceLoader;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.StreamSupport;
+
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -32,20 +44,6 @@ import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.ServiceLoader;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
 
 /**
  * Aggregate multiple features into a single one.
@@ -81,9 +79,6 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "No features found for aggregate with classifier " + aggregate.classifier);
             }
 
-            final List<String> artifactsOverrides = new ArrayList<>();
-            if (aggregate.artifactsOverrides != null)
-                artifactsOverrides.addAll(aggregate.artifactsOverrides);
             final Map<String,String> variablesOverwrites = new HashMap<>();
             if (aggregate.variablesOverrides != null)
                 variablesOverwrites.putAll(aggregate.variablesOverrides);
@@ -142,8 +137,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                         return null;
                     }
                 }
-            }).addArtifactsOverrides(artifactsOverrides)
-                .addVariablesOverrides(variablesOverwrites)
+            }).addVariablesOverrides(variablesOverwrites)
                 .addFrameworkPropertiesOverrides(frameworkPropertiesOverwrites)
                 .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     ServiceLoader.load(MergeHandler.class).iterator(), Spliterator.ORDERED),
@@ -151,6 +145,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                 .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
                     false).toArray(PostProcessHandler[]::new));
+            for (final ArtifactId rule : aggregate.getArtifactOverrideRules()) {
+                builderContext.addArtifactsOverride(rule);
+            }
 
             boolean wildcardSet = false;
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {

@@ -18,6 +18,11 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import org.apache.sling.feature.ArtifactId;
+
+import edu.emory.mathcs.backport.java.util.Collections;
 
 public class Aggregate extends FeatureSelectionConfig {
 
@@ -65,5 +70,12 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
                 + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides=" + frameworkPropertiesOverrides + "]";
+    }
+
+    public List<ArtifactId> getArtifactOverrideRules() {
+        if (artifactsOverrides == null) {
+            return Collections.emptyList();
+        }
+        return artifactsOverrides.stream().map(r -> ArtifactId.parse(r)).collect(Collectors.toList());
     }
 }
