@@ -48,6 +48,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.diff.DiffRequest;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.FeatureConstants;
 
 /**
  * Compares different versions of the same Feature Model.
@@ -122,6 +123,11 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
         } catch (IOException e) {
             throw new MojoExecutionException("An error occurred while serializing Feature diff to " + outputDiffFile, e);
         }
+
+        projectHelper.attachArtifact(project,
+                                     FeatureConstants.PACKAGING_FEATURE,
+                                     featureDiff.getId().getClassifier(),
+                                     outputDiffFile);
     }
 
     private Feature getPreviousFeature(Feature current) throws MojoExecutionException, MojoFailureException {
