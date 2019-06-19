@@ -45,9 +45,8 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.diff.DefaultDiffRequest;
+import org.apache.sling.feature.diff.DiffRequest;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 
 /**
@@ -118,14 +117,9 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
                                    .append(current.getId().getClassifier())
                                    .append("-upgrade");
 
-        Feature featureDiff = compareFeatures(new DefaultDiffRequest()
+        Feature featureDiff = compareFeatures(new DiffRequest()
                                               .setPrevious(previous)
-                                              .setCurrent(current)
-                                              .setResultId(new ArtifactId(current.getId().getGroupId(),
-                                                                          current.getId().getArtifactId(), 
-                                                                          current.getId().getVersion(),
-                                                                          classifier.toString(),
-                                                                          current.getId().getType())));
+                                              .setCurrent(current));
 
         File outputDiffFile = new File(mainOutputDir, classifier.append(".json").toString());
 
