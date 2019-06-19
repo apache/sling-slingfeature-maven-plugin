@@ -109,19 +109,11 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
         getLog().info("Comparing current " + current + " to previous " + previous);
 
-        StringBuilder classifier = new StringBuilder()
-                                   .append(previous.getId().getVersion())
-                                   .append("-to-")
-                                   .append(current.getId().getVersion())
-                                   .append('-')
-                                   .append(current.getId().getClassifier())
-                                   .append("-upgrade");
-
         Feature featureDiff = compareFeatures(new DiffRequest()
                                               .setPrevious(previous)
                                               .setCurrent(current));
 
-        File outputDiffFile = new File(mainOutputDir, classifier.append(".json").toString());
+        File outputDiffFile = new File(mainOutputDir, featureDiff.getId().getClassifier().concat(".json"));
 
         getLog().info("Rendering differences to file " + outputDiffFile);
 
