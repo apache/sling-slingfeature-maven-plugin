@@ -16,6 +16,23 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
@@ -33,23 +50,6 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
-
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 /**
  * The project helper contains utility functions and provides access
@@ -332,13 +332,14 @@ public abstract class ProjectHelper {
     		sb.append('[');
     	}
         boolean first = true;
-        for(final String key : featureKeys) {
+        for (String key : featureKeys) {
         	if ( first ) {
         		first = false;
         	} else {
         		sb.append(", ");
         	}
         	if ( key.startsWith(AGGREGATE_PREFIX) ) {
+                key = key.substring(0, key.length() - 2);
         		sb.append("aggregate ");
                 if (key.length() == AGGREGATE_PREFIX.length()) {
                     sb.append("main artifact (no classifier)");
@@ -359,8 +360,13 @@ public abstract class ProjectHelper {
     	return featureKey.startsWith(AGGREGATE_PREFIX);
     }
 
-    public static String generateAggregateFeatureKey(final String classifier) {
-        return classifier != null ? AGGREGATE_PREFIX.concat(classifier) : AGGREGATE_PREFIX;
+    public static boolean isAttachAggregate(final String featureKey) {
+        return isAggregate(featureKey) && featureKey.endsWith(":T");
+    }
+
+    public static String generateAggregateFeatureKey(final String classifier, final boolean attach) {
+        return (classifier != null ? AGGREGATE_PREFIX.concat(classifier) : AGGREGATE_PREFIX).concat(":")
+                .concat(attach ? "T" : "F");
     }
 
     private static final String NULL_KEY = ":";
@@ -380,7 +386,7 @@ public abstract class ProjectHelper {
      * @param project The maven project
      */
     public static void validateFeatureClassifiers(final MavenProject project) {
-        validateFeatureClassifiers(project, false, null);
+        validateFeatureClassifiers(project, false, null, false);
     }
 
     /**
@@ -389,8 +395,8 @@ public abstract class ProjectHelper {
      * @param additionalClassifier Optional additional classifier
      */
     public static void validateFeatureClassifiers(final MavenProject project,
-    		final String additionalClassifier) {
-        validateFeatureClassifiers(project, true, additionalClassifier);
+            final String additionalClassifier, final boolean attachFeature) {
+        validateFeatureClassifiers(project, true, additionalClassifier, attachFeature);
     }
 
     /**
@@ -400,7 +406,7 @@ public abstract class ProjectHelper {
      * @param additionalClassifier Optional additional classifier
      */
     private static void validateFeatureClassifiers(final MavenProject project, final boolean classifierProvided,
-            final String additionalClassifier) {
+            final String additionalClassifier, final boolean attachFeature) {
 
         final Map<String, List<String>> classifiers = new HashMap<>();
         for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
@@ -413,7 +419,7 @@ public abstract class ProjectHelper {
         	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
         if (classifierProvided) {
-        	final String key = ProjectHelper.generateAggregateFeatureKey(additionalClassifier);
+            final String key = ProjectHelper.generateAggregateFeatureKey(additionalClassifier, attachFeature);
         	addClassifier(classifiers, additionalClassifier, key);
         }
         for(final Map.Entry<String, List<String>> entry : classifiers.entrySet()) {

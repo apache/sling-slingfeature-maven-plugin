@@ -21,8 +21,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -46,7 +46,13 @@ import org.apache.sling.feature.maven.ProjectHelper;
     )
 public class AttachFeaturesMojo extends AbstractFeatureMojo {
     /**
-     * Attach test features
+     * Attach main features (source)
+     */
+    @Parameter(name = "attachMainFeatures", defaultValue = "true")
+    private boolean attachMainFeatures;
+
+    /**
+     * Attach test features (source)
      */
     @Parameter(name = "attachTestFeatures",
             defaultValue = "false")
@@ -64,9 +70,9 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     @Parameter(name = "referenceFileClassifier")
     private String referenceFileClassifier;
 
-    private void attach(final Feature feature,
-            final String classifier)
+    private void attach(final Feature feature)
     throws MojoExecutionException {
+        final String classifier = feature.getId().getClassifier();
         // write the feature
         final File outputFile = new File(this.getTmpDir(), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
         outputFile.getParentFile().mkdirs();
@@ -92,11 +98,10 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         ProjectHelper.checkPreprocessorRun(this.project);
         final List<String> featureUrls = new ArrayList<>();
-        this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project).values(), featureUrls);
+        this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project), featureUrls, this.attachMainFeatures);
+        this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project), featureUrls,
+                this.attachTestFeatures);
 
-        if ( this.attachTestFeatures ) {
-            this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project).values(), featureUrls);
-        }
         if (this.createReferenceFile) {
             this.createReferenceFile(featureUrls);
         }
@@ -131,11 +136,21 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
      * Attach all features
      * @throws MojoExecutionException
      */
-    void attachClassifierFeatures(final Collection<Feature> features, final List<String> featureUrls)
+    void attachClassifierFeatures(final Map<String, Feature> features, final List<String> featureUrls,
+            final boolean addSourceFeatures)
             throws MojoExecutionException {
-        for (final Feature f : features) {
-            attach(f, f.getId().getClassifier());
-            featureUrls.add(f.getId().toMvnUrl());
+        for (final Map.Entry<String, Feature> entry : features.entrySet()) {
+            final boolean add;
+            if (ProjectHelper.isAggregate(entry.getKey())) {
+                add = ProjectHelper.isAttachAggregate(entry.getKey());
+            } else {
+                add = addSourceFeatures;
+            }
+
+            if (add) {
+                attach(entry.getValue());
+                featureUrls.add(entry.getValue().getId().toMvnUrl());
+            }
         }
     }
 }

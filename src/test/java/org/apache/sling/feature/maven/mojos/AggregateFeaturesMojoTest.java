@@ -16,6 +16,29 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.FileReader;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Dictionary;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -41,29 +64,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-
-import java.io.File;
-import java.io.FileReader;
-import java.lang.reflect.Method;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 @SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
@@ -129,7 +129,7 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
         af.execute();
 
-        Feature genFeat = featureMap.get(":aggregate:aggregated");
+        Feature genFeat = featureMap.get(":aggregate:aggregated:T");
         assertNotNull(genFeat);
         ArtifactId id = genFeat.getId();
 
@@ -206,7 +206,7 @@ public class AggregateFeaturesMojoTest {
 
         af.execute();
 
-        Feature genFeat = featureMap.get(":aggregate:aggregated");
+        Feature genFeat = featureMap.get(":aggregate:aggregated:T");
         assertNotNull(genFeat);
         ArtifactId id = genFeat.getId();
 
@@ -377,7 +377,7 @@ public class AggregateFeaturesMojoTest {
 
         af.execute();
 
-        Feature genFeat = featureMap.get(":aggregate:agg");
+        Feature genFeat = featureMap.get(":aggregate:agg:T");
         ArtifactId id = genFeat.getId();
 
         assertEquals("g", id.getGroupId());
@@ -464,7 +464,7 @@ public class AggregateFeaturesMojoTest {
         }).when(af.artifactResolver).resolve(Mockito.any(Artifact.class), Mockito.anyList(), Mockito.any(ArtifactRepository.class));
         af.execute();
 
-        Feature genFeat = featureMap.get(":aggregate:mynewfeature");
+        Feature genFeat = featureMap.get(":aggregate:mynewfeature:T");
         ArtifactId id = genFeat.getId();
         assertEquals("mygroup", id.getGroupId());
         assertEquals("myart", id.getArtifactId());
@@ -769,7 +769,7 @@ public class AggregateFeaturesMojoTest {
         af.handlerConfiguration = new HashMap<>();
 
         af.execute();
-        Feature genFeat = featureMap.get(":aggregate:myagg");
+        Feature genFeat = featureMap.get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(3, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
@@ -872,7 +872,7 @@ public class AggregateFeaturesMojoTest {
 
         af.execute();
 
-        Feature genFeat = featureMap.get(":aggregate:myagg");
+        Feature genFeat = featureMap.get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(1, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(

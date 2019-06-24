@@ -71,7 +71,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
         ProjectHelper.checkPreprocessorRun(this.project);
         for (final Aggregate aggregate : aggregates) {
             // check classifier
-            ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier);
+            ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);
 
             final Map<String, Feature> selection = this.getSelectedFeatures(aggregate);
             if (selection.isEmpty()) {
@@ -192,7 +192,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.setFeatureInfo(project, result);
 
             // Add feature to map of features
-            final String key = ProjectHelper.generateAggregateFeatureKey(aggregate.classifier);
+            final String key = ProjectHelper.generateAggregateFeatureKey(aggregate.classifier, aggregate.attach);
             ProjectHelper.getAssembledFeatures(project).put(key, result);
             ProjectHelper.getFeatures(this.project).put(key, result);
         }

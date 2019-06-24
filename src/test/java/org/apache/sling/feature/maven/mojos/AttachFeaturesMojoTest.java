@@ -19,7 +19,8 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.maven.model.Build;
 import org.apache.maven.project.MavenProject;
@@ -36,12 +37,12 @@ public class AttachFeaturesMojoTest {
         File feat_a = new File(getClass().getResource("/attach-resources/features/processed/test_a.json").toURI());
         File feat_d = new File(getClass().getResource("/attach-resources/features/processed/test_d.json").toURI());
 
-        final List<Feature> features = new ArrayList<>();
+        final Map<String, Feature> features = new HashMap<>();
         try ( final FileReader r = new FileReader(feat_a) ) {
-            features.add(FeatureJSONReader.read(r, feat_a.getAbsolutePath()));
+            features.put(feat_a.getAbsolutePath(), FeatureJSONReader.read(r, feat_a.getAbsolutePath()));
         }
         try ( final FileReader r = new FileReader(feat_d) ) {
-            features.add(FeatureJSONReader.read(r, feat_d.getAbsolutePath()));
+            features.put(feat_d.getAbsolutePath(), FeatureJSONReader.read(r, feat_d.getAbsolutePath()));
         }
 
         File featuresDir = feat_a.getParentFile().getParentFile().getParentFile();
@@ -61,7 +62,7 @@ public class AttachFeaturesMojoTest {
         MavenProjectHelper helper = Mockito.mock(MavenProjectHelper.class);
         af.projectHelper = helper;
 
-        af.attachClassifierFeatures(features, new ArrayList<>());
+        af.attachClassifierFeatures(features, new ArrayList<>(), true);
         Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testa", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testa.json"));
         Mockito.verify(helper).attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, "testd", new File(featuresDir, "slingfeature-tmp" + File.separatorChar + "feature-testd.json"));
         Mockito.verifyNoMoreInteractions(helper);

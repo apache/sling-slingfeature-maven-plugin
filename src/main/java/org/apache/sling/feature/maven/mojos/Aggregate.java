@@ -33,6 +33,12 @@ public class Aggregate extends FeatureSelectionConfig {
     public String classifier;
 
     /**
+     * If this is set to {@code false} the feature is not added to the project
+     * artifacts.
+     */
+    public boolean attach = true;
+
+    /**
      * If this is set to {@code true} the feature is marked as final.
      */
     public boolean markAsFinal = false;
@@ -66,12 +72,13 @@ public class Aggregate extends FeatureSelectionConfig {
     @Override
     public String toString() {
         return "Aggregate [selection=" + getSelections() + ", filesExcludes=" + getFilesExcludes()
-                + ", classifier=" + classifier
+                + ", classifier=" + classifier + ", attach=" + attach
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
                 + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides=" + frameworkPropertiesOverrides + "]";
     }
 
+    @SuppressWarnings("unchecked")
     public List<ArtifactId> getArtifactOverrideRules() {
         if (artifactsOverrides == null) {
             return Collections.emptyList();
