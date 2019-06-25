@@ -173,21 +173,8 @@
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
-            <artifactId>org.apache.sling.feature.apiregions.model</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.diff</artifactId>
             <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <!--
-         | JSON patch
-        -->
-        <dependency>
-            <groupId>com.flipkart.zjsonpatch</groupId>
-            <artifactId>zjsonpatch</artifactId>
-            <version>0.4.8</version>
         </dependency>
         <dependency>
             <groupId>org.apache.maven</groupId>
