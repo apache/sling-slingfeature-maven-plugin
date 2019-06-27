@@ -87,19 +87,17 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         boolean includeAll = "*".equals(selection);
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
-            if (ProjectHelper.isAggregate(entry.getKey())) {
-                final String classifier = entry.getValue().getId().getClassifier();
-                boolean include = includeAll;
-                if (!include) {
-                    if (selection.trim().length() == 0 && classifier == null) {
-                        include = true;
-                    } else if (selection.equals(classifier)) {
-                        include = true;
-                    }
+            final String classifier = entry.getValue().getId().getClassifier();
+            boolean include = includeAll;
+            if (!include) {
+                if (selection.trim().length() == 0 && classifier == null) {
+                    include = true;
+                } else if (selection.equals(classifier)) {
+                    include = true;
                 }
-                if (include) {
-                    result.put(entry.getKey(), entry.getValue());
-                }
+            }
+            if (include) {
+                result.put(entry.getKey(), entry.getValue());
             }
         }
     }

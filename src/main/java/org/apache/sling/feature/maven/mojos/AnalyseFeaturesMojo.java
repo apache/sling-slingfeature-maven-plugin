@@ -16,6 +16,15 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -31,16 +40,6 @@ import org.apache.sling.feature.analyser.AnalyserResult;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Analyse the feature.
@@ -104,7 +103,8 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
                 addTaskConfigurationDefaults(taskConfiguration);
 
-                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Analyser").a(" with following configuration:").toString());
+                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("analyser")
+                        .a(" with following configuration:").toString());
                 getLog().debug(" * Task Configuration = " + taskConfiguration);
                 getLog().debug(" * Include Tasks = " + an.getIncludeTasks());
                 getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
@@ -116,15 +116,15 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
                 if (features.isEmpty()) {
                     getLog().debug(
-                            "There are no assciated Feature files to current project, plugin execution will be interrupted");
+                            "There are no assciated feature files to current project, plugin execution will be skipped");
                     continue;
                 } else {
-                    getLog().debug("Starting Features analysis...");
+                    getLog().debug("Starting analysis of features...");
                 }
 
                 for (final Feature f : features) {
                     try {
-                        getLog().debug(MessageUtils.buffer().a("Analyzing Feature ").strong(f.getId().toMvnId())
+                        getLog().debug(MessageUtils.buffer().a("Analyzing feature ").strong(f.getId().toMvnId())
                                 .a(" ...").toString());
                         Dependency fwk = an.getFramework();
                         if (fwk == null) {
@@ -139,11 +139,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                         }
 
                         if (!result.getErrors().isEmpty()) {
-                            getLog().error("Analyser detected errors on Feature '" + f.getId().toMvnId()
+                            getLog().error("Analyser detected errors on feature '" + f.getId().toMvnId()
                                     + "'. See log output for error messages.");
                             hasErrors = true;
                         } else {
-                            getLog().debug(MessageUtils.buffer().a("Feature ").debug(f.getId().toMvnId())
+                            getLog().debug(MessageUtils.buffer().a("feature ").debug(f.getId().toMvnId())
                                     .a(" succesfully passed all analysis").toString());
                         }
                     } catch (Exception t) {
@@ -154,13 +154,14 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 }
             } catch (IOException e) {
                 throw new MojoExecutionException(
-                        "A fatal error occurred while setting up the Analyzer, see error cause:", e);
+                        "A fatal error occurred while setting up the analyzer, see error cause:", e);
             } finally {
                 getLog().debug("Features analysis complete");
             }
         }
         if (hasErrors) {
-            throw new MojoFailureException("One or more features Analyzer detected Feature error(s), please read the plugin log for more datils");
+            throw new MojoFailureException(
+                    "One or more features analyzer(s) detected feature error(s), please read the plugin log for more datils");
         }
     }
 
