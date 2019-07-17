@@ -75,6 +75,7 @@ public class EmbedFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        prepareProject();
         ProjectHelper.checkPreprocessorRun(this.project);
 
         final Map<String, Feature> features = embed == null ? this.selectAllFeatureFilesAndAggregates()

@@ -43,6 +43,7 @@ public class ReportingMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        prepareProject();
         ProjectHelper.checkPreprocessorRun(this.project);
         // get the features
         final Map<String, Feature> features = this.selectAllFeatureFiles();

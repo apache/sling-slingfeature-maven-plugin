@@ -35,12 +35,6 @@ import org.codehaus.plexus.util.AbstractScanner;
 
 public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
-    @Component
-    ArtifactHandlerManager artifactHandlerManager;
-
-    @Component
-    ArtifactResolver artifactResolver;
-
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {
         final Map<String, Feature> result = new LinkedHashMap<>();

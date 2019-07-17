@@ -81,6 +81,7 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        prepareProject();
         getLog().debug("Retrieving Feature files...");
         final Collection<Feature> features = getSelectedFeatures(selection).values();
 

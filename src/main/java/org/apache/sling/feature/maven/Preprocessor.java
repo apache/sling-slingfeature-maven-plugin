@@ -408,15 +408,20 @@ public class Preprocessor {
 
     private void checkFeatureId(final MavenProject project, final Feature feature) {
         // check feature id
-        if ( !project.getGroupId().equals(feature.getId().getGroupId()) ) {
+        if ( !isPlaceholder(feature.getId().getGroupId()) && !project.getGroupId().equals(feature.getId().getGroupId()) ) {
             throw new RuntimeException("Wrong group id for feature. It should be " + project.getGroupId() + " but is " + feature.getId().getGroupId());
         }
-        if ( !project.getArtifactId().equals(feature.getId().getArtifactId()) ) {
+        if ( !isPlaceholder(feature.getId().getArtifactId()) && !project.getArtifactId().equals(feature.getId().getArtifactId()) ) {
             throw new RuntimeException("Wrong artifact id for feature. It should be " + project.getArtifactId() + " but is " + feature.getId().getArtifactId());
         }
-        if ( !project.getVersion().equals(feature.getId().getVersion()) ) {
+        if ( !isPlaceholder(feature.getId().getVersion()) && !project.getVersion().equals(feature.getId().getVersion()) ) {
             throw new RuntimeException("Wrong version for feature. It should be " + project.getVersion() + " but is " + feature.getId().getVersion());
         }
+    }
+
+    private boolean isPlaceholder(String name) {
+        System.out.println("Place Holder Name: '" + name + ", test: " + (name != null && name.startsWith("${")));
+        return name != null && name.startsWith("${");
     }
 
     /**

@@ -25,6 +25,8 @@
                     <goal>analyse-features</goal>
                     <goal>attach-features</goal>
                     <goal>process-resources</goal>
+                    <goal>convert-cp</goal>
+                    <goal>convert-pm</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>

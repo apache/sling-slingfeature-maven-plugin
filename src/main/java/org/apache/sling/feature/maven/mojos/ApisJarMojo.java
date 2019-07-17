@@ -165,6 +165,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        prepareProject();
         ProjectHelper.checkPreprocessorRun(this.project);
 
         artifactProvider = new ArtifactProvider() {
