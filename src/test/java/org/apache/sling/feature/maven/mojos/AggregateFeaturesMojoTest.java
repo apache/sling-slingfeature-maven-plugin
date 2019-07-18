@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import java.io.File;
 import java.io.FileReader;
@@ -69,6 +70,7 @@ import org.mockito.stubbing.Answer;
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
     private static Map<String, ArtifactId> pluginCallbacks;
+    private MavenSession mockSession;
 
     public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
 
@@ -76,6 +78,8 @@ public class AggregateFeaturesMojoTest {
     public void setup() throws Exception {
         tempDir = Files.createTempDirectory(getClass().getSimpleName());
         pluginCallbacks = new HashMap<>();
+        mockSession = mock(MavenSession.class);
+
     }
 
     @After
@@ -105,11 +109,11 @@ public class AggregateFeaturesMojoTest {
         Aggregate fc = new Aggregate();
         fc.setFilesInclude("*.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -127,6 +131,7 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.mavenSession = mockSession;
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:aggregated:T");
@@ -181,11 +186,11 @@ public class AggregateFeaturesMojoTest {
         fc.setFilesExclude("*_v*");
         fc.setFilesExclude("test_w.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -203,6 +208,7 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.mavenSession = mockSession;
 
         af.execute();
 
@@ -254,11 +260,11 @@ public class AggregateFeaturesMojoTest {
         Aggregate fc = new Aggregate();
         fc.setFilesInclude("doesnotexist.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -276,6 +282,7 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.mavenSession = mockSession;
 
         try {
             af.execute();
@@ -299,11 +306,11 @@ public class AggregateFeaturesMojoTest {
         Aggregate fc = new Aggregate();
         fc.setFilesInclude("doesnotexist.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -321,6 +328,7 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.mavenSession = mockSession;
 
         try {
             af.execute();
@@ -351,11 +359,11 @@ public class AggregateFeaturesMojoTest {
 
         fc1.setFilesInclude("test_t.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("g");
         Mockito.when(mockProj.getArtifactId()).thenReturn("a");
@@ -374,6 +382,7 @@ public class AggregateFeaturesMojoTest {
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
+        af.mavenSession = mockSession;
 
         af.execute();
 
@@ -421,11 +430,11 @@ public class AggregateFeaturesMojoTest {
 
         fc.setIncludeArtifact(dep);
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("mygroup");
         Mockito.when(mockProj.getArtifactId()).thenReturn("myart");
@@ -441,12 +450,13 @@ public class AggregateFeaturesMojoTest {
         fc.classifier = "mynewfeature";
         af.aggregates = Collections.singletonList(fc);
         af.project = mockProj;
-        af.mavenSession = Mockito.mock(MavenSession.class);
+        af.mavenSession = mock(MavenSession.class);
         af.projectHelper = new DefaultMavenProjectHelper();
-        af.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
+        af.artifactHandlerManager = mock(ArtifactHandlerManager.class);
         af.features = featureFile.getParentFile();
+        af.mavenSession = mockSession;
 
-        af.artifactResolver = Mockito.mock(ArtifactResolver.class);
+        af.artifactResolver = mock(ArtifactResolver.class);
         Mockito.doAnswer(new Answer<Void>() {
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
@@ -497,11 +507,11 @@ public class AggregateFeaturesMojoTest {
         Aggregate fc = new Aggregate();
         fc.setFilesInclude("*.json");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -520,6 +530,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
+        af.mavenSession = mockSession;
 
         Properties p3props = new Properties();
         p3props.put("test3cfg", "myval");
@@ -557,11 +568,11 @@ public class AggregateFeaturesMojoTest {
         ag.setFilesInclude("*.json");
         ag.classifier = "aggregated";
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -586,6 +597,7 @@ public class AggregateFeaturesMojoTest {
         afm.projectHelper = new DefaultMavenProjectHelper();
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
+        afm.mavenSession = mockSession;
 
         assertEquals("Precondition", 0, capturedBuilderContext.size());
         afm.execute();
@@ -613,11 +625,11 @@ public class AggregateFeaturesMojoTest {
         ag.setFilesInclude("*.json");
         ag.classifier = "aggregated";
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -642,6 +654,7 @@ public class AggregateFeaturesMojoTest {
         afm.projectHelper = new DefaultMavenProjectHelper();
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
+        afm.mavenSession = mockSession;
 
         Properties allProps = new Properties();
         allProps.put("a", "a aa a");
@@ -678,11 +691,11 @@ public class AggregateFeaturesMojoTest {
         ag.setFilesInclude("*.json");
         ag.classifier = "aggregated";
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
@@ -707,6 +720,7 @@ public class AggregateFeaturesMojoTest {
         afm.projectHelper = new DefaultMavenProjectHelper();
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
+        afm.mavenSession = mockSession;
 
         Properties allProps = new Properties();
         allProps.put("fileStorage", "/somewhere");
@@ -745,11 +759,11 @@ public class AggregateFeaturesMojoTest {
         ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
                 "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
@@ -767,6 +781,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
+        af.mavenSession = mockSession;
 
         af.execute();
         Feature genFeat = featureMap.get(":aggregate:myagg:T");
@@ -795,11 +810,11 @@ public class AggregateFeaturesMojoTest {
         ag.setFilesInclude("*.json");
         ag.classifier = "myagg";
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
@@ -817,6 +832,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
+        af.mavenSession = mockSession;
 
         try {
             af.execute();
@@ -847,11 +863,11 @@ public class AggregateFeaturesMojoTest {
         ag.classifier = "myagg";
         ag.artifactsOverrides = Arrays.asList("org.apache.sling:myotherbundle:LATEST");
 
-        Build mockBuild = Mockito.mock(Build.class);
+        Build mockBuild = mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
         Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        MavenProject mockProj = mock(MavenProject.class);
         Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
         Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
         Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
@@ -869,6 +885,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
+        af.mavenSession = mockSession;
 
         af.execute();
 
@@ -880,7 +897,7 @@ public class AggregateFeaturesMojoTest {
     }
 
     private Artifact createMockArtifact() {
-        Artifact parentArtifact = Mockito.mock(Artifact.class);
+        Artifact parentArtifact = mock(Artifact.class);
         Mockito.when(parentArtifact.getGroupId()).thenReturn("gid");
         Mockito.when(parentArtifact.getArtifactId()).thenReturn("aid");
         Mockito.when(parentArtifact.getVersionRange()).thenReturn(VersionRange.createFromVersion("123"));

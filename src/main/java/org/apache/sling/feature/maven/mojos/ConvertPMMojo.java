@@ -27,7 +27,7 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
-import org.apache.sling.cpconverter.modelconverter.ProvisioningToFeature;
+import org.apache.sling.feature.modelconverter.ProvisioningToFeature;
 
 import java.io.File;
 import java.util.ArrayList;

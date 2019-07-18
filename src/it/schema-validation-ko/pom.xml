@@ -28,6 +28,23 @@
         <artifactId>@project.artifactId@</artifactId>
         <version>@project.version@</version>
         <extensions>true</extensions>
+        <executions>
+          <execution>
+            <id>aggregate</id>
+            <phase>generate-resources</phase>
+            <goals>
+              <goal>aggregate-features</goal>
+            </goals>
+            <configuration>
+              <aggregates>
+                <aggregate>
+                  <classifier>invalid-feature</classifier>
+                  <filesInclude>invalid-feature.json</filesInclude>
+                </aggregate>
+              </aggregates>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
