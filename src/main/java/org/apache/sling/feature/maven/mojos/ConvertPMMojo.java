@@ -38,6 +38,10 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * Converts the given list of Provisioning Models into
+ * Feature Models
+ */
 @Mojo(
     name = "convert-pm",
     requiresProject = true,

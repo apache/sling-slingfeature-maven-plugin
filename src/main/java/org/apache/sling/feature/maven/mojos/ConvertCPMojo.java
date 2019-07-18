@@ -48,6 +48,11 @@ import java.util.Map;
 import static org.apache.sling.feature.cpconverter.ContentPackage2FeatureModelConverter.PACKAGE_CLASSIFIER;
 import static org.apache.sling.feature.cpconverter.ContentPackage2FeatureModelConverter.ZIP_TYPE;
 
+/**
+ * Converts the given Content Packages into Feature Models
+ * and places the converted Content Package into the local
+ * Maven Repository
+ */
 @Mojo(
     name = "convert-cp",
     requiresProject = true,

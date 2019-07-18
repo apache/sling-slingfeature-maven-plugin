@@ -27,6 +27,7 @@
                     <goal>process-resources</goal>
                     <goal>convert-cp</goal>
                     <goal>convert-pm</goal>
+                    <goal>launch-features</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>
