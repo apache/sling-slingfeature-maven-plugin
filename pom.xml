@@ -201,6 +201,21 @@
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.sling</groupId>
+            <artifactId>org.apache.sling.feature.launcher</artifactId>
+            <version>1.0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.sling</groupId>
+            <artifactId>org.apache.sling.feature.extension.content</artifactId>
+            <version>1.0.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.sling</groupId>
+            <artifactId>org.apache.sling.feature.extension.apiregions</artifactId>
+            <version>1.0.4</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.jackrabbit</groupId>
             <artifactId>jackrabbit-api</artifactId>
             <version>2.19.3</version>

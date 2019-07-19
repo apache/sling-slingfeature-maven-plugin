@@ -66,7 +66,7 @@ public final class ConvertPMMojo extends AbstractMojo {
 
     public static final String CFG_RUN_MODES = "runModes";
 
-    public static final String DEFAULT_OUTPUT_FOLDER = "features";
+    public static final String DEFAULT_OUTPUT_FOLDER = "target/features";
 
     /**
      * The folder that contains the Provisioning Models
@@ -75,7 +75,7 @@ public final class ConvertPMMojo extends AbstractMojo {
     private File inputFolder;
 
     /**
-     * The folder that will contain the created Feature Models relative to the Maven Build Output Folder
+     * The folder that will contain the created Feature Models relative to the Maven Basedir Folder
      */
     @Parameter(property = CFG_OUTPUT_FOLDER, defaultValue = DEFAULT_OUTPUT_FOLDER, required = true)
     private String outputFolder;
@@ -167,7 +167,7 @@ public final class ConvertPMMojo extends AbstractMojo {
         if (!inputFolder.canRead()) {
             throw new MojoFailureException("Input Folder is not readable:" + inputFolder);
         }
-        String outputFolderPath = project.getBuild().getDirectory() + "/" + outputFolder;
+        String outputFolderPath = project.getBasedir() + "/" + outputFolder;
         File output = new File(outputFolderPath);
         if (!output.exists()) {
             if(!output.mkdirs()) {

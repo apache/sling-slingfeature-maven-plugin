@@ -201,7 +201,7 @@ public final class ConvertCPMojo extends AbstractMojo {
                         bundleStartOrder,
                         fmOutput,
                         artifactIdOverride,
-                        fmPrefix,
+//                        fmPrefix,
                         properties
                     )
                 )
