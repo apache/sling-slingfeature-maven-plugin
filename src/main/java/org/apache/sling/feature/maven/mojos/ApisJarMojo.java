@@ -878,9 +878,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // use the -subpackages to reduce the list of the arguments
 
-        javadocExecutor.addArgument("--allow-script-in-comments")
-                       .addArgument("-subpackages", false)
-                       .addArgument(sourcesDir.list(), File.pathSeparator)
+        javadocExecutor.addArgument("-subpackages=" + StringUtils.join(sourcesDir.list(), File.pathSeparator))
+                       .addArgument("--allow-script-in-comments")
                        //.addArgument("-J-Xmx2048m")
                        .execute(javadocDir, getLog());
     }

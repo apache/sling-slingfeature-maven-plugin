@@ -142,6 +142,9 @@ public abstract class ProjectHelper {
             throw new RuntimeException("The slingfeature preprocessor did not run. "
                     + "Please make sure to set <extensions>true</extensions> for the slingfeature plugin in your pom.");
         }
+        if (FeatureConstants.PACKAGING_FEATURE.equals(project.getPackaging()) && getFeatures(project).isEmpty()) {
+            throw new RuntimeException("Feature project has no features defined");
+        }
     }
 
     /**

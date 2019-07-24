@@ -116,9 +116,6 @@ public class Preprocessor {
         for(final FeatureProjectInfo finfo : env.modelProjects.values()) {
             process(env, finfo, FeatureProjectConfig.getMainConfig(finfo));
             process(env, finfo, FeatureProjectConfig.getTestConfig(finfo));
-            if ( FeatureConstants.PACKAGING_FEATURE.equals(finfo.project.getPackaging()) && finfo.features.isEmpty() ) {
-                throw new RuntimeException("Feature project has no feature defined: " + finfo.project.getId());
-            }
 
             ProjectHelper.storeProjectInfo(finfo);
 
