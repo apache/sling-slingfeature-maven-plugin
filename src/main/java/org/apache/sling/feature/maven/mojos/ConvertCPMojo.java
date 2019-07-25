@@ -18,16 +18,11 @@ package org.apache.sling.feature.maven.mojos;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.MavenProjectHelper;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
 import org.apache.maven.shared.transfer.artifact.install.ArtifactInstallerException;
@@ -36,6 +31,7 @@ import org.apache.sling.feature.cpconverter.acl.DefaultAclManager;
 import org.apache.sling.feature.cpconverter.artifacts.DefaultArtifactsDeployer;
 import org.apache.sling.feature.cpconverter.features.DefaultFeaturesManager;
 import org.apache.sling.feature.cpconverter.handlers.DefaultEntryHandlersManager;
+import org.apache.sling.feature.cpconverter.vltpkg.DefaultPackagesEventsEmitter;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -58,7 +54,7 @@ import static org.apache.sling.feature.cpconverter.ContentPackage2FeatureModelCo
     requiresProject = true,
     threadSafe = true
 )
-public final class ConvertCPMojo extends AbstractMojo {
+public final class ConvertCPMojo extends AbstractBaseMojo {
     public static final String CFG_STRICT_VALIDATION = "strictValidation";
 
     public static final String CFG_MERGE_CONFIGURATIONS = "mergeConfigurations";
@@ -152,26 +148,12 @@ public final class ConvertCPMojo extends AbstractMojo {
     @Parameter(property = CFG_CONTENT_PACKAGES)
     private List<ContentPackage> contentPackages;
 
-    /**
-     * The Maven project.
-     */
-    @Parameter( defaultValue = "${project}", readonly = true )
-    private MavenProject project;
-
-    @Parameter(property = "session", readonly = true, required = true)
-    protected MavenSession mavenSession;
-
-    @Component
-    protected MavenProjectHelper projectHelper;
-
     @Component
     private ArtifactInstaller installer;
 
-    @Component
-    private ArtifactHandlerManager artifactHandlerManager;
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        checkProject(CHECK.generate);
         // Un-encode a given Artifact Override Id
         if(artifactIdOverride != null) {
             String old = artifactIdOverride;
@@ -215,7 +197,8 @@ public final class ConvertCPMojo extends AbstractMojo {
                 )
                 .setAclManager(
                     new DefaultAclManager()
-                );
+                )
+                .setEmitter(DefaultPackagesEventsEmitter.open(fmOutput));
 
             if(contentPackages == null || contentPackages.isEmpty()) {
                 getLog().info("Project Artifact File: " + project.getArtifact());

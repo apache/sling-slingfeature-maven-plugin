@@ -45,8 +45,7 @@ public class RepositoryMojo extends AbstractRepositoryMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        prepareProject();
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkProject(CHECK.handle);
         if (repositories == null || repositories.isEmpty()) {
             final File artifactDir = new File(this.project.getBuild().getDirectory(), this.repositoryDir);
             this.doExecute(artifactDir, this.selectAllFeatureFilesAndAggregates(), null);

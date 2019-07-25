@@ -49,7 +49,10 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
+import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+
+import static org.apache.sling.feature.maven.mojos.AbstractBaseMojo.PLUGIN_ID;
 
 /**
  * The project helper contains utility functions and provides access
@@ -135,6 +138,31 @@ public abstract class ProjectHelper {
         store(info.project, ASSEMBLED_FEATURE_JSON, info.assembledFeatures);
         store(info.project, ASSEMBLED_TEST_FEATURE_JSON, info.assembledTestFeatures);
         info.project.setContextValue(Preprocessor.class.getName(), Boolean.TRUE);
+    }
+
+    public static void prepareProject(
+        ArtifactHandlerManager artifactHandlerManager, ArtifactResolver resolver, MavenSession session, Logger logger
+    ) {
+        final Environment env = new Environment();
+        env.artifactHandlerManager = artifactHandlerManager;
+        env.resolver = resolver;
+        env.logger = logger;
+        env.session = session;
+
+        logger.debug("Searching for project using plugin '" + PLUGIN_ID + "'...");
+
+        for (final MavenProject project : session.getProjects()) {
+            // consider all projects where this plugin is configured
+            Plugin plugin = project.getPlugin(PLUGIN_ID);
+            if (plugin != null) {
+                logger.debug("Found project " + project.getId() + " using " + PLUGIN_ID);
+                final FeatureProjectInfo info = new FeatureProjectInfo();
+                info.plugin = plugin;
+                info.project = project;
+                env.modelProjects.put(project.getGroupId() + ":" + project.getArtifactId(), info);
+            }
+        }
+        new Preprocessor().process(env);
     }
 
     public static void checkPreprocessorRun(final MavenProject project) {

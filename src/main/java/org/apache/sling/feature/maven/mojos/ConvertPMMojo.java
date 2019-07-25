@@ -18,7 +18,6 @@ package org.apache.sling.feature.maven.mojos;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -47,7 +46,7 @@ import java.util.regex.Pattern;
     requiresProject = true,
     threadSafe = true
 )
-public final class ConvertPMMojo extends AbstractMojo {
+public final class ConvertPMMojo extends AbstractBaseMojo {
     public static final String CFG_INPUT_FOLDER = "inputFolder";
 
     public static final String CFG_OUTPUT_FOLDER = "outputFolder";
@@ -161,6 +160,7 @@ public final class ConvertPMMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        checkProject(CHECK.generate);
         if (!inputFolder.isDirectory()) {
             throw new MojoFailureException("Input Folder is not a directory: " + inputFolder);
         }
@@ -195,10 +195,8 @@ public final class ConvertPMMojo extends AbstractMojo {
             artifactId = checkForPlaceholder(artifactId);
             options.put("name", artifactId);
         }
-//            getLog().info("Use Provided Version Flag: '{}'", useProvidedVersion);
         options.put("useProvidedVersion", version != null && !version.isEmpty());
         options.put("noProvisioningModelName", noProvisioningModelName);
-//            options.put("dropVariables", dropVariables);
         frameworkProperties = trimList(frameworkProperties);
         Map<String, Map<String, String>> frameworkPropertiesMap = new HashMap<>();
         for (String value : frameworkProperties) {

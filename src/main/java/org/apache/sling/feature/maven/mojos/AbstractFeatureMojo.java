@@ -18,27 +18,13 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
-import org.apache.maven.project.MavenProjectHelper;
-import org.apache.sling.feature.maven.Environment;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
-import org.apache.sling.feature.maven.FeatureProjectInfo;
-import org.apache.sling.feature.maven.Preprocessor;
-import org.codehaus.plexus.logging.Logger;
 
 /**
  * Base class for all mojos.
  */
-public abstract class AbstractFeatureMojo extends AbstractMojo {
-
-    private static final String PLUGIN_ID = "org.apache.sling:slingfeature-maven-plugin";
+public abstract class AbstractFeatureMojo extends AbstractBaseMojo {
 
     /**
      * All of the below configurations are handled by the Preprocessor.
@@ -135,52 +121,9 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
     private int jarStartOrder;
 
-    @Parameter(property = "project", readonly = true, required = true)
-    protected MavenProject project;
-
-    @Parameter(property = "session", readonly = true, required = true)
-    protected MavenSession mavenSession;
-
-    @Component
-    protected MavenProjectHelper projectHelper;
-
-    @Component
-    ArtifactHandlerManager artifactHandlerManager;
-
-    @Component
-    ArtifactResolver artifactResolver;
-
-    @Component
-    private Logger logger;
-
     protected File getTmpDir() {
         final File dir = new File(this.project.getBuild().getDirectory(), "slingfeature-tmp");
         dir.mkdirs();
         return dir;
-    }
-
-    protected void prepareProject() {
-        // Rerun the initial test
-        final Environment env = new Environment();
-        env.artifactHandlerManager = artifactHandlerManager;
-        env.resolver = artifactResolver;
-        env.logger = logger;
-        env.session = mavenSession;
-
-        getLog().debug("Searching for project using plugin '" + PLUGIN_ID + "'...");
-
-        for (final MavenProject project : mavenSession.getProjects()) {
-            // consider all projects where this plugin is configured
-            Plugin plugin = project.getPlugin(PLUGIN_ID);
-            if (plugin != null) {
-                getLog().debug("Found project " + project.getId() + " using " + PLUGIN_ID);
-                final FeatureProjectInfo info = new FeatureProjectInfo();
-                info.plugin = plugin;
-                info.project = project;
-                env.modelProjects.put(project.getGroupId() + ":" + project.getArtifactId(), info);
-            }
-        }
-        getLog().info("Call Preprocessor Process on Env: " + env);
-        new Preprocessor().process(env);
     }
 }

@@ -28,16 +28,12 @@ import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
 
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.model.Plugin;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
@@ -46,13 +42,8 @@ import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
-import org.apache.sling.feature.maven.Environment;
 import org.apache.sling.feature.maven.FeatureConstants;
-import org.apache.sling.feature.maven.FeatureProjectInfo;
-import org.apache.sling.feature.maven.Preprocessor;
 import org.apache.sling.feature.maven.ProjectHelper;
-import org.codehaus.plexus.component.annotations.Requirement;
-import org.codehaus.plexus.logging.Logger;
 
 /**
  * Aggregate multiple features into a single one.
@@ -77,8 +68,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        prepareProject();
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkProject(CHECK.handle);
         for (final Aggregate aggregate : aggregates) {
             // check classifier
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);

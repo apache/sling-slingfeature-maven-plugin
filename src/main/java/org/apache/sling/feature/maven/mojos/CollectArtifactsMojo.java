@@ -36,6 +36,7 @@ import org.apache.sling.feature.Feature;
 )
 public final class CollectArtifactsMojo extends AbstractRepositoryMojo {
 
+
     private final Pattern gavPattern = Pattern.compile("([^: ]+):([^: ]+)(:([^: ]*)(:([^: ]+))?)?:([^: ]+)");
 
     /**

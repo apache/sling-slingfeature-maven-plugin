@@ -16,7 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -33,7 +32,7 @@ import java.io.File;
     requiresProject = true,
     threadSafe = true
 )
-public final class FeatureLauncherMojo extends AbstractMojo {
+public final class FeatureLauncherMojo extends AbstractBaseMojo {
 
     public static final String CFG_FEATURE_FILE = "featureFile";
 
@@ -45,6 +44,7 @@ public final class FeatureLauncherMojo extends AbstractMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
+        checkProject(CHECK.handle);
         if(!featureFile.isFile()) {
             throw new MojoFailureException("Feature File is not a file: " + featureFile);
         }

@@ -57,20 +57,31 @@ import org.apache.sling.feature.Bundles;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.ExceptionLoggingRule;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.Preprocessor;
+import org.codehaus.plexus.logging.Logger;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
 @SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
+    // Log unexpected exceptions in the log files for easy debugging / discovery (especially in Jenkins)
+    @Rule
+    public ExceptionLoggingRule exceptionLoggingRule = new ExceptionLoggingRule();
+    @Rule
+    public ExpectedException expectedException = ExpectedException.none();
+
     private Path tempDir;
     private static Map<String, ArtifactId> pluginCallbacks;
     private MavenSession mockSession;
+    private Logger logger;
 
     public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
 
@@ -79,7 +90,7 @@ public class AggregateFeaturesMojoTest {
         tempDir = Files.createTempDirectory(getClass().getSimpleName());
         pluginCallbacks = new HashMap<>();
         mockSession = mock(MavenSession.class);
-
+        logger = mock(Logger.class);
     }
 
     @After
@@ -132,6 +143,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.mavenSession = mockSession;
+        af.logger = logger;
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:aggregated:T");
@@ -209,7 +221,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:aggregated:T");
@@ -283,6 +295,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.mavenSession = mockSession;
+        af.logger = logger;
 
         try {
             af.execute();
@@ -329,6 +342,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.mavenSession = mockSession;
+        af.logger = logger;
 
         try {
             af.execute();
@@ -375,7 +389,6 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
-
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc1.classifier = "agg";
         af.aggregates = Arrays.asList(fc1);
@@ -383,7 +396,7 @@ public class AggregateFeaturesMojoTest {
         af.projectHelper = new DefaultMavenProjectHelper();
         af.features = featuresDir;
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:agg:T");
@@ -455,7 +468,7 @@ public class AggregateFeaturesMojoTest {
         af.artifactHandlerManager = mock(ArtifactHandlerManager.class);
         af.features = featureFile.getParentFile();
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         af.artifactResolver = mock(ArtifactResolver.class);
         Mockito.doAnswer(new Answer<Void>() {
             @Override
@@ -531,7 +544,7 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         Properties p3props = new Properties();
         p3props.put("test3cfg", "myval");
         p3props.put("test3cfg3", "somethingelse");
@@ -598,7 +611,7 @@ public class AggregateFeaturesMojoTest {
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
         afm.mavenSession = mockSession;
-
+        afm.logger = logger;
         assertEquals("Precondition", 0, capturedBuilderContext.size());
         afm.execute();
         assertEquals(1, capturedBuilderContext.size());
@@ -655,7 +668,7 @@ public class AggregateFeaturesMojoTest {
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
         afm.mavenSession = mockSession;
-
+        afm.logger = logger;
         Properties allProps = new Properties();
         allProps.put("a", "a aa a");
         afm.handlerConfiguration.put("all", allProps);
@@ -721,7 +734,7 @@ public class AggregateFeaturesMojoTest {
         afm.features = featuresDir;
         afm.handlerConfiguration = new HashMap<>();
         afm.mavenSession = mockSession;
-
+        afm.logger = logger;
         Properties allProps = new Properties();
         allProps.put("fileStorage", "/somewhere");
         afm.handlerConfiguration.put("all", allProps);
@@ -782,7 +795,7 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         af.execute();
         Feature genFeat = featureMap.get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
@@ -833,6 +846,7 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
         af.mavenSession = mockSession;
+        af.logger = logger;
 
         try {
             af.execute();
@@ -886,7 +900,7 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
         af.handlerConfiguration = new HashMap<>();
         af.mavenSession = mockSession;
-
+        af.logger = logger;
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:myagg:T");
