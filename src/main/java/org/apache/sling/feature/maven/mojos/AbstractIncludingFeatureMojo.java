@@ -80,6 +80,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
         boolean includeAll = "*".equals(selection);
+        boolean found = false;
         for (final Map.Entry<String, Feature> entry : projectFeatures.entrySet()) {
             final String classifier = entry.getValue().getId().getClassifier();
             boolean include = includeAll;
@@ -92,7 +93,11 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             }
             if (include) {
                 result.put(entry.getKey(), entry.getValue());
+                found = true;
             }
+        }
+        if (!found) {
+            throw new MojoExecutionException("Aggregate Classifier " + selection + " not found.");
         }
     }
 

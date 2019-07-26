@@ -34,9 +34,9 @@ All of these goals use the same way of selecting the features: Whenever a goal c
    ...
 ```
 
-The order of the above include statements defines the order in which the features are processed. If an include contains a pattern, all files matching that pattern are processed in alphabetical order based on their filename.
+The order of the above include statements defines the order in which the features are processed. If an include contains a pattern, all files matching that pattern are processed in string order based on their full path.
 
-In addition, most of the goals can also be configured to select aggregated features (see below) based on their qualifier. The special token `*` can be used to select all aggregated features and an empty classifier selects the aggregated feature without a classifier (main artifact).
+In addition, most of the goals can also be configured to select aggregated features (see below) based on their qualifier. The special token `*` can be used to select all aggregated features and the token `:` selects the aggregated feature without a classifier (main artifact).
 
 ```
    ...
