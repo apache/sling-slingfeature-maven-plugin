@@ -161,7 +161,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
         if (hasErrors) {
             throw new MojoFailureException(
-                    "One or more features analyzer(s) detected feature error(s), please read the plugin log for more datils");
+                    "One or more feature analyzer(s) detected feature error(s), please read the plugin log for more details");
         }
     }
 
