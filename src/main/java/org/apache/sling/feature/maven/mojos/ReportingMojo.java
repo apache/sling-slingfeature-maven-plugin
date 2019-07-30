@@ -28,7 +28,6 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 import edu.emory.mathcs.backport.java.util.Collections;
 
@@ -43,7 +42,7 @@ public class ReportingMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
         // get the features
         final Map<String, Feature> features = this.selectAllFeatureFiles();
         if (features.isEmpty()) {

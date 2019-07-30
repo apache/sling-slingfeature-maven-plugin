@@ -21,8 +21,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
-import java.io.StringWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.HashMap;
@@ -32,17 +30,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.json.Json;
-import javax.json.JsonObject;
-import javax.json.JsonReader;
-import javax.json.JsonValue;
-import javax.json.stream.JsonGenerator;
-
-import org.apache.felix.configurator.impl.json.JSMin;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Extension;
@@ -248,21 +238,6 @@ public class Preprocessor {
         }
     }
 
-    private void scan(final List<File> files, final File dir, final String includes, final String excludes) {
-        final DirectoryScanner scanner = new DirectoryScanner();
-        scanner.setBasedir(dir);
-        if ( includes != null ) {
-            scanner.setIncludes(includes.split(","));
-        }
-        if ( excludes != null ) {
-            scanner.setExcludes(excludes.split(","));
-        }
-        scanner.scan();
-        for(final String f : scanner.getIncludedFiles()) {
-            files.add(new File(dir, f));
-        }
-    }
-
     /**
      * Add all dependencies from the feature
      * @param env The environment
@@ -304,28 +279,34 @@ public class Preprocessor {
         final File dir = new File(info.project.getBasedir(), config.getFeaturesDir());
         if ( dir.exists() ) {
             final List<File> files = new ArrayList<>();
-            scan(files, dir, config.getIncludes(), config.getExcludes());
+            ProjectHelper.scan(files, dir, config.getIncludes(), config.getExcludes());
 
             for(final File file : files) {
             	logger.debug("Reading feature file " + file + " in project " + info.project.getId());
-                final StringBuilder sb = new StringBuilder();
-                try (final Reader reader = new FileReader(file)) {
-                    final char[] buf = new char[4096];
-                    int l = 0;
 
-                    while (( l = reader.read(buf)) > 0 ) {
-                        sb.append(buf, 0, l);
-                    }
-                } catch ( final IOException io) {
-                    throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
+                // if the feature is in the root of the configured directory
+                // and the feature is named "feature.json"
+                // and the feature is not a test feature, this is the main feature
+                // which does not get a classifier
+                final String suggestedClassifier;
+                if (config.isTestConfig() || !file.getName().equals("feature.json")
+                        || !file.getParentFile().getAbsolutePath().equals(
+                                new File(info.project.getBasedir(), config.getFeaturesDir()).getAbsolutePath())) {
+                    final int lastDot = file.getName().lastIndexOf('.');
+                    suggestedClassifier = file.getName().substring(0, lastDot);
+                } else {
+                    suggestedClassifier = null;
                 }
 
-                final String json = preprocessFeature(logger, info, config, file, sb.toString());
+                final String readJson = ProjectHelper.readFeatureFile(info.project, file, suggestedClassifier);
+
+                final String json = preprocessFeature(info.project, config.isValidate(),
+                        file, readJson);
 
                 try (final Reader reader = new StringReader(json)) {
                     final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
-                    this.checkFeatureId(info.project, feature);
+                    ProjectHelper.checkFeatureId(info.project, feature);
 
                     ProjectHelper.setFeatureInfo(info.project, feature);
                     this.postProcessReadFeature(feature);
@@ -340,84 +321,19 @@ public class Preprocessor {
         }
     }
 
-	protected String preprocessFeature(final Logger logger, final FeatureProjectInfo info,
-			final FeatureProjectConfig config, final File file, final String readJson) {
-        // minify JSON (remove comments)
-        String json;
-        try (final Writer out = new StringWriter(); final Reader in = new StringReader(readJson)) {
-            final JSMin min = new JSMin(in, out);
-            min.jsmin();
-            json = out.toString();
-        } catch (IOException e) {
-            throw new RuntimeException("Unable to read feature file " + file.getAbsolutePath(), e);
-        }
-
-		// check if "id" is set
-		try (final JsonReader reader = Json.createReader(new StringReader(json)) ) {
-			final JsonObject obj = reader.readObject();
-			if ( !obj.containsKey("id") ) {
-				final StringBuilder isb = new StringBuilder();
-				isb.append(info.project.getGroupId());
-				isb.append(':');
-				isb.append(info.project.getArtifactId());
-				isb.append(':');
-				isb.append(FeatureConstants.PACKAGING_FEATURE);
-				// if the feature is in the root of the configured directory
-				// and the feature is named "feature.json"
-				// and the feature is not a test feature, this is the main feature
-				// which does not get a classifier
-				if ( config.isTestConfig()
-					 || !file.getName().equals("feature.json")
-					 || !file.getParentFile().getAbsolutePath().equals(new File(info.project.getBasedir(), config.getFeaturesDir()).getAbsolutePath())) {
-		    		isb.append(':');
-			    	final int lastDot = file.getName().lastIndexOf('.');
-				    isb.append(file.getName().substring(0, lastDot));
-				}
-			    isb.append(':');
-		   		isb.append(info.project.getVersion());
-
-		        final StringWriter writer = new StringWriter();
-
-		        logger.debug("Generating id " + isb.toString() + " for feature file " + file);
-		        try ( final JsonGenerator generator = Json.createGenerator(writer) ) {
-		        	generator.writeStartObject();
-
-		        	generator.write("id", isb.toString());
-
-		        	for(final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
-		                generator.write(entry.getKey(), entry.getValue());
-		        	}
-		        	generator.writeEnd();
-		        }
-
-		        json = writer.toString();
-		   	}
-		}
+    protected String preprocessFeature(final MavenProject project, boolean validate, final File file, String json) {
 
         // validate
-        if (config.isValidate()) {
+        if (validate) {
             checkFeatureFileValidation(file, json);
         }
 
-        // replace variables
-        return Substitution.replaceMavenVars(info.project, json);
+        return json;
 	}
-
-    private void checkFeatureId(final MavenProject project, final Feature feature) {
-        // check feature id
-        if ( !project.getGroupId().equals(feature.getId().getGroupId()) ) {
-            throw new RuntimeException("Wrong group id for feature. It should be " + project.getGroupId() + " but is " + feature.getId().getGroupId());
-        }
-        if ( !project.getArtifactId().equals(feature.getId().getArtifactId()) ) {
-            throw new RuntimeException("Wrong artifact id for feature. It should be " + project.getArtifactId() + " but is " + feature.getId().getArtifactId());
-        }
-        if ( !project.getVersion().equals(feature.getId().getVersion()) ) {
-            throw new RuntimeException("Wrong version for feature. It should be " + project.getVersion() + " but is " + feature.getId().getVersion());
-        }
-    }
 
     /**
      * Hook to post process the local feature
+     *
      * @param result The read feature
      * @return The post processed feature
      */

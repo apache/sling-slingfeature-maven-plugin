@@ -24,22 +24,13 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.TreeMap;
 
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
 public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
-
-    @Component
-    ArtifactHandlerManager artifactHandlerManager;
-
-    @Component
-    ArtifactResolver artifactResolver;
 
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {

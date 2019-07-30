@@ -96,7 +96,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
         final List<String> featureUrls = new ArrayList<>();
         this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project), featureUrls, this.attachMainFeatures);
         this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project), featureUrls,

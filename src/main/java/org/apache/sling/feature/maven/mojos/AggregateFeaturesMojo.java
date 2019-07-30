@@ -68,7 +68,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
         for (final Aggregate aggregate : aggregates) {
             // check classifier
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);
