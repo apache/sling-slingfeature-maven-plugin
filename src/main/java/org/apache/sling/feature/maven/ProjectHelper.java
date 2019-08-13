@@ -24,7 +24,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,9 +107,9 @@ public abstract class ProjectHelper {
             result = null;
         }
         if ( result == null ) {
+            result = new TreeMap<>();
             final Integer size = (Integer)project.getContextValue(key);
             if ( size != null ) {
-                result = new TreeMap<>();
                 for(int i=0; i<size;i++) {
                     final String text = (String)project.getContextValue(key + "_" + String.valueOf(i));
                     if ( text == null ) {
@@ -127,10 +126,10 @@ public abstract class ProjectHelper {
                         throw new RuntimeException(ioe.getMessage(), ioe);
                     }
                 }
-                project.setContextValue(cacheKey, result);
             }
+            project.setContextValue(cacheKey, result);
         }
-        return result != null ? result : Collections.emptyMap();
+        return result;
     }
 
     /**
@@ -156,9 +155,6 @@ public abstract class ProjectHelper {
         if (project.getContextValue(Preprocessor.class.getName()) == null) {
             return "The slingfeature preprocessor did not run. "
                     + "Please make sure to set <extensions>true</extensions> for the slingfeature plugin in your pom.";
-        }
-        if (FeatureConstants.PACKAGING_FEATURE.equals(project.getPackaging()) && getFeatures(project).isEmpty()) {
-            return "Feature project has no features defined";
         }
         return null;
     }

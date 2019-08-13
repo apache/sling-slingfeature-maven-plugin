@@ -41,6 +41,7 @@ import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
+import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
 import org.apache.sling.feature.maven.ProjectHelper;
 
@@ -142,7 +143,22 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * Directory containing generated feature files
      */
     @Parameter
-    protected File generatedFeatures;
+    private File generatedFeatures;
+
+    /**
+     * Comma separated list of includes for the generated feature files in the
+     * configured directory. Only feature files specified by this include are
+     * processed.
+     */
+    @Parameter(defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
+    private String generatedFeaturesIncludes;
+
+    /**
+     * Comma separated list of excludes for the generated feature files. Feature
+     * files excluded by this configuration are not processed at all.
+     */
+    @Parameter
+    private String generatedFeaturesExcludes;
 
     /**
      * The start level for the attached jar/bundle.
@@ -189,20 +205,37 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
             this.project.setContextValue(PROPERTY_HANDLED_GENERATED_FEATURES, Boolean.TRUE);
         }
+        if (FeatureConstants.PACKAGING_FEATURE.equals(project.getPackaging())
+                && ProjectHelper.getFeatures(project).isEmpty()) {
+            throw new MojoExecutionException("Feature project has no features defined");
+        }
     }
 
     private void handleGeneratedFeatures() throws MojoExecutionException {
-        if (this.generatedFeatures != null) {
-            if (!this.generatedFeatures.exists()) {
-                throw new MojoExecutionException("Directory does not exists: " + this.generatedFeatures);
+        final File dir;
+        if (this.generatedFeatures == null) {
+            final File targetDir = new File(this.project.getBasedir(), this.project.getBuild().getDirectory());
+            final File genDir = new File(targetDir, "generated-features");
+            if (genDir.exists()) {
+                dir = genDir;
+            } else {
+                dir = null;
             }
-            if (!this.generatedFeatures.isDirectory()) {
+        } else {
+            dir = this.generatedFeatures;
+        }
+        if (dir != null) {
+            if (!dir.exists()) {
+                throw new MojoExecutionException("Directory does not exists: " + dir);
+            }
+            if (!dir.isDirectory()) {
                 throw new MojoExecutionException(
-                        "Generated features configuration is not a directory: " + this.generatedFeatures);
+                        "Generated features configuration is not a directory: " + dir);
             }
 
             final List<File> files = new ArrayList<>();
-            ProjectHelper.scan(files, this.generatedFeatures, null, null);
+            ProjectHelper.scan(files, dir, this.generatedFeaturesIncludes,
+                    this.generatedFeaturesExcludes);
 
             for (final File file : files) {
                 getLog().debug("Reading feature file " + file);
@@ -233,7 +266,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
                     // this is a bit unusual, but as ProjectHelper can only throw RuntimeException
                     // it's
                     // more user friendly to catch it and rethrow a mojo friendly exception
-                    throw new MojoExecutionException(re.getMessage(), re.getCause());
+                    throw new MojoExecutionException(re.getMessage(), re.getCause() != null ? re.getCause() : re);
                 }
             }
         }
