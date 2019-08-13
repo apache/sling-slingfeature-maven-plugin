@@ -163,7 +163,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
         // get the features
         final Map<String, Feature> assembledFeatures = this.getFeatures();
         if (assembledFeatures.isEmpty()) {

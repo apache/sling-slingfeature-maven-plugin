@@ -30,7 +30,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
  * Embed the features in the resources
@@ -75,7 +74,7 @@ public class EmbedFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
 
         final Map<String, Feature> features = embed == null ? this.selectAllFeatureFilesAndAggregates()
                 : this.getSelectedFeatures(embed);

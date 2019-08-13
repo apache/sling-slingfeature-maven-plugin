@@ -22,8 +22,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +33,13 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonReader;
+import javax.json.JsonValue;
+import javax.json.stream.JsonGenerator;
+
+import org.apache.felix.configurator.impl.json.JSMin;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
@@ -45,6 +52,7 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
@@ -99,9 +107,9 @@ public abstract class ProjectHelper {
             result = null;
         }
         if ( result == null ) {
+            result = new TreeMap<>();
             final Integer size = (Integer)project.getContextValue(key);
             if ( size != null ) {
-                result = new TreeMap<>();
                 for(int i=0; i<size;i++) {
                     final String text = (String)project.getContextValue(key + "_" + String.valueOf(i));
                     if ( text == null ) {
@@ -118,10 +126,10 @@ public abstract class ProjectHelper {
                         throw new RuntimeException(ioe.getMessage(), ioe);
                     }
                 }
-                project.setContextValue(cacheKey, result);
             }
+            project.setContextValue(cacheKey, result);
         }
-        return result != null ? result : Collections.emptyMap();
+        return result;
     }
 
     /**
@@ -137,14 +145,18 @@ public abstract class ProjectHelper {
         info.project.setContextValue(Preprocessor.class.getName(), Boolean.TRUE);
     }
 
-    public static void checkPreprocessorRun(final MavenProject project) {
+    /**
+     * Check that the preprocessor has been run
+     *
+     * @param project The maven project
+     * @return {@code null} if the preprocessor ran, an error string if not
+     */
+    public static String checkPreprocessorRun(final MavenProject project) {
         if (project.getContextValue(Preprocessor.class.getName()) == null) {
-            throw new RuntimeException("The slingfeature preprocessor did not run. "
-                    + "Please make sure to set <extensions>true</extensions> for the slingfeature plugin in your pom.");
+            return "The slingfeature preprocessor did not run. "
+                    + "Please make sure to set <extensions>true</extensions> for the slingfeature plugin in your pom.";
         }
-        if (FeatureConstants.PACKAGING_FEATURE.equals(project.getPackaging()) && getFeatures(project).isEmpty()) {
-            throw new RuntimeException("Feature project has no features defined");
-        }
+        return null;
     }
 
     /**
@@ -455,4 +467,106 @@ public abstract class ProjectHelper {
         Map m = value;
         return m;
     }
+
+    public static void scan(final List<File> files, final File dir, final String includes, final String excludes) {
+        final DirectoryScanner scanner = new DirectoryScanner();
+        scanner.setBasedir(dir);
+        if (includes != null) {
+            scanner.setIncludes(includes.split(","));
+        }
+        if (excludes != null) {
+            scanner.setExcludes(excludes.split(","));
+        }
+        scanner.scan();
+        for (final String f : scanner.getIncludedFiles()) {
+            files.add(new File(dir, f));
+        }
+    }
+
+    /**
+     * Read the json file, minify it, add id if missing and replace variables
+     *
+     * @param file The json file
+     * @return The read and minified JSON
+     */
+    public static String readFeatureFile(final MavenProject project, final File file,
+            final String suggestedClassifier) {
+        final StringBuilder sb = new StringBuilder();
+        try (final Reader reader = new FileReader(file)) {
+            final char[] buf = new char[4096];
+            int l = 0;
+
+            while ((l = reader.read(buf)) > 0) {
+                sb.append(buf, 0, l);
+            }
+        } catch (final IOException io) {
+            throw new RuntimeException("Unable to read feature " + file.getAbsolutePath(), io);
+        }
+        final String readJson = sb.toString();
+
+        // minify JSON (remove comments)
+        String json;
+        try (final Writer out = new StringWriter(); final Reader in = new StringReader(readJson)) {
+            final JSMin min = new JSMin(in, out);
+            min.jsmin();
+            json = out.toString();
+        } catch (final IOException e) {
+            throw new RuntimeException("Unable to read feature file " + file.getAbsolutePath(), e);
+        }
+
+        // check if "id" is set
+        try (final JsonReader reader = Json.createReader(new StringReader(json))) {
+            final JsonObject obj = reader.readObject();
+            if (!obj.containsKey("id")) {
+                final StringBuilder isb = new StringBuilder();
+                isb.append(project.getGroupId());
+                isb.append(':');
+                isb.append(project.getArtifactId());
+                isb.append(':');
+                isb.append(FeatureConstants.PACKAGING_FEATURE);
+
+                if (suggestedClassifier != null) {
+                    isb.append(':');
+                    isb.append(suggestedClassifier);
+                }
+                isb.append(':');
+                isb.append(project.getVersion());
+
+                final StringWriter writer = new StringWriter();
+
+                try (final JsonGenerator generator = Json.createGenerator(writer)) {
+                    generator.writeStartObject();
+
+                    generator.write("id", isb.toString());
+
+                    for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
+                        generator.write(entry.getKey(), entry.getValue());
+                    }
+                    generator.writeEnd();
+                }
+
+                json = writer.toString();
+            }
+        }
+
+        // replace variables
+        return Substitution.replaceMavenVars(project, json);
+    }
+
+    public static void checkFeatureId(final MavenProject project, final Feature feature) {
+        // check feature id
+        if (!project.getGroupId().equals(feature.getId().getGroupId())) {
+            throw new RuntimeException("Wrong group id for feature. It should be " + project.getGroupId() + " but is "
+                    + feature.getId().getGroupId());
+        }
+        if (!project.getArtifactId().equals(feature.getId().getArtifactId())) {
+            throw new RuntimeException("Wrong artifact id for feature. It should be " + project.getArtifactId()
+                    + " but is " + feature.getId().getArtifactId());
+        }
+        if (!project.getVersion().equals(feature.getId().getVersion())) {
+            throw new RuntimeException("Wrong version for feature. It should be " + project.getVersion() + " but is "
+                    + feature.getId().getVersion());
+        }
+    }
+
 }
