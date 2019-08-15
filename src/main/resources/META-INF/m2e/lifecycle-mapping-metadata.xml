@@ -25,6 +25,7 @@
                     <goal>analyse-features</goal>
                     <goal>attach-features</goal>
                     <goal>process-resources</goal>
+                    <goal>launch-features</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>
