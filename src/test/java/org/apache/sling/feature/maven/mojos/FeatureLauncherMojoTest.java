@@ -16,31 +16,50 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
+import org.apache.maven.model.Build;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.project.MavenProject;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 import org.mockito.internal.util.reflection.Whitebox;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
+import static org.junit.Assert.assertFalse;
 import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 
 public class FeatureLauncherMojoTest {
 
     private FeatureLauncherMojo mojo = spy(new FeatureLauncherMojo());
+    private Path tempDir;
 
     @Before
-    public void setup() {
-        doNothing().when(mojo).launch(any(String[].class));
+    public void setup() throws IOException {
+        tempDir = Files.createTempDirectory(getClass().getSimpleName());
     }
 
     @Test
-    public void testLaunch() {
+    public void testLaunch() throws MojoFailureException, MojoExecutionException, URISyntaxException {
+        File featureFile = new File(getClass().getResource("/attach-resources/features/processed/test_a.json").toURI());
+
         Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
         Whitebox.setInternalState(mojo, "repositoryUrl", "~/.m2/repository");
         Whitebox.setInternalState(mojo, "frameworkProperties", new String[] { "one=two", "three=four" });
-        Whitebox.setInternalState(mojo, "featureFile", new File("./test"));
+        Whitebox.setInternalState(mojo, "featureFile", featureFile);
         Whitebox.setInternalState(mojo, "variableValues", new String[] { "a=b" });
         Whitebox.setInternalState(mojo, "verbose", true);
         Whitebox.setInternalState(mojo, "cacheDirectory", new File("./launcher/cache"));
@@ -48,5 +67,32 @@ public class FeatureLauncherMojoTest {
         Whitebox.setInternalState(mojo, "extensionConfigurations", new String[] { "whatever" });
         Whitebox.setInternalState(mojo, "frameworkVersion", "1.0.0");
         Whitebox.setInternalState(mojo, "frameworkArtifacts", new String[] { "next-cool-thing" });
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject project = new MavenProject();
+        project.setGroupId("testing");
+        project.setArtifactId("test");
+        project.setVersion("1.0.1");
+        project.setBuild(mockBuild);
+
+        final List<String> arguments = new ArrayList<>();
+        doAnswer(
+            new Answer() {
+                @Override
+                public Object answer(InvocationOnMock invocation) throws Throwable {
+                    String[] args = (String[]) invocation.getArguments()[0];
+                    arguments.addAll(Arrays.asList(args));
+                    return null;
+                }
+            }
+        ).when(mojo).launch(any(String[].class));
+
+        mojo.project = project;
+
+        mojo.execute();
+
+        assertFalse("No Launch Arguments", arguments.isEmpty());
     }
 }
