@@ -35,7 +35,7 @@ import java.util.List;
     requiresProject = true,
     threadSafe = true
 )
-public final class FeatureLauncherMojo extends AbstractFeatureMojo {
+public class FeatureLauncherMojo extends AbstractFeatureMojo {
 
     public static final String CFG_ARTIFACT_CLASH_OVERRIDES = "artifactClashOverrides";
     public static final String CFG_REPOSITORY_URL = "frameworkRepositoryUrl";
@@ -95,7 +95,7 @@ public final class FeatureLauncherMojo extends AbstractFeatureMojo {
      * Extension Configurations for the Launcher
      */
     @Parameter(property = CFG_EXTENSION_CONFIGURATIONS, required = false)
-    private String[] extensionConfiguration;
+    private String[] extensionConfigurations;
 
     /**
      * The Framework Version (see Feature Launcher for more info)
@@ -134,14 +134,18 @@ public final class FeatureLauncherMojo extends AbstractFeatureMojo {
         }
         handleFile(arguments, cacheDirectory, "-c");
         handleFile(arguments, homeDirectory, "-p");
-        handleStringList(arguments, extensionConfiguration, "-ec");
+        handleStringList(arguments, extensionConfigurations, "-ec");
         handleString(arguments, frameworkVersion, "-fw");
         handleStringList(arguments, frameworkArtifacts, "-fa");
         handleFile(arguments, featureFile, "-f");
 
         String[] args = arguments.toArray(new String[] {});
         getLog().info("Launcher Arguments: '" + arguments + "'");
-        Main.main(arguments.toArray(args));
+        launch(args);
+    }
+
+    void launch(String[] arguments) {
+        Main.main(arguments);
     }
 
     private void handleStringList(List<String> arguments, String[] list, String parameter) {
