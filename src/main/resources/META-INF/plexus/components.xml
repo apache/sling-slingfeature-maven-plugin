@@ -27,8 +27,8 @@
           <lifecycle>
             <id>default</id>
             <phases>
-              <package>org.apache.sling:slingfeature-maven-plugin:attach-features</package>
-              <install>org.apache.maven.plugins:maven-install-plugin:install</install>
+              <install>org.apache.sling:slingfeature-maven-plugin:attach-features,
+                       org.apache.maven.plugins:maven-install-plugin:install</install>
               <deploy>org.apache.maven.plugins:maven-deploy-plugin:deploy</deploy>
             </phases>
           </lifecycle>
