@@ -40,7 +40,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
  * Attach the feature as a project artifact.
  */
 @Mojo(name = "attach-features",
-      defaultPhase = LifecyclePhase.PACKAGE,
+        defaultPhase = LifecyclePhase.INSTALL,
       requiresDependencyResolution = ResolutionScope.TEST,
       threadSafe = true
     )
