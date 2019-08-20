@@ -17,7 +17,6 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,17 +28,14 @@ import java.util.Spliterators;
 import java.util.stream.StreamSupport;
 
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.maven.FeatureConstants;
@@ -67,7 +63,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     Map<String, Properties> handlerConfiguration = new HashMap<>();
 
     @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
+    public void execute() throws MojoExecutionException {
         checkPreconditions();
         for (final Aggregate aggregate : aggregates) {
             // check classifier
@@ -86,7 +82,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             if (aggregate.frameworkPropertiesOverrides != null)
                 frameworkPropertiesOverwrites.putAll(aggregate.frameworkPropertiesOverrides);
 
-            final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
+            final BuilderContext builderContext = new BuilderContext(new BaseFeatureProvider() {
                 @Override
                 public Feature provide(ArtifactId id) {
                     // check in selection
@@ -95,49 +91,10 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                             return feat;
                         }
                     }
-
-                    // Check for the feature in the local context
-                    for (final Feature feat : ProjectHelper.getAssembledFeatures(project).values()) {
-                        if (feat.getId().equals(id)) {
-                            return feat;
-                        }
-                    }
-
-                    if (ProjectHelper.isLocalProjectArtifact(project, id)) {
-                        throw new RuntimeException("Unable to resolve local artifact " + id.toMvnId());
-                    }
-
-                    // Finally, look the feature up via Maven's dependency mechanism
-                    return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                            artifactResolver, id);
+                    return super.provide(id);
                 }
-            }).setArtifactProvider(new ArtifactProvider() {
-
-                @Override
-                public URL provide(final ArtifactId id) {
-                    if (ProjectHelper.isLocalProjectArtifact(project, id)) {
-                        for (final Map.Entry<String, Feature> entry : ProjectHelper.getAssembledFeatures(project)
-                                .entrySet()) {
-                            if (entry.getValue().getId().equals(id)) {
-                                // TODO - we might need to create a file to return it here
-                                throw new RuntimeException(
-                                        "Unable to get file for project feature " + entry.getValue().getId().toMvnId());
-                            }
-                        }
-                    }
-                    try
-                    {
-                        return ProjectHelper
-                                .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
-                                .getFile().toURI().toURL();
-                    }
-                    catch (Exception e)
-                    {
-                        getLog().error(e);
-                        return null;
-                    }
-                }
-            }).addVariablesOverrides(variablesOverwrites)
+            }).setArtifactProvider(new BaseArtifactProvider())
+                .addVariablesOverrides(variablesOverwrites)
                 .addFrameworkPropertiesOverrides(frameworkPropertiesOverwrites)
                 .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     ServiceLoader.load(MergeHandler.class).iterator(), Spliterator.ORDERED),
