@@ -23,9 +23,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-//import org.apache.sling.feature.launcher.impl.Main;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -34,7 +32,6 @@ import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
@@ -168,16 +165,12 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
             );
             Method main = clazz.getMethod("main", String[].class);
             main.invoke(null, (Object) arguments);
-        } catch (ClassNotFoundException e) {
-            throw new MojoExecutionException("Failed to load Feature Launcher, make sure the Launcher Dependency is added to the Plugin", e);
-        } catch (NoSuchMethodException e) {
-            throw new MojoExecutionException("Failed to find Launcher's Main class, make sure the Launcher Dependency is added to the Plugin", e);
-        } catch (IllegalAccessException e) {
-            throw new MojoExecutionException("Access to Launcher's Main.main() failed", e);
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            throw new MojoExecutionException("Failed to load Feature Launcher or Method not available, make sure the Launcher Dependency is added to the Plugin", e);
         } catch (InvocationTargetException e) {
-            throw new MojoExecutionException("Invocation of Launcher's Main.main() failed", e);
-        } catch (IllegalArgumentException e) {
-            throw new MojoExecutionException("Arguments of Launcher's Main.main() wrong", e);
+            throw new MojoExecutionException("Invocation of Launcher's Main.main() failed", e.getCause());
+        } catch (IllegalAccessException | IllegalArgumentException e) {
+            throw new MojoExecutionException("Access denied or wrong Arguments", e);
         }
     }
 

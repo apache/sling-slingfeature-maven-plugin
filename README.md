@@ -267,3 +267,67 @@ With the repository goal, a directory with all artifacts from the selected featu
    </configuration>
  </execution>
 ```
+
+### Feature Launcher (launch-features)
+
+**Attention**: This Mojo is BETA meaning under development and new released
+may change the way the Mojo is used.
+
+This Mojo allows the user to launch a Feature(s) from a POM through a
+profile. This can look like this:
+```
+<profile>
+    <id>launch</id>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.sling</groupId>
+                <artifactId>slingfeature-maven-plugin</artifactId>
+                <version>1.0.7-SNAPSHOT</version>
+                <extensions>true</extensions>
+                <dependencies>
+                    <!-- To Support the Deployment of Content Package the Extension Content
+                         must be added BEFORE the Feature Launcher -->
+                    <dependency>
+                        <groupId>org.apache.sling</groupId>
+                        <artifactId>org.apache.sling.feature.extension.content</artifactId>
+                        <version>1.0.5-SNAPSHOT</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.apache.sling</groupId>
+                        <artifactId>org.apache.sling.feature.launcher</artifactId>
+                        <version>1.0.7-SNAPSHOT</version>
+                    </dependency>
+                </dependencies>
+                <executions>
+                    <execution>
+                        <id>launch-it</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>launch-features</goal>
+                        </goals>
+                        <configuration>
+                            <selection>
+                                <includeClassifier>example-runtime</includeClassifier>
+                            </selection>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</profile>
+```
+
+Do avoid having to release this plugin every time a new Feature Launcher
+is released the two are decoupled and the Feature Launcher is loaded at
+runtime instead. For that the feature launcher must be added to the plugin
+as dependency. If missing this Mojo with fail as it cannot find the launcher.
+
+**Attention**: to deploy converted Content Packages the **Feature Content
+Extension must added here as well and it must be place **AHEAD** of the
+Feature Launcher.
+
+Beside the Feature Files this Mojo for now supports all the parameters
+of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
+FeautreLaucherMojoTest.testFullLaunch() test method.

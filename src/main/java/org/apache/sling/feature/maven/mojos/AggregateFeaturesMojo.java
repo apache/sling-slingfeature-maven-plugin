@@ -17,7 +17,6 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
-import java.net.URL;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,17 +28,14 @@ import java.util.Spliterators;
 import java.util.stream.StreamSupport;
 
 import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.maven.FeatureConstants;
@@ -67,7 +63,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     Map<String, Properties> handlerConfiguration = new HashMap<>();
 
     @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
+    public void execute() throws MojoExecutionException {
         checkPreconditions();
         for (final Aggregate aggregate : aggregates) {
             // check classifier

@@ -32,6 +32,7 @@ import org.mockito.stubbing.Answer;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,11 +41,16 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class FeatureLauncherMojoTest {
@@ -150,5 +156,102 @@ public class FeatureLauncherMojoTest {
         mojo.execute();
 
         assertFalse("No Launch Arguments", arguments.isEmpty());
+    }
+
+    @Test
+    public void testMainReflection() throws MojoFailureException, MojoExecutionException, IOException {
+        final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setIncludeClassifier("example-runtime");
+        Whitebox.setInternalState(mojo, "selection", cfg);
+        Map<String, Feature> featureMap = new HashMap<>();
+        File featureFile = new File(
+            getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
+        Feature feature = FeatureJSONReader.read(new FileReader(featureFile), null);
+        String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
+        featureMap.put(feature.getId().toMvnId(), feature);
+
+        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
+        Build mockBuild = mock(Build.class);
+        when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject project = new MavenProject();
+        project.setGroupId("testing");
+        project.setArtifactId("test");
+        project.setVersion("1.0.1");
+        project.setBuild(mockBuild);
+        project.setContextValue(cacheKey, featureMap);
+        mojo.project = project;
+
+        doNothing().when(mojo).checkPreconditions();
+
+        mojo.execute();
+
+        verify(mojo, times(1)).launch(any(String[].class));
+    }
+
+    @Test
+    public void testMainReflectionFailure() throws MojoFailureException, MojoExecutionException, IOException {
+        final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setIncludeClassifier("example-runtime");
+        Whitebox.setInternalState(mojo, "selection", cfg);
+        Map<String, Feature> featureMap = new HashMap<>();
+        File featureFile = new File(
+            getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
+        Feature feature = FeatureJSONReader.read(new FileReader(featureFile), null);
+        String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
+        featureMap.put(feature.getId().toMvnId(), feature);
+
+        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "do-fail" });
+        Build mockBuild = mock(Build.class);
+        when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject project = new MavenProject();
+        project.setGroupId("testing");
+        project.setArtifactId("test");
+        project.setVersion("1.0.1");
+        project.setBuild(mockBuild);
+        project.setContextValue(cacheKey, featureMap);
+        mojo.project = project;
+
+        doNothing().when(mojo).checkPreconditions();
+
+        try {
+            mojo.execute();
+            fail("Mojo Execution should have failed");
+        } catch(MojoExecutionException e) {
+            assertTrue("Root Cause Exception was of the wrong type", e.getCause() instanceof IllegalArgumentException);
+        }
+        verify(mojo, times(1)).launch(any(String[].class));
+    }
+
+    @Test
+    public void testFeatureFileReadingIssue() throws MojoFailureException, MojoExecutionException, IOException {
+        final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setIncludeClassifier("example-runtime");
+        Whitebox.setInternalState(mojo, "selection", cfg);
+        Map<String, Feature> featureMap = new HashMap<>();
+        File featureFile = new File(
+            getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
+        Feature feature = FeatureJSONReader.read(new FileReader(featureFile), null);
+        String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
+        featureMap.put(feature.getId().toMvnId(), feature);
+
+        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
+        Build mockBuild = mock(Build.class);
+        when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        MavenProject project = new MavenProject();
+        project.setGroupId("testing");
+        project.setArtifactId("test");
+        project.setVersion("1.0.1");
+        project.setBuild(mockBuild);
+        project.setContextValue(cacheKey, featureMap);
+        mojo.project = project;
+
+        doNothing().when(mojo).checkPreconditions();
+
+        mojo.execute();
+
+        verify(mojo, times(1)).launch(any(String[].class));
     }
 }
