@@ -16,15 +16,26 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import com.google.common.io.Files;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sling.feature.launcher.impl.Main;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+//import org.apache.sling.feature.launcher.impl.Main;
+import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -35,12 +46,11 @@ import java.util.List;
     requiresProject = true,
     threadSafe = true
 )
-public class FeatureLauncherMojo extends AbstractFeatureMojo {
+public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
     public static final String CFG_ARTIFACT_CLASH_OVERRIDES = "artifactClashOverrides";
     public static final String CFG_REPOSITORY_URL = "frameworkRepositoryUrl";
     public static final String CFG_FRAMEWORK_PROPERTIES = "frameworkProperties";
-    public static final String CFG_FEATURE_FILE = "featureFile";
     public static final String CFG_VARIABLE_VALUES = "variableValues";
     public static final String CFG_VERBOSE = "verbose";
     public static final String CFG_CACHE_DIRECTORY = "cacheDirectory";
@@ -48,6 +58,9 @@ public class FeatureLauncherMojo extends AbstractFeatureMojo {
     public static final String CFG_EXTENSION_CONFIGURATIONS = "extensionConfigurations";
     public static final String CFG_FRAMEWORK_VERSION = "frameworkVersion";
     public static final String CFG_FRAMEWORK_ARTIFACTS = "frameworkArtifacts";
+
+    @Parameter
+    private FeatureSelectionConfig selection;
 
     /**
      * The Artifact Id Overrides (see Feature Launcher for more info)
@@ -109,21 +122,26 @@ public class FeatureLauncherMojo extends AbstractFeatureMojo {
     @Parameter(property = CFG_FRAMEWORK_ARTIFACTS, required = false)
     private String[] frameworkArtifacts;
 
-    /**
-     * The path of the file that is launched here
-     */
-    @Parameter(property = CFG_FEATURE_FILE, required = true)
-    private File featureFile;
-
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        ProjectHelper.checkPreprocessorRun(this.project);
+        checkPreconditions();
         List<String> arguments = new ArrayList<>();
-        if(!featureFile.isFile()) {
-            throw new MojoFailureException("Feature File is not a file: " + featureFile);
-        }
-        if(!featureFile.canRead()) {
-            throw new MojoFailureException("Feature File is cannot be read: " + featureFile);
+        getLog().info("Feature Selection: " + selection);
+        final Collection<Feature> features = getSelectedFeatures(selection).values();
+        getLog().info("Features from Selection: " + features);
+        for(Feature feature: features) {
+            // Loop over all features found, create a temporary file, write the features there and add them to the launcher's file list
+            File folder = Files.createTempDir();
+            ArtifactId id = feature.getId();
+            File featureFile = new File(folder, id.toMvnId().replaceAll(":", "-") + ".json");
+            // TODO: Do we need to support Prototypes etc?
+            try ( final Writer writer = new FileWriter(featureFile)) {
+                FeatureJSONWriter.write(writer, feature);
+            } catch (final IOException e) {
+                throw new MojoExecutionException("Unable to write feature file  :" + id.toMvnId(), e);
+            }
+            getLog().info("Feature File Location: " + featureFile);
+            handleFile(arguments, featureFile, "-f");
         }
         handleStringList(arguments, artifactClashOverrides, "-C");
         handleString(arguments, repositoryUrl, "-u");
@@ -137,15 +155,30 @@ public class FeatureLauncherMojo extends AbstractFeatureMojo {
         handleStringList(arguments, extensionConfigurations, "-ec");
         handleString(arguments, frameworkVersion, "-fw");
         handleStringList(arguments, frameworkArtifacts, "-fa");
-        handleFile(arguments, featureFile, "-f");
 
         String[] args = arguments.toArray(new String[] {});
         getLog().info("Launcher Arguments: '" + arguments + "'");
         launch(args);
     }
 
-    void launch(String[] arguments) {
-        Main.main(arguments);
+    void launch(String[] arguments) throws MojoExecutionException {
+        try {
+            Class clazz = Thread.currentThread().getContextClassLoader().loadClass(
+                "org.apache.sling.feature.launcher.impl.Main"
+            );
+            Method main = clazz.getMethod("main", String[].class);
+            main.invoke(null, (Object) arguments);
+        } catch (ClassNotFoundException e) {
+            throw new MojoExecutionException("Failed to load Feature Launcher, make sure the Launcher Dependency is added to the Plugin", e);
+        } catch (NoSuchMethodException e) {
+            throw new MojoExecutionException("Failed to find Launcher's Main class, make sure the Launcher Dependency is added to the Plugin", e);
+        } catch (IllegalAccessException e) {
+            throw new MojoExecutionException("Access to Launcher's Main.main() failed", e);
+        } catch (InvocationTargetException e) {
+            throw new MojoExecutionException("Invocation of Launcher's Main.main() failed", e);
+        } catch (IllegalArgumentException e) {
+            throw new MojoExecutionException("Arguments of Launcher's Main.main() wrong", e);
+        }
     }
 
     private void handleStringList(List<String> arguments, String[] list, String parameter) {

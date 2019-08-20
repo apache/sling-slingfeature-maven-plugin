@@ -273,49 +273,53 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     }
 
     private BuilderContext getBuilderContext() {
-        final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
-            @Override
-            public Feature provide(ArtifactId id) {
-                // Check for the feature in the local context
-                for (final Feature feat : ProjectHelper.getAssembledFeatures(project).values()) {
-                    if (feat.getId().equals(id)) {
-                        return feat;
-                    }
-                }
-
-                if (ProjectHelper.isLocalProjectArtifact(project, id)) {
-                    throw new RuntimeException("Unable to resolve local artifact " + id.toMvnId());
-                }
-
-                // Finally, look the feature up via Maven's dependency mechanism
-                return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                        artifactResolver, id);
-            }
-        }).setArtifactProvider(new ArtifactProvider() {
-
-            @Override
-            public URL provide(final ArtifactId id) {
-                if (ProjectHelper.isLocalProjectArtifact(project, id)) {
-                    for (final Map.Entry<String, Feature> entry : ProjectHelper.getAssembledFeatures(project)
-                            .entrySet()) {
-                        if (entry.getValue().getId().equals(id)) {
-                            // TODO - we might need to create a file to return it here
-                            throw new RuntimeException(
-                                    "Unable to get file for project feature " + entry.getValue().getId().toMvnId());
-                        }
-                    }
-                }
-                try {
-                    return ProjectHelper
-                            .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
-                            .getFile().toURI().toURL();
-                } catch (Exception e) {
-                    getLog().error(e);
-                    return null;
-                }
-            }
-        });
+        final BuilderContext builderContext = new BuilderContext(new BaseFeatureProvider())
+            .setArtifactProvider(new BaseArtifactProvider());
 
         return builderContext;
+    }
+
+    protected class BaseFeatureProvider implements FeatureProvider {
+        @Override
+        public Feature provide(ArtifactId id) {
+            // Check for the feature in the local context
+            for (final Feature feat : ProjectHelper.getAssembledFeatures(project).values()) {
+                if (feat.getId().equals(id)) {
+                    return feat;
+                }
+            }
+
+            if (ProjectHelper.isLocalProjectArtifact(project, id)) {
+                throw new RuntimeException("Unable to resolve local artifact " + id.toMvnId());
+            }
+
+            // Finally, look the feature up via Maven's dependency mechanism
+            return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
+                artifactResolver, id);
+        }
+    }
+
+    protected class BaseArtifactProvider implements ArtifactProvider {
+        @Override
+        public URL provide(final ArtifactId id) {
+            if (ProjectHelper.isLocalProjectArtifact(project, id)) {
+                for (final Map.Entry<String, Feature> entry : ProjectHelper.getAssembledFeatures(project)
+                    .entrySet()) {
+                    if (entry.getValue().getId().equals(id)) {
+                        // TODO - we might need to create a file to return it here
+                        throw new RuntimeException(
+                            "Unable to get file for project feature " + entry.getValue().getId().toMvnId());
+                    }
+                }
+            }
+            try {
+                return ProjectHelper
+                    .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
+                    .getFile().toURI().toURL();
+            } catch (Exception e) {
+                getLog().error(e);
+                return null;
+            }
+        }
     }
 }
