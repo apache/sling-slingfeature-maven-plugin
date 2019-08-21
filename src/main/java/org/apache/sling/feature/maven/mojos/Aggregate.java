@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -64,7 +65,7 @@ public class Aggregate extends FeatureSelectionConfig {
 
     public List<String> artifactsOverrides;
 
-    public Map<String, String> configurationOverrides;
+    public List<String> configurationOverrides;
 
     public Map<String, String> variablesOverrides;
 
@@ -91,6 +92,13 @@ public class Aggregate extends FeatureSelectionConfig {
         if (configurationOverrides == null) {
             return Collections.emptyMap();
         }
-        return configurationOverrides;
+        LinkedHashMap<String, String> result = new LinkedHashMap<>();
+        for (String entry : configurationOverrides) {
+            int idx = entry.lastIndexOf("=");
+            if (idx != -1) {
+                result.put(entry.substring(0, idx), entry.substring(idx + 1));
+            }
+        }
+        return result;
     }
 }

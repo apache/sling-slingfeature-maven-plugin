@@ -370,7 +370,7 @@ public class AggregateFeaturesMojoTest {
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc1.classifier = "agg";
-        fc1.configurationOverrides = Collections.singletonMap("*", BuilderContext.CONFIG_MERGE_LATEST);
+        fc1.configurationOverrides = Arrays.asList("*=" + BuilderContext.CONFIG_MERGE_LATEST);
         af.aggregates = Arrays.asList(fc1);
         af.project = mockProj;
         af.projectHelper = new DefaultMavenProjectHelper();
