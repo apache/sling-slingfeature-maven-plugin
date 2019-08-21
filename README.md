@@ -106,7 +106,7 @@ Sample configuration:
                    <artifactsOverrides>
                        <!-- Artifact clash overrides go here -->
                        <artifactsOverride>org.apache.sling:abundle:LATEST</artifactsOverride>
-                       <artifactsOverride>org.apache.sling:anotherbundle</artifactsOverride>
+                       <artifactsOverride>org.apache.sling:anotherbundle:1.4.5</artifactsOverride>
                    </artifactsOverrides>
               </aggregate>
           </aggregates>
