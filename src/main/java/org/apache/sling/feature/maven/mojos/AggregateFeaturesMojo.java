@@ -106,6 +106,8 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                 builderContext.addArtifactsOverride(rule);
             }
 
+            builderContext.addConfigsOverrides(aggregate.getConfigurationOverrideRules());
+
             boolean wildcardSet = false;
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
                 String key = entry.getKey();
