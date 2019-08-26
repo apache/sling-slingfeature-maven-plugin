@@ -380,14 +380,12 @@ public class Preprocessor {
 	                final FeatureProjectInfo depProjectInfo = env.modelProjects.get(key);
 	                if ( depProjectInfo != null ) {
 	                    env.logger.debug("Found reactor " + id.getType() + " dependency to project: " + id);
-	                    // check if it is a feature project
-	                    final FeatureProjectInfo depInfo = depProjectInfo;
 	                    if ( isTest ) {
-	                        process(env, depInfo, FeatureProjectConfig.getTestConfig(depInfo));
+                            process(env, depProjectInfo, FeatureProjectConfig.getTestConfig(depProjectInfo));
 	                    } else {
-	                        process(env, depInfo, FeatureProjectConfig.getMainConfig(depInfo));
+                            process(env, depProjectInfo, FeatureProjectConfig.getMainConfig(depProjectInfo));
 	                    }
-	                    final Feature found = findFeature(info, isTest, id);
+                        final Feature found = findFeature(depProjectInfo, isTest, id);
 
 	                    if ( isTest && found == null ) {
 	                        env.logger.error("Unable to get feature " + id.toMvnId() + " : Recursive test feature dependency list including project " + info.project);
