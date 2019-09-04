@@ -16,10 +16,11 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.util.Collections;
+import java.util.List;
+
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.osgi.DefaultMaven2OsgiConverter;
-import org.apache.maven.shared.osgi.Maven2OsgiConverter;
 import org.codehaus.plexus.interpolation.InterpolationException;
 import org.codehaus.plexus.interpolation.ObjectBasedValueSource;
 import org.codehaus.plexus.interpolation.PrefixAwareRecursionInterceptor;
@@ -28,8 +29,7 @@ import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 import org.codehaus.plexus.interpolation.RecursionInterceptor;
 import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
 
-import java.util.Collections;
-import java.util.List;
+import aQute.bnd.version.MavenVersion;
 
 public class Substitution {
     public static String replaceMavenVars(MavenProject project, String s) {
@@ -95,7 +95,7 @@ public class Substitution {
             sb.append('.');
             sb.append(dav.getQualifier());
         }
-        final Maven2OsgiConverter converter = new DefaultMaven2OsgiConverter();
-        return converter.getVersion(sb.toString());
+        final MavenVersion mavenVersion = new MavenVersion(sb.toString());
+        return mavenVersion.getOSGiVersion().toString();
     }
 }
