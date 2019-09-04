@@ -226,10 +226,11 @@
             <version>3.5</version>
             <scope>provided</scope>
         </dependency>
+        <!-- for converting Maven to OSGi versions -->
         <dependency>
-            <groupId>org.apache.maven.shared</groupId>
-            <artifactId>maven-osgi</artifactId>
-            <version>0.2.0</version>
+            <groupId>biz.aQute.bnd</groupId>
+            <artifactId>biz.aQute.bndlib</artifactId>
+            <version>4.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.codehaus.plexus</groupId>
