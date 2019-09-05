@@ -331,3 +331,33 @@ Feature Launcher.
 Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
+
+### Features Diff (features-diff)
+
+This MOJO compares different versions of the same Feature Model, producing the prototype
+Feature Model that shows the differences.
+
+```
+<execution>
+  <id>diff</id>
+  <goals>
+    <goal>features-diff</goal>
+  </goals>
+  <configuration>
+    <selection>
+      <includeClassifier>cloud-ready</includeClassifier>
+      <includeClassifier>main-jar</includeClassifier>
+    </selection>
+    <comparisonVersion>1.0.0-beta</comparisonVersion> <!-- (,${project.version}) by default -->
+  </configuration>
+ </execution>
+```
+
+It will produce `${project.classifier}.json` JSON output files under the `${project.build.directory}/features-diff` directory,
+where IDs will be composed by:
+
+```
+${project.groupId}:${project.artifactId}:${project.classifier}_updater:${project.version}
+```
+
+Diff JSON file will be attached to the project.
