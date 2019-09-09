@@ -242,6 +242,39 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
+### update-feature-versions
+
+The update feature versions goal can be used to check for updates of artifacts contained in the features
+that are part of the project.
+
+Without specifying any other arguments, all artifacts will be updated to the latest version found. You can specify
+a dry run to just check if there are updates:
+```
+    mvn slingfeature:update-feature-versions -DdryRun=true
+```
+
+You can specify includes and excludes based on maven coordinates to further redefine which artifacts to update.
+The most common use case is to specify the group id only. For example if you want to update only artifacts
+with the Sling group id, use this command:
+```
+    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.sling
+```
+You can specify several includes and excludes by separating them by comma.
+
+It's also possible to define the version scope, which means the policy how to update. By default *ANY* is used,
+meaning the latest found version (excluding snapshots) is used. You can also specify *MAJOR*, *MINOR*, *INCREMENTAL*
+and *SUBINCREMENTAL* by using the `versionScope` parameter.
+
+Alternative you can combine this with the includes and specify a different scope per include:
+```
+    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.sling/MAJOR,org.apache.felix/INCREMENTAL
+```
+
+With an include you can also specify an exact version:
+```
+    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.jackrabbit.oak/4.0.2
+```
+
 ### repository
 
 With the repository goal, a directory with all artifacts from the selected features will be created.

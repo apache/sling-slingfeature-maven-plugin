@@ -90,6 +90,13 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     private String updatesExcludesList;
 
     /**
+     * The scope to use to find the highest version, use ANY, MAJOR, MINOR,
+     * INCREMENTAL, or SUBINCREMENTAL
+     */
+    @Parameter(property = "versionScope")
+    private String versionScope;
+
+    /**
      * If set to true, no changes are performed
      */
     @Parameter(defaultValue = "false", property = "dryRun")
@@ -128,23 +135,44 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         return matches;
     }
 
+    /**
+     * Get the raw features (not the assembled ones)
+     *
+     * @return Map with the features
+     * @throws MojoExecutionException
+     */
     private Map<String, Feature> getFeatures() throws MojoExecutionException {
-        return this.selectAllFeatureFiles();
+        final Map<String, Feature> features = new HashMap<>();
+        for (final Map.Entry<String, Feature> entry : this.selectAllFeatureFiles().entrySet()) {
+            features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
+        }
+        if (features.isEmpty()) {
+            throw new MojoExecutionException("No features found in project!");
+        }
+        return features;
     }
 
-    private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts) {
+    private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts,
+            final UpdateConfig cfg) {
         for (final Artifact a : artifacts) {
-            dependencies.add(ProjectHelper.toDependency(a.getId(), org.apache.maven.artifact.Artifact.SCOPE_PROVIDED));
+            final String versionInfo = shouldHandle(a.getId(), cfg);
+            if (versionInfo != null) {
+                final Dependency dep = ProjectHelper.toDependency(a.getId(),
+                        org.apache.maven.artifact.Artifact.SCOPE_PROVIDED);
+                // we store the version info as system path as this seems to be very useful...
+                dep.setSystemPath(versionInfo);
+                dependencies.add(dep);
+            }
         }
     }
 
-    private Set<Dependency> getDependencies(final Map<String, Feature> features) {
+    private Set<Dependency> getDependencies(final Map<String, Feature> features, final UpdateConfig cfg) {
         final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
         for (final Map.Entry<String, Feature> entry : features.entrySet()) {
-            addDependencies(dependencies, entry.getValue().getBundles());
+            addDependencies(dependencies, entry.getValue().getBundles(), cfg);
             for (final Extension ext : entry.getValue().getExtensions()) {
                 if (ext.getType() == ExtensionType.ARTIFACTS) {
-                    addDependencies(dependencies, ext.getArtifacts());
+                    addDependencies(dependencies, ext.getArtifacts(), cfg);
                 }
             }
         }
@@ -161,35 +189,49 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
+    private UpdateConfig createConfiguration() throws MojoExecutionException {
+        final UpdateConfig cfg = new UpdateConfig();
+
+        // get includes and excludes
+        cfg.includes = parseMatches(updatesIncludesList, "includes");
+        // check for version info
+        if (cfg.includes != null) {
+            cfg.includeVersionInfo = new ArrayList<>();
+            for (final String[] include : cfg.includes) {
+                final int lastIndex = include.length - 1;
+                final int pos = include[lastIndex].indexOf('/');
+                if (pos != -1) {
+                    cfg.includeVersionInfo.add(include[lastIndex].substring(pos + 1));
+                    include[lastIndex] = include[lastIndex].substring(0, pos);
+                } else {
+                    cfg.includeVersionInfo.add("");
+                }
+            }
+        }
+        cfg.excludes = parseMatches(updatesExcludesList, "excludes");
+
+        return cfg;
+    }
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
-        // get the features
-        final Map<String, Feature> assembledFeatures = this.getFeatures();
-        if (assembledFeatures.isEmpty()) {
-            throw new MojoExecutionException("No features found in project!");
-        }
 
-        final Map<String, Feature> features = new HashMap<>();
-        for (final Map.Entry<String, Feature> entry : assembledFeatures.entrySet()) {
-            features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
-        }
+        // Get the raw features
+        final Map<String, Feature> features = this.getFeatures();
 
-        // create config
-        final UpdateConfig cfg = new UpdateConfig();
+        // Create config
+        final UpdateConfig cfg = this.createConfiguration();
 
         // Calculate dependencies for features
-        final Set<Dependency> dependencies = getDependencies(features);
-        // get updates
+        final Set<Dependency> dependencies = getDependencies(features, cfg);
+
+        // Get updates
         try {
             cfg.updateInfos = calculateUpdateInfos(getHelper().lookupDependenciesUpdates(dependencies, false));
         } catch (ArtifactMetadataRetrievalException | InvalidVersionSpecificationException e) {
             throw new MojoExecutionException("Unable to calculate updates", e);
         }
-
-        // get includes and excludes
-        cfg.includes = parseMatches(updatesIncludesList, "include");
-        cfg.excludes = parseMatches(updatesExcludesList, "exclude");
 
         final Map<String, UpdateResult> results = new LinkedHashMap<>();
 
@@ -289,20 +331,23 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private boolean shouldHandle(final ArtifactId id, final UpdateConfig cfg) {
-        boolean include = true;
+    private String shouldHandle(final ArtifactId id, final UpdateConfig cfg) {
+        String include = "";
         if (cfg.includes != null) {
-            include = match(id, cfg.includes);
+            include = match(id, cfg.includes, cfg.includeVersionInfo);
         }
-        if (include && cfg.excludes != null) {
-            include = !match(id, cfg.excludes);
+        if (include != null && cfg.excludes != null) {
+            if (match(id, cfg.excludes, null) != null) {
+                include = null;
+            }
         }
         return include;
     }
 
-    private boolean match(final ArtifactId id, final List<String[]> matches) {
+    private String match(final ArtifactId id, final List<String[]> matches, final List<String> versionInfo) {
         boolean match = false;
 
+        int index = 0;
         for(final String[] m : matches) {
             match = id.getGroupId().equals(m[0]);
             if (match && m.length > 1) {
@@ -327,8 +372,15 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             if (match) {
                 break;
             }
+            index++;
         }
-        return match;
+        if (match) {
+            if (versionInfo != null) {
+                return versionInfo.get(index);
+            }
+            return "";
+        }
+        return null;
     }
 
     private String update(final Artifact artifact, final List<Map.Entry<Dependency, String>> updates)
@@ -367,6 +419,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     public static final class UpdateConfig {
         public List<String[]> includes;
         public List<String[]> excludes;
+
+        public List<String> includeVersionInfo;
 
         List<Map.Entry<Dependency, String>> updateInfos;
 	}
@@ -450,26 +504,68 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 	    }
 	}
 
-    private List<Map.Entry<Dependency, String>> calculateUpdateInfos(Map<Dependency, ArtifactVersions> updateInfos) {
+    private String getVersion(final Map.Entry<Dependency, ArtifactVersions> entry, final UpdateScope scope) {
+        ArtifactVersion latest;
+        if (entry.getValue().isCurrentVersionDefined()) {
+            latest = entry.getValue().getNewestUpdate(scope, false);
+        } else {
+            ArtifactVersion newestVersion = entry.getValue()
+                    .getNewestVersion(entry.getValue().getArtifact().getVersionRange(), false);
+            latest = newestVersion == null ? null
+                    : entry.getValue().getNewestUpdate(newestVersion, scope, false);
+            if (latest != null
+                    && ArtifactVersions.isVersionInRange(latest, entry.getValue().getArtifact().getVersionRange())) {
+                latest = null;
+            }
+        }
+        return latest != null ? latest.toString() : null;
+    }
+
+    private UpdateScope getScope(final String versionInfo) {
+        final UpdateScope scope;
+        if (versionInfo == null || "ANY".equalsIgnoreCase(versionInfo)) {
+            scope = UpdateScope.ANY;
+        } else if ("MAJOR".equalsIgnoreCase(versionInfo)) {
+            scope = UpdateScope.MAJOR;
+        } else if ("MINOR".equalsIgnoreCase(versionInfo)) {
+            scope = UpdateScope.MINOR;
+        } else if ("INCREMENTAL".equalsIgnoreCase(versionInfo)) {
+            scope = UpdateScope.INCREMENTAL;
+        } else if ("SUBINCREMENTAL".equalsIgnoreCase(versionInfo)) {
+            scope = UpdateScope.SUBINCREMENTAL;
+        } else {
+            scope = null;
+        }
+        return scope;
+    }
+
+    private List<Map.Entry<Dependency, String>> calculateUpdateInfos(
+            final Map<Dependency, ArtifactVersions> updateInfos) throws MojoExecutionException {
+        final UpdateScope defaultScope = getScope(this.versionScope);
+        if (defaultScope == null) {
+            throw new MojoExecutionException("Invalid update scope specified: " + this.versionScope);
+        }
         final List<Map.Entry<Dependency, String>> updates = new ArrayList<>();
         for (final Map.Entry<Dependency, ArtifactVersions> entry : updateInfos.entrySet()) {
-            ArtifactVersion latest;
-            if (entry.getValue().isCurrentVersionDefined()) {
-                latest = entry.getValue().getNewestUpdate(UpdateScope.ANY, false);
-            } else {
-                ArtifactVersion newestVersion = entry.getValue().getNewestVersion(
-                        entry.getValue().getArtifact().getVersionRange(),
-                        false);
-                latest = newestVersion == null ? null
-                        : entry.getValue().getNewestUpdate(newestVersion, UpdateScope.ANY, false);
-                if (latest != null
-                        && ArtifactVersions.isVersionInRange(latest,
-                                entry.getValue().getArtifact().getVersionRange())) {
-                    latest = null;
+            UpdateScope scope = defaultScope;
+            final String versionInfo = entry.getKey().getSystemPath();
+            String newVersion = null;
+            if (versionInfo != null && !versionInfo.trim().isEmpty()) {
+                scope = getScope(versionInfo);
+                if (scope == null) {
+                    getLog().debug(
+                            "Using provided version " + versionInfo + " for " + ProjectHelper.toString(entry.getKey()));
+                    newVersion = versionInfo;
                 }
             }
-            if (latest != null) {
-                final String newVersion = latest.toString();
+            if (newVersion == null) {
+                newVersion = getVersion(entry, scope);
+                getLog().debug("Detected new version " + newVersion + " using scope " + scope.toString() + " for "
+                        + ProjectHelper.toString(entry.getKey()));
+
+            }
+            if (newVersion != null) {
+                final String version = newVersion;
                 updates.add(new Map.Entry<Dependency, String>() {
 
                     @Override
@@ -479,7 +575,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
                     @Override
                     public String getValue() {
-                        return newVersion;
+                        return version;
                     }
 
                     @Override
@@ -563,7 +659,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             final UpdateConfig cfg)
             throws MojoExecutionException {
         for (final Artifact a : artifacts) {
-            if (shouldHandle(a.getId(), cfg)) {
+            if (shouldHandle(a.getId(), cfg) != null) {
                 final String newVersion = update(a, cfg.updateInfos);
                 if (newVersion != null) {
                     final ArtifactUpdate update = new ArtifactUpdate();
