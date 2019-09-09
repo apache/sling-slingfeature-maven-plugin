@@ -14,7 +14,7 @@
     {
       "name": "base",
       "exports": [
-        "org.apache.lucene.analysis.standard"
+        "org.apache.jackrabbit.oak.plugins.index.lucene"
       ]
     }
   ]

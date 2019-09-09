@@ -255,9 +255,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
             inflate(feature.getId(), sourcesDir, apiRegion, SOURCES, null);
 
-            File javadocsDir = new File(regionDir, JAVADOC);
-            generateJavadoc(apiRegion, sourcesDir, javadocsDir, javadocClasspath);
-            inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC, null);
+            if (sourcesDir.list().length > 0) {
+                File javadocsDir = new File(regionDir, JAVADOC);
+                generateJavadoc(apiRegion, sourcesDir, javadocsDir, javadocClasspath);
+                inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC, null);
+            } else {
+                getLog().warn("Javadoc JAR will NOT be generated - sources directory was empty!");
+            }
         }
 
         getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
@@ -875,12 +879,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             javadocExecutor.addArgument("-Xdoclint:none");
         }
 
-        // use the -subpackages to reduce the list of the arguments
-        if (sourcesDir.list().length > 0) {
-            javadocExecutor.addArgument("-subpackages", false);
-            javadocExecutor.addArgument(sourcesDir.list(), File.pathSeparator);
-        }
         javadocExecutor.addArgument("--allow-script-in-comments");
+
+        // use the -subpackages to reduce the list of the arguments
+        javadocExecutor.addArgument("-subpackages", false);
+        javadocExecutor.addArgument(sourcesDir.list(), File.pathSeparator);
 
         // .addArgument("-J-Xmx2048m")
         javadocExecutor.execute(javadocDir, getLog());
