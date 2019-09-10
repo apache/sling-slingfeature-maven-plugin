@@ -344,28 +344,35 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         return include;
     }
 
+    private boolean match(final String value, final String matcher) {
+        if (matcher.endsWith("*")) {
+            return value.startsWith(matcher.substring(0, matcher.length() - 1));
+        }
+        return matcher.equals(value);
+    }
+
     private String match(final ArtifactId id, final List<String[]> matches, final List<String> versionInfo) {
         boolean match = false;
 
         int index = 0;
         for(final String[] m : matches) {
-            match = id.getGroupId().equals(m[0]);
+            match = match(id.getGroupId(), m[0]);
             if (match && m.length > 1) {
-                match = id.getArtifactId().equals(m[1]);
+                match = match(id.getArtifactId(), m[1]);
             }
             if (match && m.length == 3) {
-                match = id.getVersion().equals(m[2]);
+                match = match(id.getVersion(), m[2]);
             } else if (match && m.length == 4) {
-                match = id.getVersion().equals(m[3]);
+                match = match(id.getVersion(), m[3]);
                 if (match) {
-                    match = id.getType().equals(m[2]);
+                    match = match(id.getType(), m[2]);
                 }
             } else if (match && m.length == 5) {
-                match = id.getVersion().equals(m[4]);
+                match = match(id.getVersion(), m[4]);
                 if (match) {
-                    match = id.getType().equals(m[2]);
+                    match = match(id.getType(), m[2]);
                     if (match) {
-                        match = m[3].equals(id.getClassifier());
+                        match = match(id.getClassifier(), m[3]);
                     }
                 }
             }
