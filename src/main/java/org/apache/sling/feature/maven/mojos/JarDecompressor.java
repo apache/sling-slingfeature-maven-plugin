@@ -110,11 +110,12 @@ class JarDecompressor {
     }
 
     private static void crcEntry(ZipEntry ze, File f, byte[] buf) throws IOException {
-        SizeAndCrcComputeStream cs = new SizeAndCrcComputeStream();
-        try (InputStream is = new FileInputStream(f)) {
-            drainStream(is, cs, buf);
+        try (SizeAndCrcComputeStream cs = new SizeAndCrcComputeStream()) {
+            try (InputStream is = new FileInputStream(f)) {
+                drainStream(is, cs, buf);
+            }
+            cs.updateZipEntry(ze);
         }
-        cs.updateZipEntry(ze);
     }
 
     private static void crcEntryManifestEntry(ZipEntry ze, Manifest mf) throws IOException {
