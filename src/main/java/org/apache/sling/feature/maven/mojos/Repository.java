@@ -31,6 +31,8 @@ public class Repository extends FeatureSelectionConfig {
      */
     public String repositoryDir = "artifacts";
 
+    public boolean decompress = false;
+
     public void setEmbedArtifact(final Dependency dep) {
         this.embedArtifacts.add(dep);
     }
