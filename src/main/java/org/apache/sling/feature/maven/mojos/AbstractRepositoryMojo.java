@@ -44,6 +44,8 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
     @Parameter(defaultValue = "artifacts", property = "repositoryDir")
     String repositoryDir;
 
+    boolean decompress;
+
     @Override
     public abstract void execute() throws MojoExecutionException, MojoFailureException;
 
@@ -160,10 +162,22 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
                 artifactId);
 
         try {
-            FileUtils.copyFile(source.getFile(), artifactFile);
+            if (decompress) {
+                copyAndDecompressArtifact(source.getFile(), artifactFile);
+            } else {
+                copyArtifact(source.getFile(), artifactFile);
+            }
         } catch (IOException e) {
             throw new MojoExecutionException("Unable to copy artifact from " + source.getFile(), e);
         }
     }
 
+    void copyAndDecompressArtifact(final File sourceFile, final File artifactFile) throws IOException {
+        getLog().info("Decompressing " + artifactFile);
+        JarDecompressor.copyDecompress(sourceFile, artifactFile);
+    }
+
+    void copyArtifact(final File sourceFile, final File artifactFile) throws IOException {
+        FileUtils.copyFile(sourceFile, artifactFile);
+    }
 }
