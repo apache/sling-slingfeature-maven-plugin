@@ -242,6 +242,37 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
+### extract-extension
+This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
+
+The goal is configured as in the following example:
+
+```
+<execution>
+    <id>extract-apiregions</id>
+    <goals><goal>extract-extension</goal></goals>
+    <configuration>
+        <featureFile>feature-abc.json</featureFile>
+        <extension>api-regions</extension>
+        <outputFile>target/extracted.json</outputFile>
+    </configuration>
+</execution>
+```
+
+This example extracts the `api-region` extension from the feature file `feature-abc.json` and puts it in the `target/extracted.json` file. The source feature file is assumed to be in the default features location (`src/main/features`). 
+An alternative location can be set with the `<features>` tag. 
+
+If the extracted content comes from an aggregated feature which is aggregated in the current project, 
+`<aggregateClassifier>` with just the classifier of the aggregate can be used to select it instead of
+`<featureFile>`.
+
+The output file is written as follows:
+
+* JSON extensions: the file contains the raw JSON text.
+* TEXT extensions: the file contains the text from the extension.
+* ARTIFACT extensions: the file contains the Maven IDs for each artifact. One ID per line.
+
+
 ### update-feature-versions
 
 The update feature versions goal can be used to check for updates of artifacts contained in the features
