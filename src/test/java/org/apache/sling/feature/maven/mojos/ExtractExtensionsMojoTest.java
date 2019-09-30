@@ -59,13 +59,14 @@ public class ExtractExtensionsMojoTest {
         ExtractExtensionMojo mojo = new ExtractExtensionMojo();
         setupMavenProject(mojo);
 
-        mojo.aggregateClassifier = "myagg";
+        mojo.selection = new FeatureSelectionConfig();
+        mojo.selection.setIncludeClassifier("myagg");
         mojo.extension = "my-json-ext";
-        mojo.outputFile = tempDir + "/extract1.json";
+        mojo.outputDir = tempDir + "/extracted1";
 
         mojo.execute();
 
-        byte[] bytes = Files.readAllBytes(new File(mojo.outputFile).toPath());
+        byte[] bytes = Files.readAllBytes(new File(mojo.outputDir + "/myagg-my-json-ext.json").toPath());
         assertEquals("[{\"x\": 1234}]", new String(bytes));
     }
 
@@ -74,13 +75,14 @@ public class ExtractExtensionsMojoTest {
         ExtractExtensionMojo mojo = new ExtractExtensionMojo() {{this.features = tempDir.toFile();}};
         setupMavenProject(mojo);
 
-        mojo.featureFile = "myfeat.json";
+        mojo.selection = new FeatureSelectionConfig();
+        mojo.selection.setFilesInclude("myfeat.json");
         mojo.extension = "my-text-ext";
-        mojo.outputFile = tempDir + "/extract2.json";
+        mojo.outputDir = tempDir + "/extracted2";
 
         mojo.execute();
 
-        byte[] bytes = Files.readAllBytes(new File(mojo.outputFile).toPath());
+        byte[] bytes = Files.readAllBytes(new File(mojo.outputDir + "/my-text-ext.txt").toPath());
         assertEquals("hi there", new String(bytes));
     }
 
@@ -89,13 +91,14 @@ public class ExtractExtensionsMojoTest {
         ExtractExtensionMojo mojo = new ExtractExtensionMojo();
         setupMavenProject(mojo);
 
-        mojo.aggregateClassifier = "myagg";
+        mojo.selection = new FeatureSelectionConfig();
+        mojo.selection.setIncludeClassifier("myagg");
         mojo.extension = "my-artifact-ext";
-        mojo.outputFile = tempDir + "/extract3.json";
+        mojo.outputDir = tempDir + "/extracted3";
 
         mojo.execute();
 
-        byte[] bytes = Files.readAllBytes(new File(mojo.outputFile).toPath());
+        byte[] bytes = Files.readAllBytes(new File(mojo.outputDir + "/myagg-my-artifact-ext.txt").toPath());
         assertEquals("a:b:1" + System.lineSeparator() + "c:d:2" + System.lineSeparator(),
                 new String(bytes));
     }
@@ -107,7 +110,7 @@ public class ExtractExtensionsMojoTest {
         mojo.project.setVersion("9");
         mojo.project.setContextValue(Preprocessor.class.getName(), "yes!");
         mojo.project.setContextValue(Feature.class.getName() + "/generated", Boolean.TRUE);
-        mojo.project.setContextValue(Feature.class.getName() + "/rawmain.json-cache", getFeatureMap());
+        mojo.project.setContextValue(Feature.class.getName() + "/assembledmain.json-cache", getFeatureMap());
     }
 
     private Map<String, Feature> getFeatureMap() {
@@ -123,7 +126,7 @@ public class ExtractExtensionsMojoTest {
         e3.getArtifacts().add(new Artifact(ArtifactId.fromMvnId("a:b:1")));
         e3.getArtifacts().add(new Artifact(ArtifactId.fromMvnId("c:d:2")));
         f1.getExtensions().add(e3);
-        featureMap.put("a/b/c", f1);
+        featureMap.put(tempDir.toString() + "/myagg.json", f1);
 
         Feature f2 = new Feature(ArtifactId.fromMvnId(("g:a:1")));
         Extension e4 = new Extension(ExtensionType.TEXT, "my-text-ext1", ExtensionState.REQUIRED);
@@ -138,5 +141,4 @@ public class ExtractExtensionsMojoTest {
         featureMap.put(tempDir.toString() + "/myfeat.json", f2);
         return featureMap;
     }
-
 }

@@ -23,8 +23,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.Extension;
+import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.maven.ProjectHelper;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -35,72 +35,60 @@ import java.util.Map;
 @Mojo(name = "extract-extension",
     defaultPhase = LifecyclePhase.PACKAGE,
     threadSafe = true)
-public class ExtractExtensionMojo extends AbstractFeatureMojo {
+public class ExtractExtensionMojo extends AbstractIncludingFeatureMojo {
+    @Parameter(name = "selection", required = true)
+    FeatureSelectionConfig selection;
+
     @Parameter(name = "extension", required = true)
     String extension;
 
-    @Parameter(name = "outputFile", required = true)
-    String outputFile;
-
-    @Parameter(name = "aggregateClassifier", required = false)
-    String aggregateClassifier;
-
-    @Parameter(name = "featureFile", required = false)
-    String featureFile;
+    @Parameter(name = "outputDir", required = true)
+    String outputDir;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
+        File dir = new File(outputDir);
+        dir.mkdirs();
 
-        String absoluteFile = null;
-        if (featureFile != null) {
-            String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
-            absoluteFile = prefix + featureFile;
-        }
+        getLog().info("Feature Selection: " + selection);
 
-        Map<String, Feature> projFeats = ProjectHelper.getFeatures(this.project);
-        Feature srcFeature = null;
-        for (final Map.Entry<String, Feature> entry : projFeats.entrySet()) {
-            final String classifier = entry.getValue().getId().getClassifier();
-            if (classifier != null && aggregateClassifier != null) {
-                if (classifier.equals(aggregateClassifier.trim())) {
-                    srcFeature = entry.getValue();
+        Map<String, Feature> selFeat = getSelectedFeatures(selection);
+        for (Map.Entry<String, Feature> entry : selFeat.entrySet()) {
+            Feature f = entry.getValue();
+            Extension ext = f.getExtensions().getByName(extension);
+            if (ext == null) {
+                getLog().info("Feature " + f.getId() + " does not contain extension " + extension);
+                continue;
+            }
+
+            String fileName = f.getId().getClassifier();
+            if (fileName == null) {
+                fileName = extension;
+            } else {
+                fileName += "-" + extension;
+            }
+            fileName += ext.getType() == ExtensionType.JSON ? ".json" : ".txt";
+
+            try (Writer wr = new FileWriter(new File(dir, fileName))) {
+                switch (ext.getType()) {
+                case ARTIFACTS:
+                    // List the artifacts as text
+                    for (Artifact a : ext.getArtifacts()) {
+                        wr.write(a.getId().toMvnId());
+                        wr.write(System.lineSeparator());
+                    }
+                    break;
+                case JSON:
+                    wr.write(ext.getJSON());
+                    break;
+                case TEXT:
+                    wr.write(ext.getText());
                     break;
                 }
-            } else if (absoluteFile != null) {
-                if (absoluteFile.equals(entry.getKey())) {
-                    srcFeature = entry.getValue();
-                    break;
-                }
+            } catch (IOException ex) {
+                throw new MojoExecutionException("Problem writing feature" + outputDir, ex);
             }
-        }
-
-        if (srcFeature == null) {
-            throw new MojoFailureException("No feature for extraction selected. The following configurations match"
-                    + "nothing in directory " + features
-                    + " featureFile: " + featureFile
-                    + " and aggregateClassifier: " + aggregateClassifier);
-        }
-
-        Extension ext = srcFeature.getExtensions().getByName(extension);
-        try (Writer wr = new FileWriter(outputFile)) {
-            switch (ext.getType()) {
-            case ARTIFACTS:
-                // List the artifacts as text
-                for (Artifact a : ext.getArtifacts()) {
-                    wr.write(a.getId().toMvnId());
-                    wr.write(System.lineSeparator());
-                }
-                break;
-            case JSON:
-                wr.write(ext.getJSON());
-                break;
-            case TEXT:
-                wr.write(ext.getText());
-                break;
-            }
-        } catch (IOException ex) {
-            throw new MojoExecutionException("Problem writing feature" + outputFile, ex);
         }
     }
 }

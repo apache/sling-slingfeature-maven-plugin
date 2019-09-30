@@ -13,6 +13,8 @@ Maven Plugin for OSGi Applications
 * features : The directory containing the feature files. The default is `src/main/features`.
 * featuresIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
 * featuresExcludes : The exclude pattern for feature files from the above directory. Empty by default.
+* includeArtifact : Include an feature specified as a Maven artifact.
+* includeClassifier : Include a feature generated as aggreate with a classifier in this project.
 * validateFeatures : Boolean switch defining whether the feature files should be validated against the schema. This is enabled by default.
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
@@ -252,21 +254,18 @@ The goal is configured as in the following example:
     <id>extract-apiregions</id>
     <goals><goal>extract-extension</goal></goals>
     <configuration>
-        <featureFile>feature-abc.json</featureFile>
-        <extension>api-regions</extension>
-        <outputFile>target/extracted.json</outputFile>
+        <selection>
+            <featuresInclude>feature-abc.json</featuresInclude>
+            <extension>api-regions</extension>
+            <outputDir>target/extracted</outputDir>
+        </selection>        
     </configuration>
 </execution>
 ```
 
-This example extracts the `api-region` extension from the feature file `feature-abc.json` and puts it in the `target/extracted.json` file. The source feature file is assumed to be in the default features location (`src/main/features`). 
-An alternative location can be set with the `<features>` tag. 
+This example extracts the `api-region` extension from the feature files `feature-abc.json` and puts it in the `target/extracted` directory. Feature files are selected as described in the Global Configuration above. 
 
-If the extracted content comes from an aggregated feature which is aggregated in the current project, 
-`<aggregateClassifier>` with just the classifier of the aggregate can be used to select it instead of
-`<featureFile>`.
-
-The output file is written as follows:
+Output files are written to the output directory follows where the file name is the classifier of the selected feature, followed by the extension name and a `.json` extension for JSON and `.txt` extension for others.
 
 * JSON extensions: the file contains the raw JSON text.
 * TEXT extensions: the file contains the text from the extension.
