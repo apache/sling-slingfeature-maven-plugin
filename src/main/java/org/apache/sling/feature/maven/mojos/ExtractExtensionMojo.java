@@ -75,6 +75,13 @@ public class ExtractExtensionMojo extends AbstractFeatureMojo {
             }
         }
 
+        if (srcFeature == null) {
+            throw new MojoFailureException("No feature for extraction selected. The following configurations match"
+                    + "nothing in directory " + features
+                    + " featureFile: " + featureFile
+                    + " and aggregateClassifier: " + aggregateClassifier);
+        }
+
         Extension ext = srcFeature.getExtensions().getByName(extension);
         try (Writer wr = new FileWriter(outputFile)) {
             switch (ext.getType()) {
