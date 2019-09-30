@@ -13,6 +13,8 @@ Maven Plugin for OSGi Applications
 * features : The directory containing the feature files. The default is `src/main/features`.
 * featuresIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
 * featuresExcludes : The exclude pattern for feature files from the above directory. Empty by default.
+* includeArtifact : Include an feature specified as a Maven artifact.
+* includeClassifier : Include a feature generated as aggreate with a classifier in this project.
 * validateFeatures : Boolean switch defining whether the feature files should be validated against the schema. This is enabled by default.
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
@@ -241,6 +243,34 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 ### attach-features
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
+
+### extract-extension
+This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
+
+The goal is configured as in the following example:
+
+```
+<execution>
+    <id>extract-apiregions</id>
+    <goals><goal>extract-extension</goal></goals>
+    <configuration>
+        <selection>
+            <featuresInclude>feature-abc.json</featuresInclude>
+            <extension>api-regions</extension>
+            <outputDir>target/extracted</outputDir>
+        </selection>        
+    </configuration>
+</execution>
+```
+
+This example extracts the `api-region` extension from the feature files `feature-abc.json` and puts it in the `target/extracted` directory. Feature files are selected as described in the Global Configuration above. 
+
+Output files are written to the output directory follows where the file name is the classifier of the selected feature, followed by the extension name and a `.json` extension for JSON and `.txt` extension for others.
+
+* JSON extensions: the file contains the raw JSON text.
+* TEXT extensions: the file contains the text from the extension.
+* ARTIFACT extensions: the file contains the Maven IDs for each artifact. One ID per line.
+
 
 ### update-feature-versions
 
