@@ -105,10 +105,12 @@ final class JavadocExecutor {
 
         DefaultExecutor executor = new DefaultExecutor();
         executor.setWorkingDirectory(workingDir);
-        executor.setExitValues(new int[] { 1, 0, -1 });
         try {
             executor.getStreamHandler().setProcessInputStream(new LoggerOutputStream(logger));
-            executor.execute(javadocCommand);
+            final int exitValue = executor.execute(javadocCommand);
+            if (executor.isFailure(exitValue)) {
+                throw new MojoExecutionException("Javadoc generation failed. See log for more details.");
+            }
         } catch (IOException ioe) {
             throw new MojoExecutionException("Javadoc tool cannot be invoked on that machine", ioe);
         }
