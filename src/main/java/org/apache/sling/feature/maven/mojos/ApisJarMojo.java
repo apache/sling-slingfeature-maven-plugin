@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Formatter;
 import java.util.HashSet;
@@ -187,7 +188,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         final Collection<Feature> features = this.getSelectedFeatures(selection).values();
 
         if (features.isEmpty()) {
-            getLog().debug("There are no assciated Feature files to current project, plugin execution will be interrupted");
+            getLog().info(
+                    "There are no assciated Feature files to current project, plugin execution will be interrupted");
             return;
         }
 
@@ -199,20 +201,26 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     }
 
     private void onFeature(Feature feature) throws MojoExecutionException {
-        getLog().debug(MessageUtils.buffer().a("Creating APIs JARs for Feature ").strong(feature.getId().toMvnId())
+        getLog().info(MessageUtils.buffer().a("Creating APIs JARs for Feature ").strong(feature.getId().toMvnId())
                 .a(" ...").toString());
+
+        List<ApiRegion> apiRegions = null;
 
         Extensions extensions = feature.getExtensions();
         Extension apiRegionsExtension = extensions.getByName(API_REGIONS_KEY);
-        if (apiRegionsExtension == null) {
-            getLog().debug("Feature file " + feature.getId().toMvnId() + " does not declare '" + API_REGIONS_KEY + "' extension, no API JAR will be created");
-            return;
-        }
-
-        String jsonRepresentation = apiRegionsExtension.getJSON();
-        if (jsonRepresentation == null || jsonRepresentation.isEmpty()) {
-            getLog().debug("Feature file " + feature.getId().toMvnId() + " declares an empty '" + API_REGIONS_KEY + "' extension, no API JAR will be created");
-            return;
+        if (apiRegionsExtension != null) {
+            String jsonRepresentation = apiRegionsExtension.getJSON();
+            if (jsonRepresentation == null || jsonRepresentation.isEmpty()) {
+                getLog().info("Feature file " + feature.getId().toMvnId() + " declares an empty '" + API_REGIONS_KEY
+                    + "' extension, no API JAR will be created");
+                return;
+            }
+            // calculate all api-regions first, taking the inheritance in account
+            apiRegions = fromJson(feature, jsonRepresentation);
+        } else {
+            final ApiRegion global = new GlobalApiRegion();
+            global.setName("global");
+            apiRegions = Collections.singletonList(global);
         }
 
         if (!mainOutputDir.exists()) {
@@ -226,8 +234,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         File deflatedSourcesDir = newDir(featureDir, "deflated-sources");
         File checkedOutSourcesDir = newDir(featureDir, "checkouts");
 
-        // calculate all api-regions first, taking the inheritance in account
-        List<ApiRegion> apiRegions = fromJson(feature, jsonRepresentation);
 
         Set<String> javadocClasspath = new HashSet<>();
 
@@ -238,10 +244,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // recollect and package stuff
         for (ApiRegion apiRegion : apiRegions) {
-            if (excludeRegions != null
-                    && !excludeRegions.isEmpty()
-                    && excludeRegions.contains(apiRegion.getName())) {
-                getLog().debug("API Region " + apiRegion.getName() + " will not processed since it is in the exclude list");
+            if (excludeRegions != null && !excludeRegions.isEmpty() && excludeRegions.contains(apiRegion.getName())) {
+                getLog().debug(
+                        "API Region " + apiRegion.getName() + " will not processed since it is in the exclude list");
                 continue;
             }
 
@@ -264,7 +269,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
         }
 
-        getLog().debug(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
+        getLog().info(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
                 .a(" succesfully created").toString());
     }
 
@@ -353,7 +358,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             File wrappedJar = new File(deflatedBundleDirectory, bundleName);
 
-            getLog().info("Processing wrapped bundle " + wrappedJar);
+            getLog().debug("Processing wrapped bundle " + wrappedJar);
 
             Properties properties = new Properties();
 
@@ -363,7 +368,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                     JarEntry jarEntry = jarEntries.nextElement();
                     if (!jarEntry.isDirectory()
                             && pomPropertiesPattern.matcher(jarEntry.getName()).matches()) {
-                        getLog().info("Loading Maven GAV from " + wrappedJar + '!' + jarEntry.getName());
+                        getLog().debug("Loading Maven GAV from " + wrappedJar + '!' + jarEntry.getName());
                         properties.load(jarFile.getInputStream(jarEntry));
                     }
                 }
@@ -372,11 +377,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             if (properties.isEmpty()) {
-                getLog().info("No Maven GAV info attached to wrapped bundle " + wrappedJar + ", it will be ignored");
+                getLog().debug("No Maven GAV info attached to wrapped bundle " + wrappedJar + ", it will be ignored");
                 return;
             }
 
-            getLog().info("Handling synthetic artifacts from Maven GAV: " + properties);
+            getLog().debug("Handling synthetic artifacts from Maven GAV: " + properties);
 
             String groupId = properties.getProperty("groupId");
             String artifactId = properties.getProperty("artifactId");
@@ -411,7 +416,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             String suffix = bundleName.substring(synthesized.length());
             if (suffix.length() > 1 && suffix.startsWith("-")) {
                 String classifier = suffix.substring(1);
-                getLog().info("Inferred classifier of '" + artifactId + ":" + version + "' to be '" + classifier + "'");
+                getLog().debug(
+                        "Inferred classifier of '" + artifactId + ":" + version + "' to be '" + classifier + "'");
                 return classifier;
             }
         }
@@ -473,6 +479,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
 
         for (org.apache.maven.artifact.Artifact resolvedArtifact : result.getArtifacts()) {
+            getLog().debug("Adding to javadoc classpath " + resolvedArtifact);
             javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
         }
     }
@@ -961,7 +968,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return apiRegions;
     }
 
-    private static final class ApiRegion {
+    private static class ApiRegion {
 
         private static final Pattern PACKAGE_NAME_VALIDATION =
                 Pattern.compile("^[a-z]+(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$");
@@ -1098,6 +1105,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             return toString;
         }
 
+    }
+
+    private static class GlobalApiRegion extends ApiRegion {
+
+        @Override
+        public boolean containsApi(String api) {
+            this.addApi(api);
+            return true;
+        }
     }
 
     private static String packageToScannerFiler(String api) {

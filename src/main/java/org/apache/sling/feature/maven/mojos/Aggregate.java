@@ -80,7 +80,6 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides=" + frameworkPropertiesOverrides + "]";
     }
 
-    @SuppressWarnings("unchecked")
     public List<ArtifactId> getArtifactOverrideRules() {
         if (artifactsOverrides == null) {
             return Collections.emptyList();
