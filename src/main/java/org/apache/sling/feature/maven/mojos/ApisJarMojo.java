@@ -136,9 +136,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter
     private FeatureSelectionConfig selection;
 
-    @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
-    private File mainOutputDir;
-
+    /**
+     * Patterns identifying which resources to include from bundles
+     */
     @Parameter
     private String[] includeResources;
 
@@ -147,6 +147,27 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Parameter
     private String[] javadocLinks;
+
+    /**
+     * Additional resources for the api jar
+     */
+    @Parameter
+    private List<File> apiResources;
+
+    /**
+     * Additional resources for the api source jar
+     */
+    @Parameter
+    private List<File> apiSourceResources;
+
+    /**
+     * Additional resources for the api javadoc jar
+     */
+    @Parameter
+    private List<File> apiJavadocResources;
+
+    @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
+    private File mainOutputDir;
 
     @Component(hint = "default")
     private ModelBuilder modelBuilder;
@@ -200,10 +221,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private void onFeature(Feature feature) throws MojoExecutionException {
-        getLog().info(MessageUtils.buffer().a("Creating APIs JARs for Feature ").strong(feature.getId().toMvnId())
-                .a(" ...").toString());
-
+    private List<ApiRegion> getApiRegions(final Feature feature) throws MojoExecutionException {
         List<ApiRegion> apiRegions = null;
 
         Extensions extensions = feature.getExtensions();
@@ -213,7 +231,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             if (jsonRepresentation == null || jsonRepresentation.isEmpty()) {
                 getLog().info("Feature file " + feature.getId().toMvnId() + " declares an empty '" + API_REGIONS_KEY
                     + "' extension, no API JAR will be created");
-                return;
+                return null;
             }
             // calculate all api-regions first, taking the inheritance in account
             apiRegions = fromJson(feature, jsonRepresentation);
@@ -221,6 +239,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             final ApiRegion global = new GlobalApiRegion();
             global.setName("global");
             apiRegions = Collections.singletonList(global);
+        }
+
+        return apiRegions;
+    }
+
+    private void onFeature(final Feature feature) throws MojoExecutionException {
+        getLog().info(MessageUtils.buffer().a("Creating API JARs for Feature ").strong(feature.getId().toMvnId())
+                .a(" ...").toString());
+
+        final List<ApiRegion> apiRegions = getApiRegions(feature);
+        if (apiRegions == null) {
+            return;
         }
 
         if (!mainOutputDir.exists()) {
@@ -254,16 +284,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             File apisDir = new File(regionDir, APIS);
             List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
-            inflate(feature.getId(), apisDir, apiRegion, APIS, nodeTypes);
+            createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes, this.apiResources);
 
             File sourcesDir = new File(regionDir, SOURCES);
             recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
-            inflate(feature.getId(), sourcesDir, apiRegion, SOURCES, null);
+            createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null, this.apiSourceResources);
 
             if (sourcesDir.list().length > 0) {
                 File javadocsDir = new File(regionDir, JAVADOC);
                 generateJavadoc(apiRegion, sourcesDir, javadocsDir, javadocClasspath);
-                inflate(feature.getId(), javadocsDir, apiRegion, JAVADOC, null);
+                createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null, this.apiJavadocResources);
             } else {
                 getLog().warn("Javadoc JAR will NOT be generated - sources directory was empty!");
             }
@@ -781,7 +811,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return nodeTypes;
     }
 
-    private void inflate(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier, List<String> nodeTypes) throws MojoExecutionException {
+    private void createArchive(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier,
+            List<String> nodeTypes, List<File> resources) throws MojoExecutionException {
         DirectoryScanner directoryScanner = new DirectoryScanner();
         directoryScanner.setBasedir(collectedDir);
         directoryScanner.setIncludes("**/*.*");
@@ -791,7 +822,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         for (String includedFile : directoryScanner.getIncludedFiles()) {
             jarArchiver.addFile(new File(collectedDir, includedFile), includedFile);
         }
-
+        if (resources != null) {
+            for (final File rsrc : resources) {
+                if (rsrc.isDirectory()) {
+                    jarArchiver.addDirectory(rsrc);
+                } else {
+                    jarArchiver.addFile(rsrc, rsrc.getName());
+                }
+            }
+        }
         StringBuilder classifierBuilder = new StringBuilder();
         if (featureId.getClassifier() != null) {
             classifierBuilder.append(featureId.getClassifier())
