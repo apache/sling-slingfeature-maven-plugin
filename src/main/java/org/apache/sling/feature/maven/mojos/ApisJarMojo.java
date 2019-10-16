@@ -828,8 +828,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
         if (resources != null) {
             for (final File rsrc : resources) {
+                getLog().debug("Adding resource " + rsrc);
                 if (rsrc.isDirectory()) {
-                    jarArchiver.addDirectory(rsrc);
+                    DirectoryScanner ds = new DirectoryScanner();
+                    ds.setBasedir(rsrc);
+                    ds.setIncludes("**/*.*");
+                    ds.scan();
+
+                    for (String includedFile : ds.getIncludedFiles()) {
+                        jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
+                    }
                 } else {
                     jarArchiver.addFile(rsrc, rsrc.getName());
                 }
