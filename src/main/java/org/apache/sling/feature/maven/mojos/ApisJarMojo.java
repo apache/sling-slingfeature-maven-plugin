@@ -509,8 +509,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
 
         for (org.apache.maven.artifact.Artifact resolvedArtifact : result.getArtifacts()) {
-            getLog().debug("Adding to javadoc classpath " + resolvedArtifact);
-            javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
+            if (resolvedArtifact.getFile() != null) {
+                getLog().debug("Adding to javadoc classpath " + resolvedArtifact);
+                javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
+            } else {
+                getLog().debug("Ignoring for javadoc classpath " + resolvedArtifact);
+            }
         }
     }
 
