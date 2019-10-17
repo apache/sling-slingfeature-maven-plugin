@@ -18,7 +18,6 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.StringReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -42,9 +41,7 @@ import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import javax.json.Json;
-import javax.json.stream.JsonParser;
-import javax.json.stream.JsonParser.Event;
+import javax.json.JsonArray;
 
 import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.SystemUtils;
@@ -87,6 +84,8 @@ import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
+import org.apache.sling.feature.extension.apiregions.api.ApiExport;
+import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.archiver.UnArchiver;
@@ -107,15 +106,9 @@ import org.osgi.framework.Constants;
 )
 public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ArtifactFilter {
 
-    private static final String API_REGIONS_KEY = "api-regions";
-
     private static final String SCM_TAG = "scm-tag";
 
     private static final String SCM_LOCATION = "scm-location";
-
-    private static final String NAME_KEY = "name";
-
-    private static final String EXPORTS_KEY = "exports";
 
     private static final String APIS = "apis";
 
@@ -225,16 +218,35 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         List<ApiRegion> apiRegions = null;
 
         Extensions extensions = feature.getExtensions();
-        Extension apiRegionsExtension = extensions.getByName(API_REGIONS_KEY);
+        Extension apiRegionsExtension = extensions.getByName(ApiRegions.EXTENSION_NAME);
         if (apiRegionsExtension != null) {
-            String jsonRepresentation = apiRegionsExtension.getJSON();
-            if (jsonRepresentation == null || jsonRepresentation.isEmpty()) {
-                getLog().info("Feature file " + feature.getId().toMvnId() + " declares an empty '" + API_REGIONS_KEY
+            if (apiRegionsExtension.getJSONStructure() == null) {
+                getLog().info(
+                        "Feature file " + feature.getId().toMvnId() + " declares an empty '" + ApiRegions.EXTENSION_NAME
                     + "' extension, no API JAR will be created");
-                return null;
+            } else {
+                try {
+                    // calculate all api-regions first, taking the inheritance in account
+                    final ApiRegions regions = ApiRegions.parse((JsonArray) apiRegionsExtension.getJSONStructure());
+                    apiRegions = new ArrayList<>();
+                    ApiRegion previous = null;
+                    for (final org.apache.sling.feature.extension.apiregions.api.ApiRegion r : regions.getRegions()) {
+                        ApiRegion region = new ApiRegion();
+                        apiRegions.add(region);
+                        region.setName(r.getName());
+                        for (final ApiExport pck : r.getExports()) {
+                            region.addApi(pck.getName());
+                        }
+
+                        if (previous != null) {
+                            region.doInherit(previous);
+                        }
+                        previous = region;
+                    }
+                } catch (final IOException ioe) {
+                    throw new MojoExecutionException(ioe.getMessage(), ioe);
+                }
             }
-            // calculate all api-regions first, taking the inheritance in account
-            apiRegions = fromJson(feature, jsonRepresentation);
         } else {
             final ApiRegion global = new GlobalApiRegion();
             global.setName("global");
@@ -953,70 +965,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                               original.getVersion(),
                               classifier,
                               type);
-    }
-
-    private static List<ApiRegion> fromJson(Feature feature, String jsonRepresentation) throws MojoExecutionException {
-        List<ApiRegion> apiRegions = new ArrayList<>();
-
-        // pointers
-        Event event;
-        ApiRegion apiRegion;
-
-        JsonParser parser = Json.createParser(new StringReader(jsonRepresentation));
-        if (Event.START_ARRAY != parser.next()) {
-            throw new MojoExecutionException("Expected 'api-region' element to start with an Array in Feature "
-                                             + feature.getId().toMvnId()
-                                             + ": "
-                                             + parser.getLocation());
-        }
-
-        while (Event.END_ARRAY != (event = parser.next())) {
-            if (Event.START_OBJECT != event) {
-                throw new MojoExecutionException("Expected 'api-region' data to start with an Object in Feature "
-                                                 + feature.getId().toMvnId()
-                                                 + ": "
-                                                 + parser.getLocation());
-            }
-
-            apiRegion = new ApiRegion();
-
-            while (Event.END_OBJECT != (event = parser.next())) {
-                if (Event.KEY_NAME == event) {
-                    switch (parser.getString()) {
-                        case NAME_KEY:
-                            parser.next();
-                            apiRegion.setName(parser.getString());
-                            break;
-
-                        case EXPORTS_KEY:
-                            // start array
-                            parser.next();
-
-                            while (parser.hasNext() && Event.VALUE_STRING == parser.next()) {
-                                String api = parser.getString();
-                                // skip comments
-                                if ('#' != api.charAt(0)) {
-                                    apiRegion.addApi(api);
-                                }
-                            }
-
-                            break;
-
-                        default:
-                            break;
-                    }
-                }
-            }
-
-            // inherit all APIs from previous region, if any
-            if (apiRegions.size() > 0) {
-                apiRegion.doInherit(apiRegions.get(apiRegions.size() - 1));
-            }
-
-            apiRegions.add(apiRegion);
-        }
-
-        return apiRegions;
     }
 
     private static class ApiRegion {
