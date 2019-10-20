@@ -190,9 +190,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 {
                     return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
                 }
-                catch (Exception e)
+                catch (final Exception e)
                 {
-                    getLog().error(e);
+                    getLog().debug("Unable to provide artifact " + id.toMvnId() + " : " + e.getMessage(), e);
                     return null;
                 }
             }
@@ -323,10 +323,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             File deflatedSourcesDir,
                             File checkedOutSourcesDir) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
+        final URL artifactURL = retrieve(artifactId);
+        if (artifactURL == null) {
+            throw new MojoExecutionException("Unable to find artifact " + artifactId.toMvnId());
+        }
         File bundleFile = null;
         try
         {
-            bundleFile = IOUtils.getFileFromURL(retrieve(artifactId), true, null);
+            bundleFile = IOUtils.getFileFromURL(artifactURL, true, null);
         }
         catch (IOException e)
         {
@@ -543,7 +547,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     private URL retrieve(ArtifactId artifactId) {
         getLog().debug("Retrieving artifact " + artifactId + "...");
         URL sourceFile = artifactProvider.provide(artifactId);
-        getLog().debug("Artifact " + artifactId + " successfully retrieved");
+        if (sourceFile != null) {
+            getLog().debug("Artifact " + artifactId + " successfully retrieved : " + sourceFile);
+        }
         return sourceFile;
     }
 
@@ -614,16 +620,26 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         ArtifactId sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
+        boolean fallback = false;
         try {
-            File sourcesBundle = IOUtils.getFileFromURL(retrieve(sourcesArtifactId), true, null);
-            deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
+            final URL url = retrieve(sourcesArtifactId);
+            if (url != null) {
+                File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
+                deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
+            } else {
+                getLog().warn("Impossible to download -sources bundle " + sourcesArtifactId
+                        + " due to artifact not found...");
+                fallback = true;
+            }
         } catch (Throwable t) {
             getLog().warn("Impossible to download -sources bundle "
                           + sourcesArtifactId
                           + " due to "
                           + t.getMessage()
                           + ", following back to source checkout...");
-
+            fallback = true;
+        }
+        if (fallback) {
             // fallback to Artifacts SCM metadata first
             String connection = artifact.getMetadata().get(SCM_LOCATION);
             String tag = artifact.getMetadata().get(SCM_TAG);
@@ -632,10 +648,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
+            final URL pomURL = retrieve(pomArtifactId);
+            if (pomURL == null) {
+                throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
+            }
             File pomFile = null;
             try
             {
-                pomFile = IOUtils.getFileFromURL(retrieve(pomArtifactId), true, null);
+                pomFile = IOUtils.getFileFromURL(pomURL, true, null);
             }
             catch (IOException e)
             {
