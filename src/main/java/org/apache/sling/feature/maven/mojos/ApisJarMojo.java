@@ -174,46 +174,51 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Component
     private RepositorySystem repositorySystem;
 
-    private ArtifactProvider artifactProvider;
-
     private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
 
-        artifactProvider = new ArtifactProvider() {
-
-            @Override
-            public URL provide(final ArtifactId id) {
-                try
-                {
-                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
-                }
-                catch (final Exception e)
-                {
-                    getLog().debug("Unable to provide artifact " + id.toMvnId() + " : " + e.getMessage(), e);
-                    return null;
-                }
-            }
-        };
-
         getLog().debug("Retrieving Feature files...");
         final Collection<Feature> features = this.getSelectedFeatures(selection).values();
 
         if (features.isEmpty()) {
             getLog().info(
-                    "There are no assciated Feature files to current project, plugin execution will be interrupted");
-            return;
-        }
+                    "There are no assciated Feature files in the current project, plugin execution will be skipped");
+        } else {
+            getLog().debug("Starting APIs JARs creation...");
 
-        getLog().debug("Starting APIs JARs creation...");
-
-        for (final Feature feature : features) {
-            onFeature(feature);
+            final ArtifactProvider artifactProvider = this.createArtifactProvider();
+            for (final Feature feature : features) {
+                onFeature(artifactProvider, feature);
+            }
         }
     }
 
+    private ArtifactProvider createArtifactProvider() {
+        return new ArtifactProvider() {
+
+            @Override
+            public URL provide(final ArtifactId id) {
+                try {
+                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
+                } catch (final Exception e) {
+                    getLog().debug("Unable to provide artifact " + id.toMvnId() + " : " + e.getMessage(), e);
+                    return null;
+                }
+            }
+        };
+    }
+
+    /**
+     * Get the api regions for a feature If the feature does not have an api region
+     * an artificial global region is returned.
+     *
+     * @param feature The feature
+     * @return The api regions or {@code null} if the feature is wrongly configured
+     * @throws MojoExecutionException If an error occurs
+     */
     private List<ApiRegion> getApiRegions(final Feature feature) throws MojoExecutionException {
         List<ApiRegion> apiRegions = null;
 
@@ -256,12 +261,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return apiRegions;
     }
 
-    private void onFeature(final Feature feature) throws MojoExecutionException {
+    /**
+     * Create api jars for a feature
+     */
+    private void onFeature(final ArtifactProvider artifactProvider, final Feature feature)
+            throws MojoExecutionException {
         getLog().info(MessageUtils.buffer().a("Creating API JARs for Feature ").strong(feature.getId().toMvnId())
                 .a(" ...").toString());
 
         final List<ApiRegion> apiRegions = getApiRegions(feature);
         if (apiRegions == null) {
+            // wrongly configured api regions - skip execution
             return;
         }
 
@@ -277,11 +287,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         File checkedOutSourcesDir = newDir(featureDir, "checkouts");
 
 
-        Set<String> javadocClasspath = new HashSet<>();
+        final Set<String> javadocClasspath = new HashSet<>();
 
-        // for each artifact included in the feature file:
+        // for each bundle included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
-            onArtifact(artifact, null, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            onArtifact(artifactProvider, artifact, null, apiRegions, javadocClasspath, deflatedBinDir,
+                    deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
@@ -315,27 +326,28 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 .a(" succesfully created").toString());
     }
 
-    private void onArtifact(Artifact artifact,
-                            Manifest wrappingBundleManifest,
-                            List<ApiRegion> apiRegions,
-                            Set<String> javadocClasspath,
-                            File deflatedBinDir,
-                            File deflatedSourcesDir,
-                            File checkedOutSourcesDir) throws MojoExecutionException {
-        ArtifactId artifactId = artifact.getId();
-        final URL artifactURL = retrieve(artifactId);
+    private File getArtifactFile(final ArtifactProvider artifactProvider, final ArtifactId artifactId)
+            throws MojoExecutionException {
+        final URL artifactURL = retrieve(artifactProvider, artifactId);
         if (artifactURL == null) {
             throw new MojoExecutionException("Unable to find artifact " + artifactId.toMvnId());
         }
         File bundleFile = null;
         try
         {
-            bundleFile = IOUtils.getFileFromURL(artifactURL, true, null);
-        }
-        catch (IOException e)
-        {
+            bundleFile = IOUtils.getFileFromURL(artifactURL, true, this.getTmpDir());
+        } catch (IOException e) {
             throw new MojoExecutionException(e.getMessage());
         }
+
+        return bundleFile;
+    }
+
+    private void onArtifact(final ArtifactProvider artifactProvider, Artifact artifact, Manifest wrappingBundleManifest,
+            List<ApiRegion> apiRegions, Set<String> javadocClasspath, File deflatedBinDir, File deflatedSourcesDir,
+            File checkedOutSourcesDir) throws MojoExecutionException {
+        final ArtifactId artifactId = artifact.getId();
+        final File bundleFile = getArtifactFile(artifactProvider, artifactId);
 
         Manifest manifest;
         if (wrappingBundleManifest == null) {
@@ -345,12 +357,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 manifest = bundle.getManifest();
 
                 if (manifest == null) {
-                    throw new MojoExecutionException("Manifest file not included in "
-                            + bundleFile
-                            + " bundle");
+                    throw new MojoExecutionException(
+                            "Artifact + " + artifactId.toMvnId() + " does not  have a manifest.");
                 }
-            } catch (IOException e) {
-                throw new MojoExecutionException("An error occurred while reading " + bundleFile + " file", e);
+            } catch (final IOException e) {
+                throw new MojoExecutionException("An error occurred while reading manifest from file " + bundleFile
+                        + " for artifact " + artifactId.toMvnId(), e);
             }
         } else {
             manifest = wrappingBundleManifest;
@@ -368,14 +380,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // check if the bundle wraps other bundles
         if (wrappingBundleManifest == null) { // wrappers of wrappers do not exist
-            computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath, deflatedBinDir,
+                    deflatedSourcesDir, checkedOutSourcesDir, artifactProvider);
         }
 
         // renaming potential name-collapsing resources
         renameResources(deflatedBundleDirectory, artifactId);
 
         // download sources
-        downloadSources(artifact, deflatedSourcesDir, checkedOutSourcesDir, exportedPackages);
+        downloadSources(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir, exportedPackages);
 
         // to suppress any javadoc error
         buildJavadocClasspath(javadocClasspath, artifactId);
@@ -387,7 +400,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                        Set<String> javadocClasspath,
                                        File deflatedBinDir,
                                        File deflatedSourcesDir,
-                                       File checkedOutSourcesDir) throws MojoExecutionException {
+            File checkedOutSourcesDir, final ArtifactProvider artifactProvider) throws MojoExecutionException {
 
         String bundleClassPath = manifest.getMainAttributes().getValue("Bundle-ClassPath");
 
@@ -438,7 +451,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             Artifact syntheticArtifact = new Artifact(new ArtifactId(groupId, artifactId, version, classifier, null));
-            onArtifact(syntheticArtifact, manifest, apiRegions, javadocClasspath, deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir);
+            onArtifact(artifactProvider, syntheticArtifact, manifest, apiRegions, javadocClasspath, deflatedBinDir,
+                    deflatedSourcesDir, checkedOutSourcesDir);
         }
     }
 
@@ -544,7 +558,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private URL retrieve(ArtifactId artifactId) {
+    private URL retrieve(final ArtifactProvider artifactProvider, final ArtifactId artifactId) {
         getLog().debug("Retrieving artifact " + artifactId + "...");
         URL sourceFile = artifactProvider.provide(artifactId);
         if (sourceFile != null) {
@@ -615,14 +629,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         getLog().debug(Arrays.toString(includeResources) + " resources in " + destDirectory + " successfully renamed");
     }
 
-    private void downloadSources(Artifact artifact, File deflatedSourcesDir, File checkedOutSourcesDir, String...exportedPackages) throws MojoExecutionException {
+    private void downloadSources(final ArtifactProvider artifactProvider, Artifact artifact, File deflatedSourcesDir,
+            File checkedOutSourcesDir, String... exportedPackages) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
         ArtifactId sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
         boolean fallback = false;
         try {
-            final URL url = retrieve(sourcesArtifactId);
+            final URL url = retrieve(artifactProvider, sourcesArtifactId);
             if (url != null) {
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
                 deflate(deflatedSourcesDir, sourcesBundle, exportedPackages);
@@ -648,7 +663,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
             getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
             // POM file must exist, let the plugin fail otherwise
-            final URL pomURL = retrieve(pomArtifactId);
+            final URL pomURL = retrieve(artifactProvider, pomArtifactId);
             if (pomURL == null) {
                 throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
             }
