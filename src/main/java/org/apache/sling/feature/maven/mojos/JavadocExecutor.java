@@ -95,7 +95,7 @@ final class JavadocExecutor {
         return this;
     }
 
-    public void execute(File workingDir, Log logger) throws MojoExecutionException {
+    public void execute(File workingDir, Log logger, boolean ignoreErrors) throws MojoExecutionException {
         argFileWriter.close();
 
         CommandLine javadocCommand = new CommandLine(getJavadocExecutable());
@@ -108,7 +108,7 @@ final class JavadocExecutor {
         try {
             executor.getStreamHandler().setProcessInputStream(new LoggerOutputStream(logger));
             final int exitValue = executor.execute(javadocCommand);
-            if (executor.isFailure(exitValue)) {
+            if (!ignoreErrors && executor.isFailure(exitValue)) {
                 throw new MojoExecutionException("Javadoc generation failed. See log for more details.");
             }
         } catch (IOException ioe) {

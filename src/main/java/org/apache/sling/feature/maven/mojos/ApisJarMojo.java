@@ -125,6 +125,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private static final String SPACE = " ";
 
+    /**
+     * Select the features for api generation.
+     */
     @Parameter
     private FeatureSelectionConfig selection;
 
@@ -148,6 +151,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Parameter
     private String[] javadocLinks;
+
+    @Parameter(defaultValue = "false")
+    private boolean ignoreJavadocErrors;
 
     /**
      * Additional resources for the api jar
@@ -353,7 +359,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             if (sourcesDir.list().length > 0) {
                 File javadocsDir = new File(regionDir, JAVADOC);
-                generateJavadoc(apiRegion, sourcesDir, javadocsDir, javadocClasspath);
+                generateJavadoc(sourcesDir, javadocsDir, javadocClasspath);
                 createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null, this.apiJavadocResources);
             } else {
                 getLog().warn("Javadoc JAR will NOT be generated - sources directory was empty!");
@@ -869,7 +875,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     /**
      * Compute exports based on api regions
-     * 
+     *
      * @return {@code true} if any region exports a package from this set
      */
     private boolean computeExports(List<ApiRegion> apiRegions, final Clause[] exportedPackages)
@@ -1018,7 +1024,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
     }
 
-    private void generateJavadoc(ApiRegion apiRegion, File sourcesDir, File javadocDir, Set<String> javadocClasspath) throws MojoExecutionException {
+    private void generateJavadoc(File sourcesDir, File javadocDir, Set<String> javadocClasspath)
+            throws MojoExecutionException {
         javadocDir.mkdirs();
 
         JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
@@ -1070,7 +1077,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         javadocExecutor.addArgument(sourcesDir.list(), File.pathSeparator);
 
         // .addArgument("-J-Xmx2048m")
-        javadocExecutor.execute(javadocDir, getLog());
+        javadocExecutor.execute(javadocDir, getLog(), this.ignoreJavadocErrors);
     }
 
     private static ArtifactId newArtifacId(ArtifactId original, String classifier, String type) {
