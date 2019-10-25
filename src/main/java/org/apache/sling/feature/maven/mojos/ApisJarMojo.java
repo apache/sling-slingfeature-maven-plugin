@@ -272,7 +272,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             .parse((JsonArray) apiRegionsExtension.getJSONStructure());
                     ApiRegion previous = null;
                     for (final org.apache.sling.feature.extension.apiregions.api.ApiRegion r : parsedRegions
-                            .getRegions()) {
+                            .listRegions()) {
                         ApiRegion region = new ApiRegion();
                         region.setName(r.getName());
                         for (final ApiExport pck : r.getExports()) {
