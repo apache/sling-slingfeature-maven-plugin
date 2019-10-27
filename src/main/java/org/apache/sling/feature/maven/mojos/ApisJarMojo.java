@@ -105,6 +105,9 @@ import org.osgi.framework.Constants;
 )
 public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ArtifactFilter {
 
+    /** Alternative ID to a source artifact. */
+    private static final String SCM_ID = "sourceId";
+
     private static final String SCM_TAG = "scm-tag";
 
     private static final String SCM_LOCATION = "scm-location";
@@ -275,7 +278,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                             .listRegions()) {
                         ApiRegion region = new ApiRegion();
                         region.setName(r.getName());
-                        for (final ApiExport pck : r.getExports()) {
+                        for (final ApiExport pck : r.listExports()) {
                             region.addApi(pck.getName());
                         }
 
@@ -692,9 +695,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     private void downloadSources(final ArtifactProvider artifactProvider, Artifact artifact, File deflatedSourcesDir,
             File checkedOutSourcesDir, String[] exportPackageIncludes) throws MojoExecutionException {
         ArtifactId artifactId = artifact.getId();
-        ArtifactId sourcesArtifactId = newArtifacId(artifactId,
+        getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
+
+        ArtifactId sourcesArtifactId;
+        if ( artifact.getMetadata().get(SCM_ID) != null ) {
+            sourcesArtifactId = ArtifactId.parse(artifact.getMetadata().get(SCM_ID));
+        } else {
+            sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
+        }
+
         boolean fallback = false;
         try {
             final URL url = retrieve(artifactProvider, sourcesArtifactId);
@@ -702,18 +713,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
                 deflate(deflatedSourcesDir, sourcesBundle, exportPackageIncludes);
             } else {
-                getLog().warn("Impossible to download -sources bundle " + sourcesArtifactId
-                        + " due to artifact not found...");
+                getLog().warn("Impossible to download sources for " + artifactId.toMvnId() + " due to missing artifact "
+                        + sourcesArtifactId.toMvnId() + ", trying source checkout next...");
                 fallback = true;
             }
         } catch (Throwable t) {
-            getLog().warn("Impossible to download -sources bundle "
-                          + sourcesArtifactId
+            getLog().warn("Impossible to download sources for " + artifactId.toMvnId() + " from "
+                    + sourcesArtifactId.toMvnId()
                           + " due to "
                           + t.getMessage()
-                          + ", following back to source checkout...");
+                    + ", trying source checkout next...");
             fallback = true;
         }
+
         if (fallback) {
             // fallback to Artifacts SCM metadata first
             String connection = artifact.getMetadata().get(SCM_LOCATION);
@@ -721,26 +733,25 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
             ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
-            getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId + "...");
+            getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId.toMvnId() + "...");
             // POM file must exist, let the plugin fail otherwise
             final URL pomURL = retrieve(artifactProvider, pomArtifactId);
             if (pomURL == null) {
                 throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
             }
+
             File pomFile = null;
             try
             {
                 pomFile = IOUtils.getFileFromURL(pomURL, true, null);
-            }
-            catch (IOException e)
-            {
+            } catch (IOException e) {
                 throw new MojoExecutionException(e.getMessage());
             }
-            getLog().debug("POM " + pomArtifactId + " successfully retrieved, reading the model...");
+            getLog().debug("POM " + pomArtifactId.toMvnId() + " successfully retrieved, reading the model...");
 
             // read model
             Model pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
-            getLog().debug("POM model " + pomArtifactId + " successfully read, processing the SCM...");
+            getLog().debug("POM model " + pomArtifactId.toMvnId() + " successfully read, processing the SCM...");
 
             Scm scm = pomModel.getScm();
             if (scm != null) {
@@ -749,11 +760,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             if (connection == null) {
-                getLog().warn("SCM not defined in "
-                              + artifactId
+                getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM not defined in "
+                        + artifactId.toMvnId()
                               + " bundle neither in "
-                              + pomModel
-                              + " POM file, sources can not be retrieved, then will be ignored");
+                        + pomArtifactId.toMvnId() + " POM file.");
                 return;
             }
 
@@ -786,12 +796,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                     }
 
                     if (!result.isSuccess()) {
-                        getLog().error("An error occurred while checking out sources from " + connection + ": "
-                                + result.getProviderMessage()
-                                + "\nSources may be missing from collecting public APIs.");
+                        getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
+                                + " : An error occurred while checking out sources from " + connection + ": "
+                                + result.getProviderMessage());
                         return;
                     }
                 }
+
                 // retrieve the exact pom location to detect the bundle path in the repo
                 DirectoryScanner pomScanner = new DirectoryScanner();
                 pomScanner.setBasedir(basedir);
@@ -815,7 +826,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
                     // there could be just resources artifacts
                     if (!javaSources.exists()) {
-                        getLog().debug(artifactId + " does not contain any source, will be ignored");
+                        getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM checkout for "
+                                + artifactId.toMvnId()
+                                + " does not contain any source.");
                         return;
                     }
                 }
@@ -847,8 +860,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                                  + " connection for bundle "
                                                  + artifactId, se);
             } catch (NoSuchScmProviderException nsspe) {
-                getLog().error(artifactId
-                               + " bundle points to an SCM connection "
+                getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
+                        + " : bundle points to an SCM connection "
                                + connection
                                + " which does not specify a valid or supported SCM provider", nsspe);
             }
