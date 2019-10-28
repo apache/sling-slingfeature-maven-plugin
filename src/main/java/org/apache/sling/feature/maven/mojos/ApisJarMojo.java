@@ -706,16 +706,22 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
 
         for (String resourceName : directoryScanner.getIncludedFiles()) {
-            File resource = new File(destDirectory, resourceName);
-            File renamed = new File(resource.getParentFile(), artifactId.getGroupId() + "-" + artifactId.getArtifactId() + "-" + resource.getName());
+            final File resource = new File(destDirectory, resourceName);
+            final String prefix = artifactId.getGroupId().concat("-").concat(artifactId.getArtifactId().concat("-"));
 
-            getLog().debug("Renaming resource " + resource + " to " + renamed + "...");
-
-            if (resource.renameTo(renamed)) {
-                getLog().debug("Resource renamed to " + renamed);
+            if (resource.getName().startsWith(prefix)) {
+                getLog().debug("No need to rename " + resource);
             } else {
-                throw new MojoExecutionException("Impossible to rename resource " + resource + " to " + renamed
-                        + ", please check the current user has enough rights on the File System");
+                File renamed = new File(resource.getParentFile(), prefix.concat(resource.getName()));
+
+                getLog().debug("Renaming resource " + resource + " to " + renamed + "...");
+
+                if (resource.renameTo(renamed)) {
+                    getLog().debug("Resource renamed to " + renamed);
+                } else {
+                    throw new MojoExecutionException("Impossible to rename resource " + resource + " to " + renamed
+                            + ", please check the current user has enough rights on the File System");
+                }
             }
         }
 
