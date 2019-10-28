@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Formatter;
 import java.util.HashSet;
@@ -36,6 +38,7 @@ import java.util.StringTokenizer;
 import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -354,16 +357,21 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
             File apisDir = new File(regionDir, APIS);
             List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
-            createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes, this.apiResources);
+            final File apiJar = createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes, this.apiResources);
+            report(apiJar, APIS, apiRegion, "class");
 
             File sourcesDir = new File(regionDir, SOURCES);
             recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
-            createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null, this.apiSourceResources);
+            final File sourceJar = createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null,
+                    this.apiSourceResources);
+            report(sourceJar, SOURCES, apiRegion, "java");
 
             if (sourcesDir.list().length > 0) {
                 File javadocsDir = new File(regionDir, JAVADOC);
                 generateJavadoc(sourcesDir, javadocsDir, javadocClasspath);
-                createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null, this.apiJavadocResources);
+                final File javadocJar = createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null,
+                        this.apiJavadocResources);
+                report(javadocJar, JAVADOC, apiRegion, "html");
             } else {
                 getLog().warn("Javadoc JAR will NOT be generated - sources directory was empty!");
             }
@@ -371,6 +379,28 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         getLog().info(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
                 .a(" succesfully created").toString());
+    }
+
+    private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension) throws MojoExecutionException {
+        final List<String> packages = getPackages(jarFile, extension);
+        final List<String> missing = new ArrayList<>();
+        for (final String exp : apiRegion.getApis()) {
+            if (!packages.remove(exp)) {
+                missing.add(exp);
+            }
+        }
+        if (missing.isEmpty() && packages.isEmpty()) {
+            getLog().info("Verified " + apiType + " jar for region " + apiRegion.getName());
+        } else {
+            Collections.sort(missing);
+            getLog().info(apiType + " jar for region " + apiRegion.getName() + " has errors:");
+            for (final String m : missing) {
+                getLog().info("- Missing package " + m);
+            }
+            for (final String m : packages) {
+                getLog().info("- Wrong package " + m);
+            }
+        }
     }
 
     private File getArtifactFile(final ArtifactProvider artifactProvider, final ArtifactId artifactId)
@@ -960,7 +990,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return nodeTypes;
     }
 
-    private void createArchive(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier,
+    private File createArchive(ArtifactId featureId, File collectedDir, ApiRegion apiRegion, String classifier,
             List<String> nodeTypes, List<File> resources) throws MojoExecutionException {
         DirectoryScanner directoryScanner = new DirectoryScanner();
         directoryScanner.setBasedir(collectedDir);
@@ -1035,6 +1065,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                     + target
                     +" archive", e);
         }
+
+        return target;
     }
 
     private void generateJavadoc(File sourcesDir, File javadocDir, Set<String> javadocClasspath)
@@ -1130,6 +1162,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             filteringApis.add(packageToScannerFiler(api));
         }
 
+        public Set<String> getApis() {
+            return apis;
+        }
+
         public boolean containsApi(String api) {
             return apis.contains(api);
         }
@@ -1222,4 +1258,27 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         public final List<ApiRegion> regions = new ArrayList<>();
     }
+
+    private List<String> getPackages(final File file, final String extension) throws MojoExecutionException {
+        final String postfix = ".".concat(extension);
+        final Set<String> packages = new HashSet<>();
+        try (final JarInputStream jis = new JarInputStream(new FileInputStream(file))) {
+            JarEntry entry;
+            while ((entry = jis.getNextJarEntry()) != null) {
+                if (entry.getName().endsWith(postfix)) {
+                    final int lastPos = entry.getName().lastIndexOf('/');
+                    if (lastPos != -1) {
+                        packages.add(entry.getName().substring(0, lastPos).replace('/', '.'));
+                    }
+                }
+                jis.closeEntry();
+            }
+        } catch (final IOException ioe) {
+            throw new MojoExecutionException("Unable to scan file " + file + " : " + ioe.getMessage());
+        }
+        final List<String> sorted = new ArrayList<>(packages);
+        Collections.sort(sorted);
+        return sorted;
+    }
 }
+
