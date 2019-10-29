@@ -27,15 +27,12 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.Formatter;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
@@ -87,6 +84,7 @@ import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.extension.apiregions.api.ApiExport;
+import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -131,6 +129,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private static final String SPACE = " ";
 
+    private static final String PROPERTY_FILTER = ApisJarMojo.class.getName() + ".filter";
+
+    private static final String PROPERTY_CLAUSE = ApisJarMojo.class.getName() + ".clause";
+
+    private static final String PROPERTY_BUNDLE = ApisJarMojo.class.getName() + ".bundle";
+
     /**
      * Select the features for api generation.
      */
@@ -160,6 +164,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Parameter(defaultValue = "false")
     private boolean ignoreJavadocErrors;
+
+    /**
+     * If set to true and api jars are created for more than one region, then the
+     * higher region only gets the difference to the lower region. If set to false
+     * each api jar gets the full region information (duplicating information)
+     */
+    @Parameter(defaultValue = "true")
+    private boolean incrementalApis;
 
     /**
      * Additional resources for the api jar
@@ -231,6 +243,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         };
     }
 
+    /**
+     * Check if the region is included
+     *
+     * @param name The region name
+     * @return {@code true} if the region is included
+     */
     private boolean isRegionIncluded(final String name) {
         boolean included = false;
         for (final String i : this.includeRegions) {
@@ -260,8 +278,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
      *         or all regions are excluded
      * @throws MojoExecutionException If an error occurs
      */
-    private ExtendedApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
-        ExtendedApiRegions regions = null;
+    private ApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
+        ApiRegions regions = null;
 
         Extensions extensions = feature.getExtensions();
         Extension apiRegionsExtension = extensions.getByName(ApiRegions.EXTENSION_NAME);
@@ -271,46 +289,59 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                         "Feature file " + feature.getId().toMvnId() + " declares an empty '" + ApiRegions.EXTENSION_NAME
                     + "' extension, no API JAR will be created");
             } else {
-                regions = new ExtendedApiRegions();
                 try {
-                    // calculate all api-regions first, taking the inheritance in account
-                    final ApiRegions parsedRegions = ApiRegions
+                    regions = ApiRegions
                             .parse((JsonArray) apiRegionsExtension.getJSONStructure());
-                    ApiRegion previous = null;
-                    for (final org.apache.sling.feature.extension.apiregions.api.ApiRegion r : parsedRegions
-                            .listRegions()) {
-                        ApiRegion region = new ApiRegion();
-                        region.setName(r.getName());
-                        for (final ApiExport pck : r.listExports()) {
-                            region.addApi(pck.getName());
-                        }
-
-                        if (previous != null) {
-                            region.doInherit(previous);
-                        }
-                        if (isRegionIncluded(region.getName())) {
-                            regions.regions.add(region);
-                        } else {
-                            getLog().debug("API Region " + region.getName()
-                                    + " will not processed due to the configured include/exclude list");
-                        }
-                        previous = region;
-                    }
                 } catch (final IOException ioe) {
                     throw new MojoExecutionException(ioe.getMessage(), ioe);
                 }
-                if (regions.regions.isEmpty()) {
+
+                // calculate all api-regions first, taking the inheritance in account
+                final List<ApiRegion> toBeRemoved = new ArrayList<>();
+                for (final ApiRegion r : regions.listRegions()) {
+                    if (r.getParent() != null && !this.incrementalApis) {
+                        for (final ApiExport exp : r.getParent().listExports()) {
+                            r.add(exp);
+                        }
+                    }
+                    if (!isRegionIncluded(r.getName())) {
+                        getLog().debug("API Region " + r.getName()
+                                    + " will not processed due to the configured include/exclude list");
+                        toBeRemoved.add(r);
+                    }
+                }
+                for (final ApiRegion r : toBeRemoved) {
+                    regions.remove(r);
+                }
+
+                // prepare filter
+                for (final ApiRegion r : regions.listRegions()) {
+                    for (final ApiExport e : r.listExports()) {
+                        e.getProperties().put(PROPERTY_FILTER, packageToScannerFiler(e.getName()));
+                    }
+                }
+
+                if (regions.isEmpty()) {
                     getLog().info("Feature file " + feature.getId().toMvnId()
                             + " has no included api regions, no API JAR will be created");
                     regions = null;
                 }
             }
         } else {
-            regions = new ExtendedApiRegions();
+            regions = new ApiRegions();
+            // create exports on the fly
+            regions.add(new ApiRegion(ApiRegion.GLOBAL) {
 
-            final ApiRegion global = new GlobalApiRegion();
-            global.setName("global");
-            regions.regions.add(global);
+                @Override
+                public ApiExport getExportByName(final String name) {
+                    ApiExport exp = super.getExportByName(name);
+                    if (exp == null) {
+                        exp = new ApiExport(name);
+                        this.add(exp);
+                    }
+                    return exp;
+                }
+            });
         }
 
         return regions;
@@ -324,12 +355,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         getLog().info(MessageUtils.buffer().a("Creating API JARs for Feature ").strong(feature.getId().toMvnId())
                 .a(" ...").toString());
 
-        final ExtendedApiRegions regions = getApiRegions(feature);
+        final ApiRegions regions = getApiRegions(feature);
         if (regions == null) {
             // wrongly configured api regions - skip execution
             return;
         }
-        final List<ApiRegion> apiRegions = regions.regions;
 
         if (!mainOutputDir.exists()) {
             mainOutputDir.mkdirs();
@@ -347,12 +377,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // for each bundle included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
-            onArtifact(artifactProvider, artifact, null, apiRegions, javadocClasspath, deflatedBinDir,
+            onArtifact(artifactProvider, artifact, null, regions, javadocClasspath, deflatedBinDir,
                     deflatedSourcesDir, checkedOutSourcesDir);
         }
 
         // recollect and package stuff
-        for (ApiRegion apiRegion : apiRegions) {
+        for (ApiRegion apiRegion : regions.listRegions()) {
             File regionDir = new File(featureDir, apiRegion.getName());
 
             File apisDir = new File(regionDir, APIS);
@@ -383,9 +413,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension) throws MojoExecutionException {
         final List<String> packages = getPackages(jarFile, extension);
-        final List<String> missing = new ArrayList<>();
-        for (final String exp : apiRegion.getApis()) {
-            if (!packages.remove(exp)) {
+        final List<ApiExport> missing = new ArrayList<>();
+        for (final ApiExport exp : apiRegion.listExports()) {
+            if (!packages.remove(exp.getName())) {
                 missing.add(exp);
             }
         }
@@ -394,8 +424,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         } else {
             Collections.sort(missing);
             getLog().info(apiType + " jar for region " + apiRegion.getName() + " has errors:");
-            for (final String m : missing) {
-                getLog().info("- Missing package " + m);
+            for (final ApiExport m : missing) {
+                getLog().info("- Missing package " + m + " from bundle(s) " + m.getProperties().get(PROPERTY_BUNDLE));
             }
             for (final String m : packages) {
                 getLog().info("- Wrong package " + m);
@@ -437,7 +467,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     }
 
     private void onArtifact(final ArtifactProvider artifactProvider, Artifact artifact, Manifest wrappingBundleManifest,
-            List<ApiRegion> apiRegions, Set<String> javadocClasspath, File deflatedBinDir, File deflatedSourcesDir,
+            ApiRegions apiRegions, Set<String> javadocClasspath, File deflatedBinDir, File deflatedSourcesDir,
             File checkedOutSourcesDir) throws MojoExecutionException {
         final ArtifactId artifactId = artifact.getId();
         final File bundleFile = getArtifactFile(artifactProvider, artifactId);
@@ -452,14 +482,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         // check if the bundle is exporting packages?
         final Clause[] exportedPackages = this.getExportedPackages(manifest);
         if (exportedPackages.length > 0) {
-            // get includes for deflating
-            final String[] exportPackagesIncludes = computeExportPackageIncludes(exportedPackages);
 
             // calculate the exported versioned packages in the manifest file for each
             // region
             // and calculate the exported versioned packages in the manifest file for each
             // region
-            if (computeExports(apiRegions, exportedPackages)) {
+            if (computeExports(apiRegions, exportedPackages, artifactId)) {
+                // get includes for deflating
+                final String[] exportPackagesIncludes = computeExportPackageIncludes(exportedPackages);
+
                 // deflate all bundles first, in order to copy APIs and resources later,
                 // depending to the region
                 final String[] exportedPackagesAndWrappedBundles = Stream
@@ -488,7 +519,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private void computeWrappedBundles(Manifest manifest,
                                        File deflatedBundleDirectory,
-                                       List<ApiRegion> apiRegions,
+            ApiRegions apiRegions,
                                        Set<String> javadocClasspath,
                                        File deflatedBinDir,
                                        File deflatedSourcesDir,
@@ -927,23 +958,63 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
      *
      * @return {@code true} if any region exports a package from this set
      */
-    private boolean computeExports(List<ApiRegion> apiRegions, final Clause[] exportedPackages)
+    private boolean computeExports(final ApiRegions apiRegions, final Clause[] exportedPackages,
+            final ArtifactId bundle)
             throws MojoExecutionException {
         boolean hasExport = false;
 
         // filter for each region
-        for (Clause exportedPackage : exportedPackages) {
-            final String api = exportedPackage.getName();
+        for (final Clause exportedPackage : exportedPackages) {
+            final String packageName = exportedPackage.getName();
 
-            for (ApiRegion apiRegion : apiRegions) {
-                if (apiRegion.containsApi(api)) {
-                    apiRegion.addExportPackage(exportedPackage);
+            for (ApiRegion apiRegion : apiRegions.listRegions()) {
+                final ApiExport exp = apiRegion.getExportByName(packageName);
+                if (exp != null) {
+                    if (exp.getProperties().containsKey(PROPERTY_CLAUSE)) {
+                        exp.getProperties().put(PROPERTY_CLAUSE, exp.getProperties().get(PROPERTY_CLAUSE).concat(",")
+                                .concat(exportedPackage.toString()));
+                        exp.getProperties().put(PROPERTY_BUNDLE,
+                                exp.getProperties().get(PROPERTY_BUNDLE).concat(",").concat(bundle.toMvnId()));
+                    } else {
+                        exp.getProperties().put(PROPERTY_CLAUSE, exportedPackage.toString());
+                        exp.getProperties().put(PROPERTY_BUNDLE, bundle.toMvnId());
+                    }
                     hasExport = true;
                 }
             }
         }
 
         return hasExport;
+    }
+
+    private String[] getApiFilters(final ApiRegion region) {
+        final List<String> filters = new ArrayList<>();
+        for (final ApiExport exp : region.listExports()) {
+            final String f = exp.getProperties().get(PROPERTY_FILTER);
+            if (f != null) {
+                for (final String v : f.split(",")) {
+                    filters.add(v);
+                }
+            }
+        }
+        return filters.toArray(new String[filters.size()]);
+    }
+
+    private String getApiExportClause(final ApiRegion region) {
+        final StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (final ApiExport exp : region.listExports()) {
+            final String v = exp.getProperties().get(PROPERTY_CLAUSE);
+            if (v != null) {
+                if (first) {
+                    first = false;
+                } else {
+                    sb.append(',');
+                }
+                sb.append(v);
+            }
+        }
+        return sb.toString();
     }
 
     private List<String> recollect(File featureDir, File deflatedDir, ApiRegion apiRegion, File destination) throws MojoExecutionException {
@@ -957,9 +1028,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         // for each region, include both APIs and resources
         String[] includes;
         if (APIS.equals(destination.getName())) {
-            includes = concatenate(apiRegion.getFilteringApis(), includeResources);
+            includes = concatenate(getApiFilters(apiRegion), includeResources);
         } else {
-            includes = apiRegion.getFilteringApis();
+            includes = getApiFilters(apiRegion);
         }
         directoryScanner.setIncludes(includes);
         directoryScanner.scan();
@@ -1040,7 +1111,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
         if (APIS.equals(classifier)) {
             // APIs need OSGi Manifest entry
-            archiveConfiguration.addManifestEntry("Export-Package", StringUtils.join(apiRegion.getExportPackage(), ","));
+            archiveConfiguration.addManifestEntry("Export-Package", getApiExportClause(apiRegion));
             archiveConfiguration.addManifestEntry("Bundle-Description", project.getDescription());
             archiveConfiguration.addManifestEntry("Bundle-Version", featureId.getOSGiVersion().toString());
             archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
@@ -1139,88 +1210,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                               type);
     }
 
-    private static class ApiRegion {
 
-        private final Set<String> apis = new TreeSet<>();
-
-        private final Set<String> filteringApis = new TreeSet<>();
-
-        private final List<Clause> exportPackage = new ArrayList<>();
-
-        private String name;
-
-        private String inherits;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String[] getFilteringApis() {
-            return filteringApis.toArray(new String[filteringApis.size()]);
-        }
-
-        public void addApi(String api) {
-            apis.add(api);
-            filteringApis.add(packageToScannerFiler(api));
-        }
-
-        public Set<String> getApis() {
-            return apis;
-        }
-
-        public boolean containsApi(String api) {
-            return apis.contains(api);
-        }
-
-        public void addExportPackage(Clause exportPackage) {
-            this.exportPackage.add(exportPackage);
-        }
-
-        public Iterator<Clause> getExportPackage() {
-            return exportPackage.iterator();
-        }
-
-        public void doInherit(ApiRegion parent) {
-            inherits = parent.getName();
-            apis.addAll(parent.apis);
-            filteringApis.addAll(parent.filteringApis);
-        }
-
-        @Override
-        public String toString() {
-            Formatter formatter = new Formatter();
-            formatter.format("Region '%s'", name);
-
-            if (inherits != null && !inherits.isEmpty()) {
-                formatter.format(" inherits from '%s'", inherits);
-            }
-
-            formatter.format(":%n");
-
-            for (String api : apis) {
-                formatter.format(" * %s%n", api);
-            }
-
-            String toString = formatter.toString();
-            formatter.close();
-
-            return toString;
-        }
-
-    }
-
-    private static class GlobalApiRegion extends ApiRegion {
-
-        @Override
-        public boolean containsApi(String api) {
-            this.addApi(api);
-            return true;
-        }
-    }
 
     private static String packageToScannerFiler(String api) {
         return "**/" + api.replace('.', '/') + "/*";
@@ -1258,11 +1248,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             return false;
         }
         return true;
-    }
-
-    private static class ExtendedApiRegions extends ApiRegions {
-
-        public final List<ApiRegion> regions = new ArrayList<>();
     }
 
     private List<String> getPackages(final File file, final String extension) throws MojoExecutionException {

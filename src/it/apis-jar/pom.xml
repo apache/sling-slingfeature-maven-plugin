@@ -50,6 +50,7 @@
             <javadocLink>https://osgi.org/javadoc/r6/annotation/</javadocLink>
             <javadocLink>https://osgi.org/javadoc/r6/cmpn/</javadocLink>
           </javadocLinks>
+          <incrementalApis>false</incrementalApis>
         </configuration>
       </plugin>
     </plugins>
