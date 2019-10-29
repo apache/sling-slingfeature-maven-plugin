@@ -425,7 +425,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             Collections.sort(missing);
             getLog().info(apiType + " jar for region " + apiRegion.getName() + " has errors:");
             for (final ApiExport m : missing) {
-                getLog().info("- Missing package " + m + " from bundle(s) " + m.getProperties().get(PROPERTY_BUNDLE));
+                getLog().info("- Missing package " + m.getName() + " from bundle(s) "
+                        + m.getProperties().get(PROPERTY_BUNDLE));
             }
             for (final String m : packages) {
                 getLog().info("- Wrong package " + m);
