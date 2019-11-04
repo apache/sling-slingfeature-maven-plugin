@@ -8,6 +8,34 @@ This module is part of the [Apache Sling](https://sling.apache.org) project.
 
 Maven Plugin for OSGi Applications
 
+# Authoring Feature Files
+
+The format of a feature file is described in the [Apache Sling Feature Model](https://github.com/apache/sling-org-apache-sling-feature/blob/master/readme.md).
+As described there, a feature file must have an ID. If you use this Maven Plugin you have two options:
+
+* Including the full ID in the source of your feature file
+* Let the plugin generate the ID for you
+
+## Including the ID in the feature file
+
+If you want to have full control over the ID, you can encode it directly in the feature file. However, it is advised to use placeholders for the group id, artifact id
+and version and let the maven plugin insert them for you.
+
+In the following example the qualifier `base` is specified for the feature file:
+
+```
+   {
+      "id":"${project.groupId}:${project.artifactId}:slingosgifeature:base:${project.version}",
+      ...
+   }
+```
+
+## Auto generated ID
+
+If you omit the ID in your feature file, the maven plugin will generate an ID for you based on the file name of the feature file. The file name becomes the qualifier of the ID.
+If your feature is named `feature.json` then this becomes the main artifact of the project without a qualifier.
+
+
 # Global Configuration
 
 * features : The directory containing the feature files. The default is `src/main/features`.
