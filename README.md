@@ -47,7 +47,7 @@ If your feature is named `feature.json` then this becomes the main artifact of t
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
 
-## Supported goals
+# Supported goals
 
 Most of the plugin goals take a selection of features as input, for example to aggregate a set of features to a new feature or to analyse a specific set of features according to some rules.
 
@@ -92,7 +92,7 @@ Finally, most of the goals also support to add features from other projects:
 
 All of the above ways to select features (project files, project aggregates and external features) can be mixed in the configuration. It's possible to first specify an artifact include, followed by a aggregate classifier, followed by file includes. And this is then the order of processing. Please note that file excludes can be placed anywhere and regardless of their position, they are always applied to every files include.
 
-### aggregate-features
+## aggregate-features
 
 Produce an aggregated feature from a list of features. The list of features is either specified by include/exclude patterns based on the configured features directory of the project or Maven coordinates of features.
 
@@ -186,7 +186,7 @@ Where `<resolution>` is one of the following:
 When comparing version numbers these are converted to OSGi version
 numbers and the OSGi version number ordering is applied.
 
-#### Extension merging
+### Extension merging
 
 Merging of extensions is specific to the extension being merged. Handlers can be provided to implement the logic of extension merging. A handler needs to implement the `org.apache.sling.feature.builder.FeatureExtensionHandler` and is looked up via the Java ServiceLoader mechanism.
 
@@ -211,7 +211,7 @@ section of the plugin configuration:
   </plugin>
 ```
 
-### analyse-features
+## analyse-features
 Run feature model analysers on the feature models in the project. Analysers are defined in the
 https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID,
 which is obtained from the `getId()` method in
@@ -268,11 +268,11 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 </execution>
 ```
 
-### attach-features
+## attach-features
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
-### extract-extension
+## extract-extension
 This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
 
 The goal is configured as in the following example:
@@ -300,7 +300,7 @@ Output files are written to the output directory follows where the file name is 
 * ARTIFACT extensions: the file contains the Maven IDs for each artifact. One ID per line.
 
 
-### update-feature-versions
+## update-feature-versions
 
 The update feature versions goal can be used to check for updates of artifacts contained in the features
 that are part of the project.
@@ -333,7 +333,7 @@ With an include you can also specify an exact version:
     mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.jackrabbit.oak/4.0.2
 ```
 
-### repository
+## repository
 
 With the repository goal, a directory with all artifacts from the selected features will be created.
 
@@ -359,7 +359,7 @@ With the repository goal, a directory with all artifacts from the selected featu
  </execution>
 ```
 
-### Feature Launcher (launch-features)
+## Feature Launcher (launch-features)
 
 **Attention**: This Mojo is BETA meaning under development and new released
 may change the way the Mojo is used.
@@ -423,7 +423,7 @@ Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
 
-### Features Diff (features-diff)
+## Features Diff (features-diff)
 
 This MOJO compares different versions of the same Feature Model, producing the prototype
 Feature Model that shows the differences.

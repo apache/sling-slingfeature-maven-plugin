@@ -191,6 +191,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter
     private List<File> apiJavadocResources;
 
+    /**
+     * If enabled, the created api jars will be atttached to the project
+     */
+    @Parameter(defaultValue = "true")
+    private boolean attachApiJars;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -1137,7 +1143,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         try {
             archiver.createArchive(mavenSession, project, archiveConfiguration);
-            projectHelper.attachArtifact(project, JAR_TYPE, finalClassifier, target);
+            if (this.attachApiJars) {
+                projectHelper.attachArtifact(project, JAR_TYPE, finalClassifier, target);
+            }
         } catch (Exception e) {
             throw new MojoExecutionException("An error occurred while creating APIs "
                     + target
