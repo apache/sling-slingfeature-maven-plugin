@@ -30,6 +30,7 @@ import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -197,6 +198,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter(defaultValue = "true")
     private boolean attachApiJars;
 
+    @Parameter
+    private Map<String, String> apiRegionNameMappings;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -232,6 +236,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 onFeature(artifactProvider, feature);
             }
         }
+    }
+
+    /**
+     * Apply region name mapping if configured
+     *
+     * @param regionName The region name
+     * @return The mapped name or the original name
+     */
+    private String mapApiRegionName(final String regionName) {
+        if (this.apiRegionNameMappings != null && this.apiRegionNameMappings.containsKey(regionName)) {
+            return this.apiRegionNameMappings.get(regionName);
+        }
+        return regionName;
     }
 
     private ArtifactProvider createArtifactProvider() {
@@ -1107,7 +1124,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             classifierBuilder.append(featureId.getClassifier())
                              .append('-');
         }
-        String finalClassifier = classifierBuilder.append(apiRegion.getName())
+        String finalClassifier = classifierBuilder.append(mapApiRegionName(apiRegion.getName()))
                                                   .append('-')
                                                   .append(classifier)
                                                   .toString();
