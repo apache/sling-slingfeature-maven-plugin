@@ -198,8 +198,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter(defaultValue = "true")
     private boolean attachApiJars;
 
+    /**
+     * Mapping for an api region name to a user defined name
+     */
     @Parameter
     private Map<String, String> apiRegionNameMappings;
+
+    /**
+     * Mapping for the feature classifier to a user defined name
+     */
+    @Parameter
+    private Map<String, String> apiClassifierMappings;
 
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
@@ -249,6 +258,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             return this.apiRegionNameMappings.get(regionName);
         }
         return regionName;
+    }
+
+    /**
+     * Apply classifier mapping if configured
+     *
+     * @param classifier The classifier
+     * @return The mapped classifier or the original classifier
+     */
+    private String mapApClassifier(final String classifier) {
+        if (this.apiClassifierMappings != null && this.apiClassifierMappings.containsKey(classifier)) {
+            return this.apiClassifierMappings.get(classifier);
+        }
+        return classifier;
     }
 
     private ArtifactProvider createArtifactProvider() {
@@ -1121,7 +1143,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
         StringBuilder classifierBuilder = new StringBuilder();
         if (featureId.getClassifier() != null) {
-            classifierBuilder.append(featureId.getClassifier())
+            classifierBuilder.append(mapApClassifier(featureId.getClassifier()))
                              .append('-');
         }
         String finalClassifier = classifierBuilder.append(mapApiRegionName(apiRegion.getName()))
