@@ -805,38 +805,57 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         getLog().debug(Arrays.toString(includeResources) + " resources in " + destDirectory + " successfully renamed");
     }
 
-    private void downloadSources(final ArtifactProvider artifactProvider, Artifact artifact, File deflatedSourcesDir,
-            File checkedOutSourcesDir, String[] exportPackageIncludes) throws MojoExecutionException {
-        ArtifactId artifactId = artifact.getId();
-        getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
-
-        ArtifactId sourcesArtifactId;
-        if ( artifact.getMetadata().get(SCM_ID) != null ) {
-            sourcesArtifactId = ArtifactId.parse(artifact.getMetadata().get(SCM_ID));
-        } else {
-            sourcesArtifactId = newArtifacId(artifactId,
-                                                    "sources",
-                                                    "jar");
-        }
-
-        boolean fallback = false;
+    private boolean downloadSourceAndDeflate(final ArtifactProvider artifactProvider,
+            final ArtifactId sourcesArtifactId, final File deflatedSourcesDir, final String[] exportPackageIncludes,
+            final ArtifactId artifactId, final boolean allowFallback) throws MojoExecutionException {
+        boolean failed = false;
         try {
             final URL url = retrieve(artifactProvider, sourcesArtifactId);
             if (url != null) {
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
                 deflate(deflatedSourcesDir, sourcesBundle, exportPackageIncludes);
             } else {
-                getLog().warn("Impossible to download sources for " + artifactId.toMvnId() + " due to missing artifact "
+                if (!allowFallback) {
+                    throw new MojoExecutionException("Unable to download sources for " + artifactId.toMvnId()
+                            + " due to missing artifact " + sourcesArtifactId.toMvnId());
+                }
+                getLog().warn("Unable to download sources for " + artifactId.toMvnId() + " due to missing artifact "
                         + sourcesArtifactId.toMvnId() + ", trying source checkout next...");
-                fallback = true;
+                failed = true;
             }
-        } catch (Throwable t) {
-            getLog().warn("Impossible to download sources for " + artifactId.toMvnId() + " from "
-                    + sourcesArtifactId.toMvnId()
-                          + " due to "
-                          + t.getMessage()
-                    + ", trying source checkout next...");
-            fallback = true;
+        } catch (final MojoExecutionException mee) {
+            throw mee;
+        } catch (final Throwable t) {
+            if (!allowFallback) {
+                throw new MojoExecutionException("Unable to download sources for " + artifactId.toMvnId()
+                        + " due to missing artifact " + sourcesArtifactId.toMvnId());
+            }
+            getLog().warn("Unable to download sources for " + artifactId.toMvnId() + " from "
+                    + sourcesArtifactId.toMvnId() + " due to " + t.getMessage() + ", trying source checkout next...");
+            failed = true;
+        }
+        return failed;
+    }
+
+    private void downloadSources(final ArtifactProvider artifactProvider, Artifact artifact, File deflatedSourcesDir,
+            File checkedOutSourcesDir, String[] exportPackageIncludes) throws MojoExecutionException {
+        ArtifactId artifactId = artifact.getId();
+        getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
+
+        boolean fallback = false;
+        if ( artifact.getMetadata().get(SCM_ID) != null ) {
+            final String value = artifact.getMetadata().get(SCM_ID);
+            for (final String id : value.split(",")) {
+                final ArtifactId sourcesArtifactId = ArtifactId.parse(id);
+                downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir, exportPackageIncludes,
+                        artifactId, false);
+            }
+        } else {
+            final ArtifactId sourcesArtifactId = newArtifacId(artifactId,
+                                                    "sources",
+                                                    "jar");
+            fallback = downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir,
+                    exportPackageIncludes, artifactId, true);
         }
 
         if (fallback) {
