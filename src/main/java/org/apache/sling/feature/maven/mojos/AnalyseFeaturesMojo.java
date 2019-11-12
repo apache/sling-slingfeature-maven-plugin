@@ -18,12 +18,15 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -75,13 +78,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
             @Override
             public URL provide(final ArtifactId id) {
-                try
-                {
+                try {
                     return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
-                }
-                catch (Exception e)
-                {
-                    getLog().error(e);
+                } catch (final MalformedURLException e) {
+                    getLog().debug("Malformed url " + e.getMessage(), e);
+                    // ignore
                     return null;
                 }
             }
@@ -106,9 +107,22 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("analyser")
                         .a(" with following configuration:").toString());
                 getLog().debug(" * Task Configuration = " + taskConfiguration);
-                getLog().debug(" * Include Tasks = " + an.getIncludeTasks());
+                Set<String> includedTasks = an.getIncludeTasks();
+                if (includedTasks == null) {
+                    // use defaults
+                    includedTasks = new HashSet<>();
+                    includedTasks.add("bundle-packages");
+                    includedTasks.add("requirements-capabilities");
+                    if (an.getExcludeTasks() != null) {
+                        includedTasks.removeAll(an.getExcludeTasks());
+                        if (includedTasks.isEmpty()) {
+                            includedTasks = null;
+                        }
+                    }
+                }
+                getLog().debug(" * Include Tasks = " + includedTasks);
                 getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
-                final Analyser analyser = new Analyser(scanner, taskConfiguration, an.getIncludeTasks(), an.getExcludeTasks());
+                final Analyser analyser = new Analyser(scanner, taskConfiguration, includedTasks, an.getExcludeTasks());
                 getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
 
                 getLog().debug("Retrieving Feature files...");
