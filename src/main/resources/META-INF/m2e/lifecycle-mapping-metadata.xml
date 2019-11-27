@@ -26,6 +26,7 @@
                     <goal>attach-features</goal>
                     <goal>process-resources</goal>
                     <goal>launch-features</goal>
+                    <goal>extract-extension</goal>
                 </goals>
             </pluginExecutionFilter>
             <action>
