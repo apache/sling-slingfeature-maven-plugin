@@ -468,7 +468,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             getLog().info("Verified " + apiType + " jar for region " + apiRegion.getName());
         } else {
             Collections.sort(missing);
-            getLog().info(apiType + " jar for region " + apiRegion.getName() + " has errors:");
+            getLog().info(apiType + " jar for region " + apiRegion.getName() + " has " + missing.size() + " errors:");
             for (final ApiExport m : missing) {
                 getLog().info("- Missing package " + m.getName() + " from bundle(s) "
                         + m.getProperties().get(PROPERTY_BUNDLE));
