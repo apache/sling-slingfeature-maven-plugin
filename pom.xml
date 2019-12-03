@@ -36,6 +36,7 @@
         <maven.version>3.5.0</maven.version>
         <maven.scm.version>1.11.1</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
+        <maven-artifact-transfer.version>0.11.0</maven-artifact-transfer.version>
     </properties>
 
     <scm>
@@ -308,6 +309,11 @@
             <groupId>org.apache.maven</groupId>
             <artifactId>maven-model-builder</artifactId>
             <version>3.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-artifact-transfer</artifactId>
+            <version>${maven-artifact-transfer.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
