@@ -224,6 +224,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Component
     private RepositorySystem repositorySystem;
+    
+    @Parameter
+    private String javadocSourceLevel;
 
     private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
 
@@ -1224,6 +1227,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                                           .addArgument("-sourcepath", false)
                                           .addArgument(sourcesDir.getAbsolutePath());
 
+        if (isNotEmpty(javadocSourceLevel)) {
+            javadocExecutor.addArgument("-source", false)
+                           .addArgument(javadocSourceLevel);
+        }
+        
         if (isNotEmpty(project.getName())) {
             javadocExecutor.addArgument("-doctitle", false)
                            .addQuotedArgument(project.getName());
