@@ -17,10 +17,14 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -34,11 +38,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
+import java.util.function.BiPredicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.json.JsonArray;
@@ -135,6 +141,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     private static final String PROPERTY_CLAUSE = ApisJarMojo.class.getName() + ".clause";
 
     private static final String PROPERTY_BUNDLE = ApisJarMojo.class.getName() + ".bundle";
+
+    private static final BiPredicate<Path, BasicFileAttributes> IS_JAVA_FILE = (p,a) -> p.toFile().isFile() && p.toFile().getName().endsWith(JAVA_EXTENSION);
 
     /**
      * Select the features for api generation.
@@ -444,14 +452,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                     this.apiSourceResources);
             report(sourceJar, SOURCES, apiRegion, "java");
 
-            if (sourcesDir.list().length > 0) {
+            List<String> subpackageDirectories = calculateSubpackageDirectories(sourcesDir);
+            if (!subpackageDirectories.isEmpty()) {
                 File javadocsDir = new File(regionDir, JAVADOC);
-                generateJavadoc(sourcesDir, javadocsDir, javadocClasspath);
+                generateJavadoc(sourcesDir, javadocsDir, javadocClasspath, subpackageDirectories);
                 final File javadocJar = createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null,
                         this.apiJavadocResources);
                 report(javadocJar, JAVADOC, apiRegion, "html");
             } else {
-                getLog().warn("Javadoc JAR will NOT be generated - sources directory was empty!");
+                getLog().warn("Javadoc JAR will NOT be generated - sources directory " + sourcesDir +" was empty or contained no Java files!");
             }
         }
 
@@ -1216,7 +1225,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return target;
     }
 
-    private void generateJavadoc(File sourcesDir, File javadocDir, Set<String> javadocClasspath)
+    private void generateJavadoc(File sourcesDir, File javadocDir, Set<String> javadocClasspath, List<String> subpackageDirectories)
             throws MojoExecutionException {
         javadocDir.mkdirs();
 
@@ -1271,10 +1280,33 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         // use the -subpackages to reduce the list of the arguments
         javadocExecutor.addArgument("-subpackages", false);
-        javadocExecutor.addArgument(sourcesDir.list(), File.pathSeparator);
+        javadocExecutor.addArgument(subpackageDirectories, File.pathSeparator);
 
         // .addArgument("-J-Xmx2048m")
         javadocExecutor.execute(javadocDir, getLog(), this.ignoreJavadocErrors);
+    }
+
+    /**
+     * Returns the list of subdirectories that have at least one Java source file
+     *
+     * @param sourcesDir the directory with source files
+     * @return a list of subpackages, potentially empty, never <code>null</code>
+     */
+    private List<String> calculateSubpackageDirectories(File sourcesDir) {
+        // make sure to only include files that have at least one java source file
+        return Arrays.stream(sourcesDir.listFiles( new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                try {
+                    try ( Stream<Path> javaFiles = Files.find(pathname.toPath(), Integer.MAX_VALUE, IS_JAVA_FILE)) {
+                        return javaFiles.findFirst().isPresent();
+                    }
+                } catch (IOException e) {
+                    getLog().warn("Failed scanning " + pathname + " for Java files", e);
+                    return false;
+                }
+            }
+        })).map( File::getName ).collect(Collectors.toList());
     }
 
     private static ArtifactId newArtifacId(ArtifactId original, String classifier, String type) {
