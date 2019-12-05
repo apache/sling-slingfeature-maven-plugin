@@ -22,8 +22,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileVisitResult;
+import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +43,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarInputStream;
@@ -144,6 +149,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     private static final BiPredicate<Path, BasicFileAttributes> IS_JAVA_FILE = (p,a) -> p.toFile().isFile() && p.toFile().getName().endsWith(JAVA_EXTENSION);
 
+    private static final Predicate<Path> IS_JAVA_CLASS_FILE = (p) -> p.toFile().isFile() && p.toFile().getName().endsWith(".class");
+    
     /**
      * Select the features for api generation.
      */
@@ -453,13 +460,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         // create an output directory per feature
         final File featureDir = new File(mainOutputDir, feature.getId().getArtifactId());
 
-        final Set<String> javadocClasspath = new HashSet<>();
+        final ApisJarContext ctx = new ApisJarContext();
 
         // for each bundle included in the feature file:
         for (Artifact artifact : feature.getBundles()) {
-            onArtifact(artifactProvider, artifact, null, regions, javadocClasspath, deflatedBinDir,
+            onArtifact(artifactProvider, artifact, null, regions, ctx, deflatedBinDir,
                     deflatedSourcesDir, checkedOutSourcesDir);
         }
+        
+        ctx.getPackagesWithoutJavaClasses().forEach( p -> getLog().info("Exported package " + p + " does not contain any java classes"));
 
         // recollect and package stuff
         for (final ApiRegion apiRegion : regions.listRegions()) {
@@ -470,7 +479,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 final List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
                 final File apiJar = createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes,
                         this.apiResources);
-                report(apiJar, APIS, apiRegion, "class");
+                report(apiJar, APIS, apiRegion, "class", ctx);
             }
 
             final File sourcesDir = new File(regionDir, SOURCES);
@@ -482,17 +491,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             if (generateSourceJar) {
                 final File sourceJar = createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null,
                         this.apiSourceResources);
-                report(sourceJar, SOURCES, apiRegion, "java");
+                report(sourceJar, SOURCES, apiRegion, "java", ctx);
             }
 
             if (generateJavadocJar) {
                 final List<String> subpackageDirectories = calculateSubpackageDirectories(sourcesDir);
                 if (!subpackageDirectories.isEmpty()) {
                     final File javadocsDir = new File(regionDir, JAVADOC);
-                    generateJavadoc(sourcesDir, javadocsDir, javadocClasspath, subpackageDirectories);
+                    generateJavadoc(sourcesDir, javadocsDir, ctx, subpackageDirectories);
                     final File javadocJar = createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null,
                             this.apiJavadocResources);
-                    report(javadocJar, JAVADOC, apiRegion, "html");
+                    report(javadocJar, JAVADOC, apiRegion, "html", ctx);
                 } else {
                     getLog().warn("Javadoc JAR will NOT be generated - sources directory " + sourcesDir
                             + " was empty or contained no Java files!");
@@ -504,11 +513,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 .a(" succesfully created").toString());
     }
 
-    private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension) throws MojoExecutionException {
+    private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension, ApisJarContext ctx) throws MojoExecutionException {
         final List<String> packages = getPackages(jarFile, extension);
         final List<ApiExport> missing = new ArrayList<>();
         for (final ApiExport exp : apiRegion.listExports()) {
-            if (!packages.remove(exp.getName())) {
+            String packageName = exp.getName();
+            if (!packages.remove(packageName) && !ctx.getPackagesWithoutJavaClasses().contains(packageName)) {
                 missing.add(exp);
             }
         }
@@ -561,7 +571,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     }
 
     private void onArtifact(final ArtifactProvider artifactProvider, Artifact artifact, Manifest wrappingBundleManifest,
-            ApiRegions apiRegions, Set<String> javadocClasspath, File deflatedBinDir, File deflatedSourcesDir,
+            ApiRegions apiRegions, ApisJarContext ctx, File deflatedBinDir, File deflatedSourcesDir,
             File checkedOutSourcesDir) throws MojoExecutionException {
         final ArtifactId artifactId = artifact.getId();
         final File bundleFile = getArtifactFile(artifactProvider, artifactId);
@@ -599,22 +609,28 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 // download sources
                 downloadSources(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir,
                         exportPackagesIncludes);
+                
+                try {
+                    findExportsWithoutJavaClasses(deflatedBundleDirectory, exportedPackages, ctx);
+                } catch (IOException e) {
+                    throw new MojoExecutionException("Failed finding exported packages without Java classes", e);
+                }
 
                 // check if the bundle wraps other bundles
                 if (wrappingBundleManifest == null) { // wrappers of wrappers do not exist
-                    computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, javadocClasspath,
+                    computeWrappedBundles(manifest, deflatedBundleDirectory, apiRegions, ctx,
                             deflatedBinDir, deflatedSourcesDir, checkedOutSourcesDir, artifactProvider);
                 }
             }
 
-            javadocClasspath.addAll(buildJavadocClasspath(artifactId));
+            buildJavadocClasspath(artifactId).forEach( ctx::addJavadocClasspath );
         }
     }
 
     private void computeWrappedBundles(Manifest manifest,
                                        File deflatedBundleDirectory,
             ApiRegions apiRegions,
-                                       Set<String> javadocClasspath,
+                                       ApisJarContext ctx,
                                        File deflatedBinDir,
                                        File deflatedSourcesDir,
             File checkedOutSourcesDir, final ArtifactProvider artifactProvider) throws MojoExecutionException {
@@ -665,12 +681,49 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
                 Artifact syntheticArtifact = new Artifact(
                         new ArtifactId(groupId, artifactId, version, classifier, null));
-                onArtifact(artifactProvider, syntheticArtifact, manifest, apiRegions, javadocClasspath, deflatedBinDir,
+                onArtifact(artifactProvider, syntheticArtifact, manifest, apiRegions, ctx, deflatedBinDir,
                         deflatedSourcesDir, checkedOutSourcesDir);
             }
         }
     }
 
+    /**
+     * Finds exported packages that contain no Java classess
+     * 
+     * <p>We need to record this kind of packages and ensure we don't trigger warnings for them
+     * when checking the api jars for correctness.</p>
+     * 
+     * @param deflatedBundleDirectory
+     * @param exportedPackages
+     * @param ctx
+     * @throws IOException 
+     */
+    private void findExportsWithoutJavaClasses(File deflatedBundleDirectory, Clause[] exportedPackages, ApisJarContext ctx) throws IOException {
+        
+        Path root = deflatedBundleDirectory.toPath();
+        
+        Arrays.stream(exportedPackages)
+            .map( Clause::getName )
+            .map( pkg -> pkg.split("\\.") )
+            .map( p -> Paths.get(root.toString(), p) )
+            .filter ( p -> p.toFile().exists()) // don't look for packages picked up from wrapped bundles
+            .forEach( dir -> {
+                try ( Stream<Path> entries = Files.list(dir)) {
+                    boolean hasClasses = entries.anyMatch( IS_JAVA_CLASS_FILE );
+                    
+                    if ( !hasClasses ) {
+                        String exportedPackage = root.relativize(dir).toString().replace('/', '.');
+                        
+                        getLog().debug("No classes found in " + exportedPackage);
+                        ctx.addPackageWithoutJavaClasses(exportedPackage);
+                    }
+
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+    }
+    
     // Guess the classifier based on the file name
     String inferClassifier(String bundleName, String artifactId, String version) {
         if (bundleName == null || artifactId == null || version == null)
@@ -1261,7 +1314,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         return target;
     }
 
-    private void generateJavadoc(File sourcesDir, File javadocDir, Set<String> javadocClasspath, List<String> subpackageDirectories)
+    private void generateJavadoc(File sourcesDir, File javadocDir, ApisJarContext ctx, List<String> subpackageDirectories)
             throws MojoExecutionException {
         javadocDir.mkdirs();
 
@@ -1301,9 +1354,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             javadocExecutor.addArguments("-link", javadocLinks);
         }
 
-        if (!javadocClasspath.isEmpty()) {
+        if (!ctx.getJavadocClasspath().isEmpty()) {
             javadocExecutor.addArgument("-classpath", false)
-                           .addArgument(javadocClasspath, File.pathSeparator);
+                           .addArgument(ctx.getJavadocClasspath(), File.pathSeparator);
         }
 
         // turn off doclint when running Java8
