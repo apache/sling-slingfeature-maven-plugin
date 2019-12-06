@@ -168,9 +168,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter
     private Set<String> excludeRegions;
 
+    /**
+     * List of javadoc links used in the javadoc generation.
+     */
     @Parameter
     private String[] javadocLinks;
 
+    /**
+     * Ignore errors in javadoc generation
+     */
     @Parameter(defaultValue = "false")
     private boolean ignoreJavadocErrors;
 
@@ -218,6 +224,24 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     @Parameter
     private Map<String, String> apiClassifierMappings;
 
+    /**
+     * Generate api jar
+     */
+    @Parameter(defaultValue = "true")
+    private boolean generateApiJar;
+
+    /**
+     * Generate the sources jar
+     */
+    @Parameter(defaultValue = "true")
+    private boolean generateSourceJar;
+
+    /**
+     * Generate the javadoc jar
+     */
+    @Parameter(defaultValue = "true")
+    private boolean generateJavadocJar;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -232,7 +256,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     @Component
     private RepositorySystem repositorySystem;
-    
+
     @Parameter
     private String javadocSourceLevel;
 
@@ -438,29 +462,41 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         }
 
         // recollect and package stuff
-        for (ApiRegion apiRegion : regions.listRegions()) {
-            File regionDir = new File(featureDir, apiRegion.getName());
+        for (final ApiRegion apiRegion : regions.listRegions()) {
+            final File regionDir = new File(featureDir, apiRegion.getName());
 
-            File apisDir = new File(regionDir, APIS);
-            List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
-            final File apiJar = createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes, this.apiResources);
-            report(apiJar, APIS, apiRegion, "class");
+            if (generateApiJar) {
+                final File apisDir = new File(regionDir, APIS);
+                final List<String> nodeTypes = recollect(featureDir, deflatedBinDir, apiRegion, apisDir);
+                final File apiJar = createArchive(feature.getId(), apisDir, apiRegion, APIS, nodeTypes,
+                        this.apiResources);
+                report(apiJar, APIS, apiRegion, "class");
+            }
 
-            File sourcesDir = new File(regionDir, SOURCES);
-            recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
-            final File sourceJar = createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null,
-                    this.apiSourceResources);
-            report(sourceJar, SOURCES, apiRegion, "java");
+            final File sourcesDir = new File(regionDir, SOURCES);
+            // we need sources for both source and javadoc jar
+            if (generateSourceJar || generateJavadocJar) {
+                recollect(featureDir, deflatedSourcesDir, apiRegion, sourcesDir);
+            }
 
-            List<String> subpackageDirectories = calculateSubpackageDirectories(sourcesDir);
-            if (!subpackageDirectories.isEmpty()) {
-                File javadocsDir = new File(regionDir, JAVADOC);
-                generateJavadoc(sourcesDir, javadocsDir, javadocClasspath, subpackageDirectories);
-                final File javadocJar = createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null,
-                        this.apiJavadocResources);
-                report(javadocJar, JAVADOC, apiRegion, "html");
-            } else {
-                getLog().warn("Javadoc JAR will NOT be generated - sources directory " + sourcesDir +" was empty or contained no Java files!");
+            if (generateSourceJar) {
+                final File sourceJar = createArchive(feature.getId(), sourcesDir, apiRegion, SOURCES, null,
+                        this.apiSourceResources);
+                report(sourceJar, SOURCES, apiRegion, "java");
+            }
+
+            if (generateJavadocJar) {
+                final List<String> subpackageDirectories = calculateSubpackageDirectories(sourcesDir);
+                if (!subpackageDirectories.isEmpty()) {
+                    final File javadocsDir = new File(regionDir, JAVADOC);
+                    generateJavadoc(sourcesDir, javadocsDir, javadocClasspath, subpackageDirectories);
+                    final File javadocJar = createArchive(feature.getId(), javadocsDir, apiRegion, JAVADOC, null,
+                            this.apiJavadocResources);
+                    report(javadocJar, JAVADOC, apiRegion, "html");
+                } else {
+                    getLog().warn("Javadoc JAR will NOT be generated - sources directory " + sourcesDir
+                            + " was empty or contained no Java files!");
+                }
             }
         }
 
@@ -1240,7 +1276,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             javadocExecutor.addArgument("-source", false)
                            .addArgument(javadocSourceLevel);
         }
-        
+
         if (isNotEmpty(project.getName())) {
             javadocExecutor.addArgument("-doctitle", false)
                            .addQuotedArgument(project.getName());
