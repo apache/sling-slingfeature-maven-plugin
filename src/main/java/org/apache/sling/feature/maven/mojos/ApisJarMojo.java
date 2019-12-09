@@ -664,7 +664,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             }
 
             if (properties.isEmpty()) {
-                getLog().debug("No Maven GAV info attached to wrapped bundle " + wrappedJar + ", it will be ignored");
+                getLog().warn("No Maven GAV info attached to wrapped bundle " + wrappedJar + ", it will be ignored");
             } else {
                 getLog().debug("Handling synthetic artifacts from Maven GAV: " + properties);
 
