@@ -941,160 +941,177 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
 
         boolean fallback = false;
-        if ( artifact.getMetadata().get(SCM_ID) != null ) {
-            final String value = artifact.getMetadata().get(SCM_ID);
+        String scmId = artifact.getMetadata().get(SCM_ID);
+        String scmLocation = artifact.getMetadata().get(SCM_LOCATION);
+        if ( scmId != null && scmLocation != null)
+            throw new MojoExecutionException("Both " + SCM_ID + " and " + SCM_LOCATION + " are defined for " + artifactId);
+        
+        boolean fallbackToScmCheckout = false;
+        
+        if ( scmId != null ) {
+            final String value = scmId;
             for (final String id : value.split(",")) {
                 final ArtifactId sourcesArtifactId = ArtifactId.parse(id);
                 downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir, exportPackageIncludes,
                         artifactId, false);
             }
+        } else if ( scmLocation != null ) { 
+            checkoutSourcesFromSCM(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir,
+                    exportPackageIncludes, artifactId);
         } else {
             final ArtifactId sourcesArtifactId = newArtifacId(artifactId,
                                                     "sources",
                                                     "jar");
-            fallback = downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir,
+            fallbackToScmCheckout = downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir,
                     exportPackageIncludes, artifactId, true);
         }
 
-        if (fallback) {
-            // fallback to Artifacts SCM metadata first
-            String connection = artifact.getMetadata().get(SCM_LOCATION);
-            String tag = artifact.getMetadata().get(SCM_TAG);
+        if ( fallbackToScmCheckout ) {
+            checkoutSourcesFromSCM(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir,
+                    exportPackageIncludes, artifactId);
+        }
+    }
 
-            // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
-            ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
-            getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId.toMvnId() + "...");
-            // POM file must exist, let the plugin fail otherwise
-            final URL pomURL = retrieve(artifactProvider, pomArtifactId);
-            if (pomURL == null) {
-                throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
+    private void checkoutSourcesFromSCM(final ArtifactProvider artifactProvider, Artifact artifact,
+            File deflatedSourcesDir, File checkedOutSourcesDir, String[] exportPackageIncludes, ArtifactId artifactId)
+            throws MojoExecutionException {
+        // fallback to Artifacts SCM metadata first
+        String connection = artifact.getMetadata().get(SCM_LOCATION);
+        String tag = artifact.getMetadata().get(SCM_TAG);
+
+        // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
+        ArtifactId pomArtifactId = newArtifacId(artifactId, null, "pom");
+        getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId.toMvnId() + "...");
+        // POM file must exist, let the plugin fail otherwise
+        final URL pomURL = retrieve(artifactProvider, pomArtifactId);
+        if (pomURL == null) {
+            throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
+        }
+
+        File pomFile = null;
+        try
+        {
+            pomFile = IOUtils.getFileFromURL(pomURL, true, null);
+        } catch (IOException e) {
+            throw new MojoExecutionException(e.getMessage());
+        }
+        getLog().debug("POM " + pomArtifactId.toMvnId() + " successfully retrieved, reading the model...");
+
+        // read model
+        Model pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
+        getLog().debug("POM model " + pomArtifactId.toMvnId() + " successfully read, processing the SCM...");
+
+        Scm scm = pomModel.getScm();
+        if (scm != null) {
+            connection = setIfNull(connection, scm.getConnection());
+            tag = setIfNull(tag, scm.getTag());
+        }
+
+        if (connection == null) {
+            getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM not defined in "
+                    + artifactId.toMvnId()
+                          + " bundle neither in "
+                    + pomArtifactId.toMvnId() + " POM file.");
+            return;
+        }
+
+        try {
+            ScmRepository repository = scmManager.makeScmRepository(connection);
+
+            ScmVersion scmVersion = null;
+            if (tag != null) {
+                scmVersion = new ScmTag(tag);
             }
 
-            File pomFile = null;
-            try
-            {
-                pomFile = IOUtils.getFileFromURL(pomURL, true, null);
-            } catch (IOException e) {
-                throw new MojoExecutionException(e.getMessage());
-            }
-            getLog().debug("POM " + pomArtifactId.toMvnId() + " successfully retrieved, reading the model...");
+            File basedir = new File(checkedOutSourcesDir, artifactId.getArtifactId());
+            if (basedir.exists()) {
+                getLog().debug("Source checkout directory " + basedir + " already exists");
+            } else {
+                getLog().debug("Checking out source to directory " + basedir);
+                basedir.mkdirs();
+                ScmFileSet fileSet = new ScmFileSet(basedir);
 
-            // read model
-            Model pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
-            getLog().debug("POM model " + pomArtifactId.toMvnId() + " successfully read, processing the SCM...");
-
-            Scm scm = pomModel.getScm();
-            if (scm != null) {
-                connection = setIfNull(connection, scm.getConnection());
-                tag = setIfNull(tag, scm.getTag());
-            }
-
-            if (connection == null) {
-                getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM not defined in "
-                        + artifactId.toMvnId()
-                              + " bundle neither in "
-                        + pomArtifactId.toMvnId() + " POM file.");
-                return;
-            }
-
-            try {
-                ScmRepository repository = scmManager.makeScmRepository(connection);
-
-                ScmVersion scmVersion = null;
-                if (tag != null) {
-                    scmVersion = new ScmTag(tag);
+                CheckOutScmResult result = null;
+                try {
+                    if (scmVersion != null) {
+                        result = scmManager.checkOut(repository, fileSet, true);
+                    } else {
+                        result = scmManager.checkOut(repository, fileSet, scmVersion, true);
+                    }
+                } catch (ScmException se) {
+                    throw new MojoExecutionException("An error occurred while checking sources from " + repository
+                            + " for artifact " + artifactId + " model", se);
                 }
 
-                File basedir = new File(checkedOutSourcesDir, artifactId.getArtifactId());
-                if (basedir.exists()) {
-                    getLog().debug("Source checkout directory " + basedir + " already exists");
-                } else {
-                    getLog().debug("Checking out source to directory " + basedir);
-                    basedir.mkdirs();
-                    ScmFileSet fileSet = new ScmFileSet(basedir);
+                if (!result.isSuccess()) {
+                    getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
+                            + " : An error occurred while checking out sources from " + connection + ": "
+                            + result.getProviderMessage());
+                    return;
+                }
+            }
 
-                    CheckOutScmResult result = null;
+            // retrieve the exact pom location to detect the bundle path in the repo
+            DirectoryScanner pomScanner = new DirectoryScanner();
+            pomScanner.setBasedir(basedir);
+            pomScanner.setIncludes("**/pom.xml");
+            pomScanner.scan();
+            for (String pomFileLocation : pomScanner.getIncludedFiles()) {
+                pomFile = new File(basedir, pomFileLocation);
+                pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false)
+                        .get();
+
+                if (artifactId.getArtifactId().equals(pomModel.getArtifactId())) {
+                    basedir = pomFile.getParentFile();
+                    break;
+                }
+            }
+
+            // copy all interested sources to the proper location
+            File javaSources = new File(basedir, "src/main/java");
+            if (!javaSources.exists()) { // old modules could still use src/java
+                javaSources = new File(basedir, "src/java");
+
+                // there could be just resources artifacts
+                if (!javaSources.exists()) {
+                    getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM checkout for "
+                            + artifactId.toMvnId()
+                            + " does not contain any source.");
+                    return;
+                }
+            }
+
+            File destDirectory = new File(deflatedSourcesDir, artifactId.toMvnId());
+            if (!destDirectory.exists()) {
+                destDirectory.mkdir();
+                DirectoryScanner directoryScanner = new DirectoryScanner();
+                directoryScanner.setBasedir(javaSources);
+                directoryScanner.setIncludes(exportPackageIncludes);
+                directoryScanner.scan();
+
+                for (String file : directoryScanner.getIncludedFiles()) {
+                    File source = new File(javaSources, file);
+                    File destination = new File(destDirectory, file);
+                    destination.getParentFile().mkdirs();
                     try {
-                        if (scmVersion != null) {
-                            result = scmManager.checkOut(repository, fileSet, true);
-                        } else {
-                            result = scmManager.checkOut(repository, fileSet, scmVersion, true);
-                        }
-                    } catch (ScmException se) {
-                        throw new MojoExecutionException("An error occurred while checking sources from " + repository
-                                + " for artifact " + artifactId + " model", se);
-                    }
-
-                    if (!result.isSuccess()) {
-                        getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
-                                + " : An error occurred while checking out sources from " + connection + ": "
-                                + result.getProviderMessage());
-                        return;
+                        FileUtils.copyFile(source, destination);
+                    } catch (IOException e) {
+                        throw new MojoExecutionException(
+                                "An error occurred while copying sources from " + source + " to " + destination, e);
                     }
                 }
-
-                // retrieve the exact pom location to detect the bundle path in the repo
-                DirectoryScanner pomScanner = new DirectoryScanner();
-                pomScanner.setBasedir(basedir);
-                pomScanner.setIncludes("**/pom.xml");
-                pomScanner.scan();
-                for (String pomFileLocation : pomScanner.getIncludedFiles()) {
-                    pomFile = new File(basedir, pomFileLocation);
-                    pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false)
-                            .get();
-
-                    if (artifactId.getArtifactId().equals(pomModel.getArtifactId())) {
-                        basedir = pomFile.getParentFile();
-                        break;
-                    }
-                }
-
-                // copy all interested sources to the proper location
-                File javaSources = new File(basedir, "src/main/java");
-                if (!javaSources.exists()) { // old modules could still use src/java
-                    javaSources = new File(basedir, "src/java");
-
-                    // there could be just resources artifacts
-                    if (!javaSources.exists()) {
-                        getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId() + " : SCM checkout for "
-                                + artifactId.toMvnId()
-                                + " does not contain any source.");
-                        return;
-                    }
-                }
-
-                File destDirectory = new File(deflatedSourcesDir, artifactId.toMvnId());
-                if (!destDirectory.exists()) {
-                    destDirectory.mkdir();
-                    DirectoryScanner directoryScanner = new DirectoryScanner();
-                    directoryScanner.setBasedir(javaSources);
-                    directoryScanner.setIncludes(exportPackageIncludes);
-                    directoryScanner.scan();
-
-                    for (String file : directoryScanner.getIncludedFiles()) {
-                        File source = new File(javaSources, file);
-                        File destination = new File(destDirectory, file);
-                        destination.getParentFile().mkdirs();
-                        try {
-                            FileUtils.copyFile(source, destination);
-                        } catch (IOException e) {
-                            throw new MojoExecutionException(
-                                    "An error occurred while copying sources from " + source + " to " + destination, e);
-                        }
-                    }
-                }
-
-            } catch (ScmRepositoryException se) {
-                throw new MojoExecutionException("An error occurred while reading SCM from "
-                                                 + connection
-                                                 + " connection for bundle "
-                                                 + artifactId, se);
-            } catch (NoSuchScmProviderException nsspe) {
-                getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
-                        + " : bundle points to an SCM connection "
-                               + connection
-                               + " which does not specify a valid or supported SCM provider", nsspe);
             }
+
+        } catch (ScmRepositoryException se) {
+            throw new MojoExecutionException("An error occurred while reading SCM from "
+                                             + connection
+                                             + " connection for bundle "
+                                             + artifactId, se);
+        } catch (NoSuchScmProviderException nsspe) {
+            getLog().warn("Ignoring sources for artifact " + artifactId.toMvnId()
+                    + " : bundle points to an SCM connection "
+                           + connection
+                           + " which does not specify a valid or supported SCM provider", nsspe);
         }
     }
 
