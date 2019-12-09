@@ -116,7 +116,7 @@ import org.osgi.framework.Constants;
 public class ApisJarMojo extends AbstractIncludingFeatureMojo implements ArtifactFilter {
 
     /** Alternative ID to a source artifact. */
-    private static final String SCM_ID = "sourceId";
+    private static final String SCM_ID = "source-ids";
 
     private static final String SCM_TAG = "scm-tag";
 
