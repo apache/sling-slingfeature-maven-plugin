@@ -401,7 +401,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 // prepare filter
                 for (final ApiRegion r : regions.listRegions()) {
                     for (final ApiExport e : r.listExports()) {
-                        e.getProperties().put(PROPERTY_FILTER, packageToScannerFiler(e.getName()));
+                        e.getProperties().put(PROPERTY_FILTER, packageToScannerFiler(e.getName(), true));
                     }
                 }
 
@@ -1110,7 +1110,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
         for (Clause exportedPackage : exportedPackages) {
             final String api = exportedPackage.getName();
-            exports.add(packageToScannerFiler(api));
+            exports.add(packageToScannerFiler(api, false));
         }
 
         return exports.toArray(new String[exports.size()]);
@@ -1405,8 +1405,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
 
 
-    private static String packageToScannerFiler(String api) {
-        return "**/" + api.replace('.', '/') + "/*";
+    private static String packageToScannerFiler(String api, boolean strict) {
+        return (strict ? "*": "**") + '/' + api.replace('.', '/') + "/*";
     }
 
     private static String[] concatenate(String[] a, String[] b) {
