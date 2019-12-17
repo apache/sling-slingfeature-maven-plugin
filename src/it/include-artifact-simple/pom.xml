@@ -15,11 +15,11 @@
 
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.sling</groupId>
-  <artifactId>slingfeature-maven-plugin-test-create-fm-descriptor-simple</artifactId>
+  <artifactId>slingfeature-maven-plugin-test-include-artifact-simple</artifactId>
   <packaging>jar</packaging>
   <version>1.0.0-SNAPSHOT</version>
 
-  <name>Apache Sling Features Maven plugin test - create fm descriptor simple</name>
+  <name>Apache Sling Features Maven plugin test - include artifact simple</name>
 
   <dependencies>
     <dependency>
@@ -43,6 +43,23 @@
 
   <build>
     <plugins>
+      <!-- Remove the installation folder in the local maven repo to make sure the verification does test a newly generated installation -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-clean-plugin</artifactId>
+        <version>2.4.1</version>
+        <configuration>
+          <filesets>
+            <fileset>
+              <directory>${settings.localRepository}/org/apache/sling/${project.artifactId}</directory>
+              <includes>
+                <include>**/*</include>
+              </includes>
+              <followSymlinks>false</followSymlinks>
+            </fileset>
+          </filesets>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>@project.groupId@</groupId>
         <artifactId>@project.artifactId@</artifactId>
@@ -53,10 +70,11 @@
             <id>analyze</id>
             <phase>package</phase>
             <goals>
-              <goal>create-fm-descriptor</goal>
+              <goal>include-artifact</goal>
             </goals>
             <configuration>
-              <classifier>test</classifier>
+              <includeArtifactClassifier>test</includeArtifactClassifier>
+              <includeDependenciesWithScope>compile</includeDependenciesWithScope>
             </configuration>
           </execution>
         </executions>

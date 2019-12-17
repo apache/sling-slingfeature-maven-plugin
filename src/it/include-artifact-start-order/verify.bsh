@@ -23,7 +23,7 @@ import org.codehaus.plexus.util.*;
 
         String group = "org.apache.sling";
         String groupPath = group.replaceAll("\\.", "/");
-        String artifact = "slingfeature-maven-plugin-test-create-fm-descriptor-simple";
+        String artifact = "slingfeature-maven-plugin-test-include-artifact-start-order";
         String version = "1.0.0-SNAPSHOT";
         File localMavenRepositoryInstallationFolder = new File(
             localRepositoryPath, groupPath + "/" + artifact + "/" + version
@@ -50,9 +50,9 @@ import org.codehaus.plexus.util.*;
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
         String[] values = {
-            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + version + "\"",
+            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
             "\"bundles\":[",
-            "\"id\":\"" + group + ":" + artifact + ":" + version + "\"",
+            group + ":" + artifact + ":" + version + "\"",
             "\"id\":\"" + dependentGroup + ":" + dependentArtifact + ":" + dependentVersion + "\"",
         };
         for (String value : values) {
