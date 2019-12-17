@@ -22,7 +22,7 @@
     </parent>
 
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>1.1.11-SNAPSHOT</version>
+    <version>1.1.13-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <name>Apache Sling OSGi Feature Maven Plugin</name>
@@ -111,6 +111,7 @@
                     <debug>true</debug>
                     <projectsDirectory>src/it</projectsDirectory>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
+                    <settingsFile>src/it/settings.xml</settingsFile>
                     <pomIncludes>
                         <pomInclude>**/pom.xml</pomInclude>
                     </pomIncludes>
@@ -170,7 +171,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.2.0</version>
+            <version>1.2.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
