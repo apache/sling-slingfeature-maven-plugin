@@ -61,7 +61,29 @@ import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
- * Attach the feature as a project artifact.
+ * This goal creates a Feature Model file that includes the Module Artifact as
+ * bundle (or extension) so that the Artifact can be added through a FM into a
+ * FM project. The FM file can be found in the 'build directory'/slingfeature-tmp
+ * folder.
+ * After a FM file is created successfully this file will be installed
+ * in the local Maven Repository as 'slingosgifeature' file under the Module's Maven
+ * Id location (group, artifact, version). This file can then later be used inside
+ * the 'aggregate-features' goal with:
+ * {@code
+ * <includeArtifact>
+ *     <groupId>org.apache.sling</groupId>
+ *     <artifactId>org.apache.sling.test.feature</artifactId>
+ *     <version>1.0.0</version>
+ *     <classifier>my-test-classifier</classifier>
+ *     <type>slingosgifeature</type>
+ * </includeArtifact>
+ * }
+ * It also can add dependencies to the FM file if its scope is provided (normally
+ * that would be 'compile'). In addition a bundle start order can be set for these
+ * included dependency bundles.
+ * Finally any FM files inside the Source FM folder are embedded into the FM file. This
+ * allows to add extension files like 'repoinit' etc to be added to provide them with
+ * the module.
  */
 @Mojo(name = "include-artifact", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE,
       threadSafe = true
@@ -82,7 +104,7 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     private String includeArtifactClassifier;
 
     /**
-     * Classifier of the feature the current artifact is included in.
+     * Start Order of all included Dependencies.
      */
     @Parameter(property = CFG_START_ORDER, required = false, defaultValue = "-1")
     private int bundlesStartOrder;
@@ -102,7 +124,7 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (includeArtifactClassifier == null) {
+        if (includeArtifactClassifier == null || includeArtifactClassifier.isEmpty()) {
             throw new MojoExecutionException("includeArtifactClassifier is not specified. Check your configuration");
         }
 
