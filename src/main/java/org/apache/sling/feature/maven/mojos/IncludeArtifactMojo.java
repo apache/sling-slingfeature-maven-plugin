@@ -188,6 +188,10 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             if(extensions != null && !extensions.isEmpty()) {
                 found.getExtensions().addAll(extensions);
             }
+            Map<String,String> frameworkProperties = feature.getFrameworkProperties();
+            if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
+                found.getFrameworkProperties().putAll(frameworkProperties);
+            }
         }
 
         // Write the Feature into its rile
