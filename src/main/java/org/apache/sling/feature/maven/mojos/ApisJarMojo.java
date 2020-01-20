@@ -363,7 +363,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
      * @throws MojoExecutionException If an error occurs
      */
     private ApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
-        ApiRegions regions = null;
+        ApiRegions regions = new ApiRegions();
 
         Extensions extensions = feature.getExtensions();
         Extension apiRegionsExtension = extensions.getByName(ApiRegions.EXTENSION_NAME);
@@ -372,30 +372,28 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 getLog().info(
                         "Feature file " + feature.getId().toMvnId() + " declares an empty '" + ApiRegions.EXTENSION_NAME
                     + "' extension, no API JAR will be created");
+                regions = null;
             } else {
+                ApiRegions sourceRegions;
                 try {
-                    regions = ApiRegions
+                    sourceRegions = ApiRegions
                             .parse((JsonArray) apiRegionsExtension.getJSONStructure());
                 } catch (final IOException ioe) {
                     throw new MojoExecutionException(ioe.getMessage(), ioe);
                 }
 
                 // calculate all api-regions first, taking the inheritance in account
-                final List<ApiRegion> toBeRemoved = new ArrayList<>();
-                for (final ApiRegion r : regions.listRegions()) {
+                for (final ApiRegion r : sourceRegions.listRegions()) {
                     if (r.getParent() != null && !this.incrementalApis) {
                         for (final ApiExport exp : r.getParent().listExports()) {
                             r.add(exp);
                         }
                     }
-                    if (!isRegionIncluded(r.getName())) {
+                    if (isRegionIncluded(r.getName())) {
                         getLog().debug("API Region " + r.getName()
                                     + " will not processed due to the configured include/exclude list");
-                        toBeRemoved.add(r);
+                        regions.add(r);
                     }
-                }
-                for (final ApiRegion r : toBeRemoved) {
-                    regions.remove(r);
                 }
 
                 // prepare filter
@@ -412,7 +410,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 }
             }
         } else {
-            regions = new ApiRegions();
             // create exports on the fly
             regions.add(new ApiRegion(ApiRegion.GLOBAL) {
 
