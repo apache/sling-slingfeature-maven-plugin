@@ -100,7 +100,7 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     /**
      * Classifier of the feature the current artifact is included in.
      */
-    @Parameter(property = CFG_CLASSIFIER, required = true)
+    @Parameter(property = CFG_CLASSIFIER, required = false)
     private String includeArtifactClassifier;
 
     /**
@@ -124,9 +124,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (includeArtifactClassifier == null || includeArtifactClassifier.isEmpty()) {
-            throw new MojoExecutionException("includeArtifactClassifier is not specified. Check your configuration");
-        }
 
         checkPreconditions();
 
@@ -228,6 +225,7 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     private void installFMDescriptor(File file, Feature feature) {
         Collection<org.apache.maven.artifact.Artifact> artifacts = Collections.synchronizedCollection(new ArrayList<>());
         if(file.exists() && file.canRead()) {
+            getLog().debug("FM File to be installed: " + file.getAbsolutePath());
             // Need to create a new Artifact Handler for the different extension and an Artifact to not
             // change the module artifact
             DefaultArtifactHandler fmArtifactHandler = new DefaultArtifactHandler("slingosgifeature");
@@ -238,22 +236,9 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             );
             fmArtifact.setFile(file);
             artifacts.add(fmArtifact);
-            try {
-                installArtifact(mavenSession.getProjectBuildingRequest(), artifacts);
-            } catch (MojoExecutionException e) {
-                getLog().error("Failed to install FM Descriptor", e);
-            }
+            project.addAttachedArtifact(fmArtifact);
         } else {
             getLog().error("Could not find FM Descriptor File: " + file);
-        }
-    }
-
-    private void installArtifact(ProjectBuildingRequest pbr, Collection<org.apache.maven.artifact.Artifact> artifacts )
-        throws MojoExecutionException {
-        try {
-            installer.install(pbr, artifacts);
-        } catch ( ArtifactInstallerException e ) {
-            throw new MojoExecutionException( "ArtifactInstallerException", e );
         }
     }
 }
