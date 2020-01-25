@@ -16,21 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.Spliterator;
-import java.util.Spliterators;
-import java.util.stream.StreamSupport;
-
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.model.Dependency;
@@ -41,9 +26,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
-import org.apache.maven.shared.transfer.artifact.install.ArtifactInstallerException;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
@@ -52,13 +35,19 @@ import org.apache.sling.feature.ExtensionState;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.BuilderContext;
-import org.apache.sling.feature.builder.FeatureBuilder;
-import org.apache.sling.feature.builder.MergeHandler;
-import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This goal creates a Feature Model file that includes the Module Artifact as
@@ -154,44 +143,18 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         getLog().debug("Feature Key: " + key + ", feature from key: " + ProjectHelper.getAssembledFeatures(this.project).get(key));
         includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
                 art.copy(art.getId()));
-        // Add Dependencies if configured so
-        for(String includeDependencyScope: includeDependenciesWithScope) {
-            List<Dependency> dependencies = project.getDependencies();
-            getLog().info("Project Dependencies: " + dependencies);
-            for(Dependency dependency: dependencies) {
-                if(includeDependencyScope.equals(dependency.getScope())) {
-                    getLog().info("Include Artifact: " + dependencies);
-                    ArtifactId id = new ArtifactId(
-                        dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getClassifier(), dependency.getType()
-                    );
-                    Artifact artifact = new Artifact(id);
-                    if(bundlesStartOrder >= 0) {
-                        artifact.setStartOrder(bundlesStartOrder);
-                    }
-                    found.getBundles().add(artifact);
-                }
-            }
-        }
+
+        addDependencies(found);
 
         // Obtain any features from Source folder and add any Extensions to the target feature
         final FeatureSelectionConfig featureSelectionConfig = new FeatureSelectionConfig();
         featureSelectionConfig.setFilesInclude("**/*.json" );
         featureSelectionConfig.setFilesExclude("**/" + file.getName());
         final Map<String, Feature> selection = this.getSelectedFeatures(featureSelectionConfig);
-        getLog().debug("Including Features found: " + selection);
-        for(Feature feature: selection.values()) {
-            getLog().debug("Including Feature found: " + feature);
-            Extensions extensions = feature.getExtensions();
-            if(extensions != null && !extensions.isEmpty()) {
-                found.getExtensions().addAll(extensions);
-            }
-            Map<String,String> frameworkProperties = feature.getFrameworkProperties();
-            if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
-                found.getFrameworkProperties().putAll(frameworkProperties);
-            }
-        }
 
-        // Write the Feature into its rile
+        includeFeatures(selection, found);
+
+        // Write the Feature into its file and install it
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
                 FeatureJSONWriter.write(writer, found);
@@ -240,5 +203,42 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         } else {
             getLog().error("Could not find FM Descriptor File: " + file);
         }
+    }
+
+    private void addDependencies(Feature feature) {
+        // Add Dependencies if configured so
+        for(String includeDependencyScope: includeDependenciesWithScope) {
+            List<Dependency> dependencies = project.getDependencies();
+            getLog().info("Project Dependencies: " + dependencies);
+            for(Dependency dependency: dependencies) {
+                if(includeDependencyScope.equals(dependency.getScope())) {
+                    getLog().info("Include Artifact: " + dependencies);
+                    ArtifactId id = new ArtifactId(
+                        dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getClassifier(), dependency.getType()
+                    );
+                    Artifact artifact = new Artifact(id);
+                    if(bundlesStartOrder >= 0) {
+                        artifact.setStartOrder(bundlesStartOrder);
+                    }
+                    feature.getBundles().add(artifact);
+                }
+            }
+        }
+    }
+
+    private void includeFeatures(Map<String, Feature> selection, Feature feature) {
+        getLog().debug("Including Features found: " + selection);
+        for(Feature childFeature: selection.values()) {
+            getLog().debug("Including Feature found: " + childFeature);
+            Extensions extensions = childFeature.getExtensions();
+            if(extensions != null && !extensions.isEmpty()) {
+                feature.getExtensions().addAll(extensions);
+            }
+            Map<String,String> frameworkProperties = childFeature.getFrameworkProperties();
+            if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
+                feature.getFrameworkProperties().putAll(frameworkProperties);
+            }
+        }
+
     }
 }
