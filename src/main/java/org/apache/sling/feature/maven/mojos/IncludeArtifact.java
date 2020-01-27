@@ -77,7 +77,7 @@ import java.util.Map;
 @Mojo(name = "include-artifact", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE,
       threadSafe = true
     )
-public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
+public class IncludeArtifact extends AbstractIncludingFeatureMojo {
 
     public static final String CFG_CLASSIFIER = "includeArtifactClassifier";
     public static final String CFG_START_ORDER = "bundleStartOrder";
