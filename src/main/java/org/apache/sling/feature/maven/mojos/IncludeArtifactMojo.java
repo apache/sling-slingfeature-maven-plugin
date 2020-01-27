@@ -149,7 +149,9 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         // Obtain any features from Source folder and add any Extensions to the target feature
         final FeatureSelectionConfig featureSelectionConfig = new FeatureSelectionConfig();
         featureSelectionConfig.setFilesInclude("**/*.json" );
-        featureSelectionConfig.setFilesExclude("**/" + file.getName());
+        if(file != null) {
+            featureSelectionConfig.setFilesExclude("**/" + file.getName());
+        }
         final Map<String, Feature> selection = this.getSelectedFeatures(featureSelectionConfig);
 
         includeFeatures(selection, found);
