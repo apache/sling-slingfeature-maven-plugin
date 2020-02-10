@@ -45,7 +45,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
 @Mojo(name = "include-artifact", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE,
       threadSafe = true
     )
-public class IncludeArtifact extends AbstractFeatureMojo {
+public class IncludeArtifactMojo extends AbstractFeatureMojo {
 
     /**
      * Classifier of the feature the current artifact is included in.
