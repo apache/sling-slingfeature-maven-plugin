@@ -16,42 +16,93 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.Map;
-
+import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.handler.DefaultArtifactHandler;
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionState;
 import org.apache.sling.feature.ExtensionType;
+import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 /**
- * Attach the feature as a project artifact.
+ * This goal creates a Feature Model file that includes the Module Artifact as
+ * bundle (or extension) so that the Artifact can be added through a FM into a
+ * FM project. The FM file can be found in the 'build directory'/slingfeature-tmp
+ * folder.
+ * After a FM file is created successfully this file will be installed
+ * in the local Maven Repository as 'slingosgifeature' file under the Module's Maven
+ * Id location (group, artifact, version). This file can then later be used inside
+ * the 'aggregate-features' goal with:
+ * {@code
+ * <includeArtifact>
+ *     <groupId>org.apache.sling</groupId>
+ *     <artifactId>org.apache.sling.test.feature</artifactId>
+ *     <version>1.0.0</version>
+ *     <classifier>my-test-classifier</classifier>
+ *     <type>slingosgifeature</type>
+ * </includeArtifact>
+ * }
+ * It also can add dependencies to the FM file if its scope is provided (normally
+ * that would be 'compile'). In addition a bundle start order can be set for these
+ * included dependency bundles.
+ * Finally any FM files inside the Source FM folder are embedded into the FM file. This
+ * allows to add extension files like 'repoinit' etc to be added to provide them with
+ * the module.
  */
 @Mojo(name = "include-artifact", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE,
       threadSafe = true
     )
-public class IncludeArtifactMojo extends AbstractFeatureMojo {
+public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
+
+    public static final String CFG_CLASSIFIER = "includeArtifactClassifier";
+    public static final String CFG_START_ORDER = "bundleStartOrder";
+    public static final String CFG_INCLUDE_DEPENDENCIES_WITH_SCOPE = "includeDependenciesWithScope";
+
+    @Component
+    protected ArtifactInstaller installer;
 
     /**
      * Classifier of the feature the current artifact is included in.
      */
-    @Parameter
+    @Parameter(property = CFG_CLASSIFIER, required = false)
     private String includeArtifactClassifier;
+
+    /**
+     * Start Order of all included Dependencies.
+     */
+    @Parameter(property = CFG_START_ORDER, required = false, defaultValue = "-1")
+    private int bundlesStartOrder;
+
+    /**
+     * All listed dependency's scopes will be added to the descriptor.
+     */
+    @Parameter(property = CFG_INCLUDE_DEPENDENCIES_WITH_SCOPE, required = false)
+    private String[] includeDependenciesWithScope;
 
     /**
      * Name of the extension to include the artifact in. If not specified the
@@ -62,9 +113,6 @@ public class IncludeArtifactMojo extends AbstractFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (includeArtifactClassifier == null) {
-            throw new MojoExecutionException("includeArtifactClassifier is not specified. Check your configuration");
-        }
 
         checkPreconditions();
 
@@ -90,12 +138,29 @@ public class IncludeArtifactMojo extends AbstractFeatureMojo {
             ProjectHelper.getFeatures(this.project).put(key, found);
             ProjectHelper.getAssembledFeatures(this.project).put(key, found);
         }
+        getLog().debug("Found Feature: " + found + ", artifact: " + art);
         includeArtifact(found, includeArtifactExtension, art);
+        getLog().debug("Feature Key: " + key + ", feature from key: " + ProjectHelper.getAssembledFeatures(this.project).get(key));
         includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
                 art.copy(art.getId()));
+
+        addDependencies(found);
+
+        // Obtain any features from Source folder and add any Extensions to the target feature
+        final FeatureSelectionConfig featureSelectionConfig = new FeatureSelectionConfig();
+        featureSelectionConfig.setFilesInclude("**/*.json" );
+        if(file != null) {
+            featureSelectionConfig.setFilesExclude("**/" + file.getName());
+        }
+        final Map<String, Feature> selection = this.getSelectedFeatures(featureSelectionConfig);
+
+        includeFeatures(selection, found);
+
+        // Write the Feature into its file and install it
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
                 FeatureJSONWriter.write(writer, found);
+                installFMDescriptor(file, found);
             } catch (final IOException ioe) {
                 throw new MojoExecutionException("Unable to write feature", ioe);
             }
@@ -107,8 +172,10 @@ public class IncludeArtifactMojo extends AbstractFeatureMojo {
         Artifacts container = f.getBundles();
         if (extensionName != null) {
             Extension ext = f.getExtensions().getByName(extensionName);
+            getLog().debug("Extension: " + extensionName + ", found extension: " + ext);
             if (ext == null) {
                 ext = new Extension(ExtensionType.ARTIFACTS, extensionName, ExtensionState.REQUIRED);
+                getLog().debug("New Extension: " + ext);
                 f.getExtensions().add(ext);
             }
             if (ext.getType() != ExtensionType.ARTIFACTS) {
@@ -118,5 +185,62 @@ public class IncludeArtifactMojo extends AbstractFeatureMojo {
             container = ext.getArtifacts();
         }
         container.add(art);
+    }
+
+    private void installFMDescriptor(File file, Feature feature) {
+        Collection<org.apache.maven.artifact.Artifact> artifacts = Collections.synchronizedCollection(new ArrayList<>());
+        if(file.exists() && file.canRead()) {
+            getLog().debug("FM File to be installed: " + file.getAbsolutePath());
+            // Need to create a new Artifact Handler for the different extension and an Artifact to not
+            // change the module artifact
+            DefaultArtifactHandler fmArtifactHandler = new DefaultArtifactHandler("slingosgifeature");
+            ArtifactId artifactId = feature.getId();
+            DefaultArtifact fmArtifact = new DefaultArtifact(
+                artifactId.getGroupId(), artifactId.getArtifactId(), artifactId.getVersion(),
+                null, "slingosgifeature", artifactId.getClassifier(), fmArtifactHandler
+            );
+            fmArtifact.setFile(file);
+            artifacts.add(fmArtifact);
+            project.addAttachedArtifact(fmArtifact);
+        } else {
+            getLog().error("Could not find FM Descriptor File: " + file);
+        }
+    }
+
+    private void addDependencies(Feature feature) {
+        // Add Dependencies if configured so
+        for(String includeDependencyScope: includeDependenciesWithScope) {
+            List<Dependency> dependencies = project.getDependencies();
+            getLog().info("Project Dependencies: " + dependencies);
+            for(Dependency dependency: dependencies) {
+                if(includeDependencyScope.equals(dependency.getScope())) {
+                    getLog().info("Include Artifact: " + dependencies);
+                    ArtifactId id = new ArtifactId(
+                        dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getClassifier(), dependency.getType()
+                    );
+                    Artifact artifact = new Artifact(id);
+                    if(bundlesStartOrder >= 0) {
+                        artifact.setStartOrder(bundlesStartOrder);
+                    }
+                    feature.getBundles().add(artifact);
+                }
+            }
+        }
+    }
+
+    private void includeFeatures(Map<String, Feature> selection, Feature feature) {
+        getLog().debug("Including Features found: " + selection);
+        for(Feature childFeature: selection.values()) {
+            getLog().debug("Including Feature found: " + childFeature);
+            Extensions extensions = childFeature.getExtensions();
+            if(extensions != null && !extensions.isEmpty()) {
+                feature.getExtensions().addAll(extensions);
+            }
+            Map<String,String> frameworkProperties = childFeature.getFrameworkProperties();
+            if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
+                feature.getFrameworkProperties().putAll(frameworkProperties);
+            }
+        }
+
     }
 }

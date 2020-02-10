@@ -423,6 +423,43 @@ Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
 
+## Create Feature Model Descriptor from POM (create-fm-descriptor)
+
+A simple Maven module creates its artifact but in order to another module
+to use that in the context of a Feature Model build the module's Feature
+Module descriptor must be created during the build.
+This can be done here:
+```
+<!-- Generate and Install the Sling OSGi Feature Model file -->
+<plugin>
+    <groupId>org.apache.sling</groupId>
+    <artifactId>slingfeature-maven-plugin</artifactId>
+    <version>${slingfeature-maven-plugin.version}</version>
+    <extensions>true</extensions>
+    <executions>
+        <execution>
+            <id>create-fm-descriptor</id>
+            <phase>package</phase>
+            <goals>
+                <goal>include-artifact</goal>
+            </goals>
+            <configuration>
+                <classifier>jcr-packageinit</classifier>
+            </configuration>
+        </execution>
+    </executions>
+</plugin>
+```
+The property **classifier** will be added only to the Feature Model
+Descriptor file name when it is installed in your local Maven repository.
+If one is provided then the user of that descriptor needs to specify it
+in the **includeArtifact**.
+The Feature Model Descriptor file name in the local Maven repository has
+this pattern:
+```
+<group id>:<artifact id>-<version>=[-<classifier>].slingosgifeature
+```
+
 ## Features Diff (features-diff)
 
 This MOJO compares different versions of the same Feature Model, producing the prototype
