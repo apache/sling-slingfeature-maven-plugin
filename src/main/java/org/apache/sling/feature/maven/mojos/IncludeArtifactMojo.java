@@ -30,6 +30,8 @@ import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
+import org.apache.sling.feature.Bundles;
+import org.apache.sling.feature.Configurations;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionState;
 import org.apache.sling.feature.ExtensionType;
@@ -88,6 +90,8 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Classifier of the feature the current artifact is included in.
+     * For simple projects a artifact classifier is not needed but in multi
+     * feature projects the classifier is used to find the appropriate feature.
      */
     @Parameter(property = CFG_CLASSIFIER, required = false)
     private String includeArtifactClassifier;
@@ -120,7 +124,7 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         Feature found = null;
         String key = null;
         for (final Map.Entry<String, Feature> entry : featuresMap.entrySet()) {
-            if (includeArtifactClassifier.equals(entry.getValue().getId().getClassifier())) {
+            if (includeArtifactClassifier != null && includeArtifactClassifier.equals(entry.getValue().getId().getClassifier())) {
                 key = entry.getKey();
                 found = entry.getValue();
                 break;
@@ -133,7 +137,9 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             found = new Feature(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
                     this.project.getVersion(), includeArtifactClassifier, FeatureConstants.PACKAGING_FEATURE));
 
-            file = new File(this.getTmpDir(), "feature-" + this.includeArtifactClassifier + ".json");
+            file = new File(
+                this.getTmpDir(),
+                "feature" + (includeArtifactClassifier == null ? "" : "-" + includeArtifactClassifier) + ".json");
             key = file.getAbsolutePath();
             ProjectHelper.getFeatures(this.project).put(key, found);
             ProjectHelper.getAssembledFeatures(this.project).put(key, found);
@@ -160,7 +166,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
                 FeatureJSONWriter.write(writer, found);
-                installFMDescriptor(file, found);
             } catch (final IOException ioe) {
                 throw new MojoExecutionException("Unable to write feature", ioe);
             }
@@ -185,26 +190,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             container = ext.getArtifacts();
         }
         container.add(art);
-    }
-
-    private void installFMDescriptor(File file, Feature feature) {
-        Collection<org.apache.maven.artifact.Artifact> artifacts = Collections.synchronizedCollection(new ArrayList<>());
-        if(file.exists() && file.canRead()) {
-            getLog().debug("FM File to be installed: " + file.getAbsolutePath());
-            // Need to create a new Artifact Handler for the different extension and an Artifact to not
-            // change the module artifact
-            DefaultArtifactHandler fmArtifactHandler = new DefaultArtifactHandler("slingosgifeature");
-            ArtifactId artifactId = feature.getId();
-            DefaultArtifact fmArtifact = new DefaultArtifact(
-                artifactId.getGroupId(), artifactId.getArtifactId(), artifactId.getVersion(),
-                null, "slingosgifeature", artifactId.getClassifier(), fmArtifactHandler
-            );
-            fmArtifact.setFile(file);
-            artifacts.add(fmArtifact);
-            project.addAttachedArtifact(fmArtifact);
-        } else {
-            getLog().error("Could not find FM Descriptor File: " + file);
-        }
     }
 
     private void addDependencies(Feature feature) {
@@ -239,6 +224,14 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             Map<String,String> frameworkProperties = childFeature.getFrameworkProperties();
             if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
                 feature.getFrameworkProperties().putAll(frameworkProperties);
+            }
+            Bundles bundles = childFeature.getBundles();
+            if(bundles != null && !bundles.isEmpty()) {
+                feature.getBundles().addAll(bundles);
+            }
+            Configurations configurations = childFeature.getConfigurations();
+            if(configurations != null && !configurations.isEmpty()) {
+                feature.getConfigurations().addAll(configurations);
             }
         }
 

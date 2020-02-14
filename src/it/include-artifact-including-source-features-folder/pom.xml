@@ -79,6 +79,13 @@
               <includeArtifactClassifier>test</includeArtifactClassifier>
             </configuration>
           </execution>
+          <execution>
+            <id>attach</id>
+            <phase>package</phase>
+            <goals>
+              <goal>attach-features</goal>
+            </goals>
+          </execution>
         </executions>
       </plugin>
     </plugins>
