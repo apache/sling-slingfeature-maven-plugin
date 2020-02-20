@@ -81,7 +81,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         // setup scanner
         final Scanner scanner = setupScanner();
 
-        if (isStandalone) {
+        if (isStandalone || featureFile != null) {
             final Feature feature = readFeature();
             // wired code to get the current directory, but its needed
             process(scanner, feature, Paths.get(".").toAbsolutePath().getParent().toFile());
