@@ -50,7 +50,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
         requiresDependencyResolution = ResolutionScope.TEST,
         threadSafe = true
     )
-public class AttachFeatureArchive extends AbstractFeatureMojo {
+public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
 
     private static final String EXTENSION = "zip";
 
@@ -128,8 +128,7 @@ public class AttachFeatureArchive extends AbstractFeatureMojo {
         final String classifier = feature.getId().getClassifier() == null ? CLASSIFIER
                 : feature.getId().getClassifier().concat(CLASSIFIER);
 
-        final ArtifactId archiveId = new ArtifactId(feature.getId().getGroupId(), feature.getId().getArtifactId(),
-                feature.getId().getVersion(), classifier, EXTENSION);
+        final ArtifactId archiveId = feature.getId().changeClassifier(classifier).changeType(EXTENSION);
 
         // write the feature model archive
         final File outputFile = new File(
