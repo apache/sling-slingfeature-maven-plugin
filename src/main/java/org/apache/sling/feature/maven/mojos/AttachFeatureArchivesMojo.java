@@ -22,7 +22,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -33,12 +34,14 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.io.archive.ArchiveWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
+
+import edu.emory.mathcs.backport.java.util.Collections;
 
 /**
  * Create a feature model archive and attach it. An archive is created for each
@@ -50,16 +53,31 @@ import org.apache.sling.feature.maven.ProjectHelper;
         requiresDependencyResolution = ResolutionScope.TEST,
         threadSafe = true
     )
-public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
+public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
 
     private static final String EXTENSION = "zip";
 
     private static final String CLASSIFIER = "far";
 
+    @Parameter
+    private List<Archive> archives;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
-        this.attachArchives(ProjectHelper.getFeatures(this.project));
+        if (archives == null || archives.size() == 0) {
+            // by default create an archive of each feature individually
+            this.attachArchives(ProjectHelper.getFeatures(this.project));
+        } else {
+            for (final Archive archive : archives) {
+                if (archive.getClassifier() == null) {
+                    throw new MojoExecutionException("Classifier is missing for archive.");
+                }
+                final List<Feature> features = new ArrayList<>();
+                features.addAll(this.getSelectedFeatures(archive).values());
+                this.attachArchives(features, archive.getClassifier());
+            }
+        }
     }
 
     /**
@@ -77,7 +95,9 @@ public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
             }
 
             if (add) {
-                attachArchive(entry.getValue());
+                final String classifier = entry.getValue().getId().getClassifier() == null ? CLASSIFIER
+                        : entry.getValue().getId().getClassifier().concat(CLASSIFIER);
+                attachArchives(Collections.singletonList(entry.getValue()), classifier);
             }
         }
     }
@@ -115,20 +135,20 @@ public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
             mf.getMainAttributes().putValue("Specification-Vendor", feature.getVendor());
         }
 
-        mf.getMainAttributes().putValue("Implementation-Vendor-Id", feature.getId().getGroupId());
-        if (feature.getTitle() != null) {
+        mf.getMainAttributes().putValue("Implementation-Vendor-Id", project.getGroupId());
+        if (feature != null && feature.getTitle() != null) {
             mf.getMainAttributes().putValue("Implementation-Title", feature.getTitle());
             mf.getMainAttributes().putValue("Specification-Title", feature.getTitle());
+        } else if (project.getName() != null) {
+            mf.getMainAttributes().putValue("Implementation-Title", project.getName());
+            mf.getMainAttributes().putValue("Specification-Title", project.getName());
         }
 
         return mf;
     }
 
-    private void attachArchive(final Feature feature) throws MojoExecutionException {
-        final String classifier = feature.getId().getClassifier() == null ? CLASSIFIER
-                : feature.getId().getClassifier().concat(CLASSIFIER);
-
-        final ArtifactId archiveId = feature.getId().changeClassifier(classifier).changeType(EXTENSION);
+    private void attachArchives(final List<Feature> features, final String classifier) throws MojoExecutionException {
+        final ArtifactId archiveId = features.get(0).getId().changeClassifier(classifier).changeType(EXTENSION);
 
         // write the feature model archive
         final File outputFile = new File(
@@ -136,11 +156,9 @@ public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
         outputFile.getParentFile().mkdirs();
 
         try ( final FileOutputStream fos = new FileOutputStream(outputFile)) {
-            final JarOutputStream jos = ArchiveWriter.write(fos, feature, createBaseManifest(feature),
-                    new ArtifactProvider() {
+            final JarOutputStream jos = ArchiveWriter.write(fos,
+                    createBaseManifest(features.size() == 1 ? features.get(0) : null), id -> {
 
-                @Override
-                public URL provide(final ArtifactId id) {
                     try {
                         return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager,
                                 artifactResolver, id).getFile().toURI().toURL();
@@ -150,7 +168,7 @@ public class AttachFeatureArchiveMojo extends AbstractFeatureMojo {
                         return null;
                     }
                 }
-            });
+                    , features.toArray(new Feature[features.size()]));
 
             // handle license etc.
             jos.setLevel(Deflater.BEST_COMPRESSION);
