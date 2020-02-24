@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.JarEntry;
@@ -40,8 +41,6 @@ import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.archive.ArchiveWriter;
 import org.apache.sling.feature.maven.ProjectHelper;
-
-import edu.emory.mathcs.backport.java.util.Collections;
 
 /**
  * Create a feature model archive and attach it. An archive is created for each
