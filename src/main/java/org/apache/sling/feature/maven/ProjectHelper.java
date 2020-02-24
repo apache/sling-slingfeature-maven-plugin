@@ -244,6 +244,7 @@ public abstract class ProjectHelper {
      * @param id The ID of the artifact to get/resolve.
      * @return the artifact, which has been resolved.
      */
+    @SuppressWarnings("deprecation")
     public static Artifact getOrResolveArtifact(final MavenProject project,
             final MavenSession session,
             final ArtifactHandlerManager artifactHandlerManager,
