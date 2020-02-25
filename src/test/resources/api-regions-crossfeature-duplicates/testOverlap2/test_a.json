@@ -1,0 +1,11 @@
+{
+  "id":"testing:test:slingfeature:testa:1.0.1",
+  "api-regions:JSON|false":[
+    {
+      "name":"global",
+      "exports":[
+          "org.foo.bar.bingo"
+      ]
+    }
+  ]  
+}
