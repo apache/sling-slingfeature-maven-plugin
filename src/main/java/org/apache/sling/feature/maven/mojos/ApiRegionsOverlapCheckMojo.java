@@ -44,6 +44,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 
 import javax.json.JsonArray;
 
@@ -177,12 +178,12 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
         if (packages != null) {
             // Remove all ignored packages
-            s.removeAll(packages.ignored);
+            s = removeAllMatching(packages.ignored, s);
 
             if (packages.warnings.size() > 0) {
                 Set<String> ws = new HashSet<>(s);
-                ws.retainAll(packages.warnings);
-                s.removeAll(packages.warnings);
+                ws = retainAllMatching(packages.warnings, ws);
+                s = removeAllMatching(packages.warnings, s);
 
                 if (ws.size() > 0) {
                     getLog().warn(msgPrefix + ws);
@@ -198,6 +199,30 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
         getLog().error(msgPrefix + s);
         return true;
+    }
+
+    private Set<String> removeAllMatching(Set<String> toRemove, Set<String> set) {
+        return processAllMatching(toRemove, set, true);
+    }
+
+    private Set<String> retainAllMatching(Set<String> toRetain, Set<String> set) {
+        return processAllMatching(toRetain, set, false);
+    }
+
+    private Set<String> processAllMatching(Set<String> toConsider, Set<String> set, boolean remove) {
+        for (String e : toConsider) {
+            String element = e.trim();
+            if (e.endsWith("*")) {
+                String prefix = element.substring(0, e.length() - 1);
+                // Reverse the 'x.startsWith()' based on the value of remove
+                set = set.stream().filter(
+                        x -> x.startsWith(prefix) ^ remove).collect(Collectors.toSet());
+            } else {
+                set = set.stream().filter(
+                        x -> x.equals(element) ^ remove).collect(Collectors.toSet());
+            }
+        }
+        return set;
     }
 
     /**

@@ -307,8 +307,13 @@ Example configuration:
           <region>some.other.region</region>
         </regions>
         <packages>
-            <!-- if multiple feature models export javax.servlet, produce a warning -->
+            <!-- ignore overlaps of the com.foo.bar package -->
+            <ignore>com.foo.bar</ignore>
+
+            <!-- if multiple feature models export javax.servlet or a subpackage, produce a warning -->
             <warning>javax.servlet</warning>
+            <warning>javax.servlet.*</warning>
+
             <!-- if multiple feature models export any other package, it will fail the build -->
         </packages>
     </configuration>

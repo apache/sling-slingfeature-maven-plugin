@@ -354,4 +354,30 @@ public class ApiRegionsOverlapCheckMojoTest {
         // There is overlap with the ding.dong package, but it's configured as 'ignore', so the build should not fail
         mojo.execute();
     }
+
+    @Test
+    public void testOverlapWarningWildcard() throws Exception {
+        ApiRegionsOverlapCheckMojo mojo = new ApiRegionsOverlapCheckMojo();
+
+        mojo.features = new File(getClass().getResource("/api-regions-crossfeature-duplicates/testOverlap").getFile());
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : mojo.features.listFiles()) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        mojo.project = Mockito.mock(MavenProject.class);
+        Mockito.when(mojo.project.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+
+        mojo.regions = Collections.singleton("foo");
+        mojo.packages = new ApiRegionsOverlapCheckMojo.NoErrorPackageConfig();
+        mojo.packages.warnings = Collections.singleton("ding.*");
+        FeatureSelectionConfig cfg = new FeatureSelectionConfig();
+        cfg.setFilesInclude("*.json");
+        mojo.selection = cfg;
+
+        // There is overlap with the ding.dong package, but it's configured as 'ignore', so the build should not fail
+        mojo.execute();
+    }
 }
