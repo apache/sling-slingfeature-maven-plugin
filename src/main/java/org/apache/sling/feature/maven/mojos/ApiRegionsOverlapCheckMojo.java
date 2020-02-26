@@ -86,7 +86,7 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
-        if (regions == null || regions.size() == 0) {
+        if (regions == null || regions.isEmpty()) {
             throw new MojoExecutionException("Please specify at least one region to check for duplicate exports");
         }
 
@@ -180,18 +180,18 @@ public class ApiRegionsOverlapCheckMojo extends AbstractIncludingFeatureMojo {
             // Remove all ignored packages
             s = removeAllMatching(packages.ignored, s);
 
-            if (packages.warnings.size() > 0) {
+            if (!packages.warnings.isEmpty()) {
                 Set<String> ws = new HashSet<>(s);
                 ws = retainAllMatching(packages.warnings, ws);
                 s = removeAllMatching(packages.warnings, s);
 
-                if (ws.size() > 0) {
+                if (!ws.isEmpty()) {
                     getLog().warn(msgPrefix + ws);
                 }
             }
         }
 
-        if (s.size() == 0) {
+        if (s.isEmpty()) {
             // no overlap
             return false;
         }
