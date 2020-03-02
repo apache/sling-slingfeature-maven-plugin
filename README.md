@@ -268,58 +268,6 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 </execution>
 ```
 
-## api-regions-crossfeature-duplicates
-This mojo compares multiple feature models and checks if there is overlap between exported packages from
-these feature models. It will fail the Maven execution if there is.
-
-It can be used to detect if a feature model provides packages that are already provided as part of
-some platform and report an error if there is such a case.
-
-It does this by looking at the exports of the api-regions extension in the feature model and collecting
-the packages listed there. If a feature model does not opt-in to the api-regions extension, all bundles
-listed as part of that feature are examined for exported packages and these are added to the global
-region.
-
-If multiple features export the same package in any listed API region then the mojo will cause the build
-to fail.
-
-Example configuration:
-
-```
-<execution>
-    <id>check-overlapping-exports</id>
-    <goals><goal>api-regions-crossfeature-duplicates</goal></goals>
-    <configuration>
-        <selection>
-            <!-- Standard feature selection mechanism, as used by other Mojo -->
-            <filesInclude>*.json</filesInclude>
-            <includeArtifact>
-                <groupId>org.apache.sling</groupId>
-                <artifactId>my-feature</artifactId>
-                <type>slingosgifeature</type>
-                <classifier>some-classifier</classifier>
-                <version>1.2.3</version>
-            </includeArtifact>
-            <includeClassifier>my-aggregate</includeClassifier>            
-        </selection>
-        <regions>
-          <region>global</region>
-          <region>some.other.region</region>
-        </regions>
-        <packages>
-            <!-- ignore overlaps of the com.foo.bar package -->
-            <ignore>com.foo.bar</ignore>
-
-            <!-- if multiple feature models export javax.servlet or a subpackage, produce a warning -->
-            <warning>javax.servlet</warning>
-            <warning>javax.servlet.*</warning>
-
-            <!-- if multiple feature models export any other package, it will fail the build -->
-        </packages>
-    </configuration>
-</execution>
-```
-
 ## attach-features
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.

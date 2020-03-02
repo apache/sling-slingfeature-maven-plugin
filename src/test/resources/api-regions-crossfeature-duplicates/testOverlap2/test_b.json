@@ -1,7 +1,0 @@
-{
-  "id":"testing:test:slingfeature:testb:1.0.1",
-  "bundles": [
-    "mygroup:feature-exports:1",
-    "somegroup:feature-exports2:1.2.3"
-  ]  
-}
