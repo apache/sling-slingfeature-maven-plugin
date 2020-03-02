@@ -272,6 +272,10 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
+## attach-featurearchives
+Attach a feature archive for each feature in the project to the projects produced artifacts. This includes features
+found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
+
 ## extract-extension
 This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
 

@@ -937,7 +937,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         ArtifactId artifactId = artifact.getId();
         getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
 
-        boolean fallback = false;
         String scmId = artifact.getMetadata().get(SCM_ID);
         String scmLocation = artifact.getMetadata().get(SCM_LOCATION);
         if ( scmId != null && scmLocation != null)

@@ -65,6 +65,7 @@ import org.codehaus.plexus.util.StringUtils;
 /**
  * Update the bundles/artifact versions
  */
+@SuppressWarnings("deprecation")
 @Mojo(
         name = "update-feature-versions",
         threadSafe = true
@@ -109,7 +110,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     protected ArtifactMetadataSource artifactMetadataSource;
 
     @Parameter(defaultValue = "${project.remoteArtifactRepositories}", readonly = true)
-    protected List remoteArtifactRepositories;
+    protected List<ArtifactRepository> remoteArtifactRepositories;
 
     @Parameter(defaultValue = "${localRepository}", readonly = true)
     protected ArtifactRepository localRepository;
@@ -229,7 +230,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         // Get updates
         try {
             cfg.updateInfos = calculateUpdateInfos(getHelper().lookupDependenciesUpdates(dependencies, false));
-        } catch (ArtifactMetadataRetrievalException | InvalidVersionSpecificationException e) {
+        } catch (ArtifactMetadataRetrievalException
+                | InvalidVersionSpecificationException e) {
             throw new MojoExecutionException("Unable to calculate updates", e);
         }
 
