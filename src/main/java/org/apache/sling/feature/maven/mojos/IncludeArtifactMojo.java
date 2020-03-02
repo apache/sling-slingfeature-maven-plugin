@@ -16,8 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.artifact.DefaultArtifact;
-import org.apache.maven.artifact.handler.DefaultArtifactHandler;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -30,12 +28,9 @@ import org.apache.maven.shared.transfer.artifact.install.ArtifactInstaller;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
-import org.apache.sling.feature.Bundles;
-import org.apache.sling.feature.Configurations;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionState;
 import org.apache.sling.feature.ExtensionType;
-import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
@@ -45,9 +40,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -158,7 +150,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         if(file != null) {
             featureSelectionConfig.setFilesExclude("**/" + file.getName());
         }
-        final Map<String, Feature> selection = this.getSelectedFeatures(featureSelectionConfig);
 
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
