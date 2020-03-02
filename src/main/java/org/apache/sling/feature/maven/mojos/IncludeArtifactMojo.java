@@ -160,9 +160,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         }
         final Map<String, Feature> selection = this.getSelectedFeatures(featureSelectionConfig);
 
-        includeFeatures(selection, found);
-
-        // Write the Feature into its file and install it
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
                 FeatureJSONWriter.write(writer, found);
@@ -211,29 +208,5 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
-    }
-
-    private void includeFeatures(Map<String, Feature> selection, Feature feature) {
-        getLog().debug("Including Features found: " + selection);
-        for(Feature childFeature: selection.values()) {
-            getLog().debug("Including Feature found: " + childFeature);
-            Extensions extensions = childFeature.getExtensions();
-            if(extensions != null && !extensions.isEmpty()) {
-                feature.getExtensions().addAll(extensions);
-            }
-            Map<String,String> frameworkProperties = childFeature.getFrameworkProperties();
-            if(frameworkProperties != null && !frameworkProperties.isEmpty()) {
-                feature.getFrameworkProperties().putAll(frameworkProperties);
-            }
-            Bundles bundles = childFeature.getBundles();
-            if(bundles != null && !bundles.isEmpty()) {
-                feature.getBundles().addAll(bundles);
-            }
-            Configurations configurations = childFeature.getConfigurations();
-            if(configurations != null && !configurations.isEmpty()) {
-                feature.getConfigurations().addAll(configurations);
-            }
-        }
-
     }
 }

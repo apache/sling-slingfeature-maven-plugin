@@ -423,41 +423,68 @@ Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
 
-## Create Feature Model Descriptor from POM (create-fm-descriptor)
+## Create Feature Model Descriptor from POM (include-artifact)
 
-A simple Maven module creates its artifact but in order to another module
-to use that in the context of a Feature Model build the module's Feature
-Module descriptor must be created during the build.
-This can be done here:
+With the **include-artifact** goal it is possible to generate a POM based
+Feature Model so that it later can be used to be incorporated into other
+Feature Models without having to reference or copy the Feature Model files.
+
+This snippet is creating a POM based Feature Model (create-test) and then
+incorporates another Feature Model (feature-test-repoinit.json) which contains
+the Repository Init instruction for that Feature Model.
+Eventually the result is installed (attach-features) into the local Maven
+repository.
+
 ```
-<!-- Generate and Install the Sling OSGi Feature Model file -->
+<!-- Generates and Installs the Sling OSGi Feature Model file -->
 <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
     <version>${slingfeature-maven-plugin.version}</version>
     <extensions>true</extensions>
     <executions>
-        <execution>
-            <id>create-fm-descriptor</id>
-            <phase>package</phase>
-            <goals>
-                <goal>include-artifact</goal>
-            </goals>
-            <configuration>
-                <classifier>jcr-packageinit</classifier>
-            </configuration>
-        </execution>
+      <execution>
+        <id>create-fm</id>
+        <phase>package</phase>
+        <goals>
+          <goal>include-artifact</goal>
+        </goals>
+        <configuration>
+          <includeArtifactClassifier>create-test</includeArtifactClassifier>
+        </configuration>
+      </execution>
+      <execution>
+        <id>aggregate</id>
+        <phase>package</phase>
+        <goals>
+          <goal>aggregate-features</goal>
+        </goals>
+        <configuration>
+          <aggregates>
+            <aggregate>
+              <!-- This must reference the classifier fro the 'create-fm' execution above -->
+              <includeClassifier>create-test</includeClassifier>
+              <filesInclude>feature-test-repoinit.json</filesInclude>
+            </aggregate>
+          </aggregates>
+        </configuration>
+      </execution>
+      <execution>
+        <id>attach</id>
+        <phase>package</phase>
+        <goals>
+          <goal>attach-features</goal>
+        </goals>
+      </execution>
     </executions>
-</plugin>
 ```
-The property **classifier** will be added only to the Feature Model
-Descriptor file name when it is installed in your local Maven repository.
-If one is provided then the user of that descriptor needs to specify it
-in the **includeArtifact**.
-The Feature Model Descriptor file name in the local Maven repository has
-this pattern:
+The **aggregate** execution above is only necessary if additional Feature Model
+Snippets are added to the final Feature Model file.
+See the **src/it/include-artifact** folders for more details.
+
+The Feature Model Descriptor file name in the local Maven repository can be found here:
 ```
-<group id>:<artifact id>-<version>=[-<classifier>].slingosgifeature
+<group id as path>/<artifact-id>/<version>/<artifact id>-<version>.slingosgifeature
 ```
 
 ## Features Diff (features-diff)

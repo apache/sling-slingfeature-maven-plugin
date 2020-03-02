@@ -70,13 +70,28 @@
         </configuration>
         <executions>
           <execution>
-            <id>analyze</id>
+            <id>create-fm</id>
             <phase>package</phase>
             <goals>
               <goal>include-artifact</goal>
             </goals>
             <configuration>
-              <includeArtifactClassifier>test</includeArtifactClassifier>
+              <includeArtifactClassifier>create-test</includeArtifactClassifier>
+            </configuration>
+          </execution>
+          <execution>
+            <id>aggregate</id>
+            <phase>package</phase>
+            <goals>
+              <goal>aggregate-features</goal>
+            </goals>
+            <configuration>
+              <aggregates>
+                <aggregate>
+                  <includeClassifier>create-test</includeClassifier>
+                  <filesInclude>feature-test-repoinit.json</filesInclude>
+                </aggregate>
+              </aggregates>
             </configuration>
           </execution>
           <execution>
