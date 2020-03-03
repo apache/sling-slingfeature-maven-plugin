@@ -136,20 +136,11 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.getFeatures(this.project).put(key, found);
             ProjectHelper.getAssembledFeatures(this.project).put(key, found);
         }
-        getLog().debug("Found Feature: " + found + ", artifact: " + art);
         includeArtifact(found, includeArtifactExtension, art);
-        getLog().debug("Feature Key: " + key + ", feature from key: " + ProjectHelper.getAssembledFeatures(this.project).get(key));
         includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
                 art.copy(art.getId()));
 
         addDependencies(found);
-
-        // Obtain any features from Source folder and add any Extensions to the target feature
-        final FeatureSelectionConfig featureSelectionConfig = new FeatureSelectionConfig();
-        featureSelectionConfig.setFilesInclude("**/*.json" );
-        if(file != null) {
-            featureSelectionConfig.setFilesExclude("**/" + file.getName());
-        }
 
         if (file != null) {
             try ( final Writer writer = new FileWriter(file)) {
@@ -165,10 +156,8 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         Artifacts container = f.getBundles();
         if (extensionName != null) {
             Extension ext = f.getExtensions().getByName(extensionName);
-            getLog().debug("Extension: " + extensionName + ", found extension: " + ext);
             if (ext == null) {
                 ext = new Extension(ExtensionType.ARTIFACTS, extensionName, ExtensionState.REQUIRED);
-                getLog().debug("New Extension: " + ext);
                 f.getExtensions().add(ext);
             }
             if (ext.getType() != ExtensionType.ARTIFACTS) {
@@ -184,10 +173,8 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         // Add Dependencies if configured so
         for(String includeDependencyScope: includeDependenciesWithScope) {
             List<Dependency> dependencies = project.getDependencies();
-            getLog().info("Project Dependencies: " + dependencies);
             for(Dependency dependency: dependencies) {
                 if(includeDependencyScope.equals(dependency.getScope())) {
-                    getLog().info("Include Artifact: " + dependencies);
                     ArtifactId id = new ArtifactId(
                         dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getClassifier(), dependency.getType()
                     );
