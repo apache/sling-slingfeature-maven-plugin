@@ -88,7 +88,11 @@
             <configuration>
               <aggregates>
                 <aggregate>
+                  <!-- Optional Classifier for the final FM -->
+                  <classifier>final</classifier>
+                  <!-- Classifier from the include-artifact generation -->
                   <includeClassifier>create-test</includeClassifier>
+                  <!-- Additional FM to be included into this project -->
                   <filesInclude>feature-test-repoinit.json</filesInclude>
                 </aggregate>
               </aggregates>

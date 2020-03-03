@@ -67,7 +67,7 @@
         <extensions>true</extensions>
         <executions>
           <execution>
-            <id>analyze</id>
+            <id>create-fm</id>
             <phase>package</phase>
             <goals>
               <goal>include-artifact</goal>
@@ -85,7 +85,9 @@
             <configuration>
               <aggregates>
                 <aggregate>
+                  <!-- Classifier from the include-artifact generation -->
                   <includeClassifier>create-test</includeClassifier>
+                  <!-- Additional FM to be included into this project -->
                   <filesInclude>feature-test-repoinit.json</filesInclude>
                 </aggregate>
               </aggregates>

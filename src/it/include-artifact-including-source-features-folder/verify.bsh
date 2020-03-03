@@ -33,10 +33,10 @@ import org.codehaus.plexus.util.*;
             return false;
         }
 
-        String classifier = "test";
+        String classifier = "final";
         String extension = "slingosgifeature";
         File fmDescriptorFile = new File(
-            localMavenRepositoryInstallationFolder, artifact + "-" + version + "." + extension
+            localMavenRepositoryInstallationFolder, artifact + "-" + version + "-" + classifier + "." + extension
         );
         if(!fmDescriptorFile.exists()) {
             System.out.println("FM Descriptor file does not exist: " + fmDescriptorFile);
@@ -50,7 +50,7 @@ import org.codehaus.plexus.util.*;
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
         String[] values = {
-            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + version + "\"",
+            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
             "\"bundles\":[",
             group + ":" + artifact + ":" + version + "\"",
             "\"repoinit:TEXT|true\":[",
