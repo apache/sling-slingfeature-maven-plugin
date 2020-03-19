@@ -306,36 +306,45 @@ Output files are written to the output directory follows where the file name is 
 
 ## update-feature-versions
 
-The update feature versions goal can be used to check for updates of artifacts contained in the features
-that are part of the project.
+Dependencies get out of date over time, with the `update-feature-versions` goal, all artifacts in a feature can be checked for available updates and updated to a newer version. By default all artifacts in all feature files in the project are checked and updated:
 
-Without specifying any other arguments, all artifacts will be updated to the latest version found. You can specify
-a dry run to just check if there are updates:
+```
+    mvn slingfeature:update-feature-versions
+```
+
+To first check which artifacts will be updated and to what version, it is possible to just do a dry runs which does not alter the feature files:
+
 ```
     mvn slingfeature:update-feature-versions -DdryRun=true
 ```
 
-You can specify includes and excludes based on maven coordinates to further redefine which artifacts to update.
-The most common use case is to specify the group id only. For example if you want to update only artifacts
-with the Sling group id, use this command:
-```
-    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.sling
-```
-You can specify several includes and excludes by separating them by comma.
+The selection of feature files can be further refined by specifying the `classifiers` parameter which selects feature files based on their classifier. The special token ':' can be used to select the main artifact (artifact without a classifier). The parameter takes a comma separated list:
 
-It's also possible to define the version scope, which means the policy how to update. By default *ANY* is used,
-meaning the latest found version (excluding snapshots) is used. You can also specify *MAJOR*, *MINOR*, *INCREMENTAL*
-and *SUBINCREMENTAL* by using the `versionScope` parameter.
-
-Alternative you can combine this with the includes and specify a different scope per include:
 ```
-    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.sling/MAJOR,org.apache.felix/INCREMENTAL
+    mvn slingfeature:update-feature-versions -Dclassifiers=platform,:
 ```
 
-With an include you can also specify an exact version:
+By default all artifacts in a feature file are checked for updates. By specifying `includes` and `excludes` based on Maven coordinates the selection of artifacts can be further refined. The most common use case is to specify the group id only. For example the following command just updates all artifacts with the Sling group id:
+
 ```
-    mvn slingfeature:update-feature-versions -DdryRun=true -Dincludes=org.apache.jackrabbit.oak/4.0.2
+    mvn slingfeature:update-feature-versions -Dincludes=org.apache.sling
 ```
+Both parameters, `includes` and `excludes`, take a comma separated list.
+
+It is also possible to define the version scope, which means the policy how to update. By default *ANY* is used, meaning the latest found version (excluding snapshots) is used. You can also specify *MAJOR*, *MINOR*, *INCREMENTAL* and *SUBINCREMENTAL* by using the `versionScope` parameter.
+
+This can also be combined with `includes` to specify different scopes for each include:
+
+```
+    mvn slingfeature:update-feature-versions -Dincludes=org.apache.sling/MAJOR,org.apache.felix/INCREMENTAL
+```
+
+Instead of specifying a scope, `includes` can also be used to define a specific version:
+
+```
+    mvn slingfeature:update-feature-versions -Dincludes=org.apache.jackrabbit.oak/4.0.2
+```
+
 
 ## repository
 

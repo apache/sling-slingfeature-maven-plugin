@@ -103,6 +103,13 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "false", property = "dryRun")
     private boolean dryRun;
 
+    /**
+     * A comma separated list of classifiers to select the feature files.
+     * Use ':' to select the main artifact (no classifier).
+     */
+    @Parameter(property = "classifiers")
+    private String classifiers;
+
     @Component
     protected org.apache.maven.artifact.factory.ArtifactFactory artifactFactory;
 
@@ -143,9 +150,28 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
      * @throws MojoExecutionException
      */
     private Map<String, Feature> getFeatures() throws MojoExecutionException {
-        final Map<String, Feature> features = new HashMap<>();
+        final String[] selection = this.classifiers == null ? null : this.classifiers.split(",");
+        final Map<String, Feature> features = new LinkedHashMap<>();
         for (final Map.Entry<String, Feature> entry : this.selectAllFeatureFiles().entrySet()) {
-            features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
+            boolean selected = true;
+            if ( selection != null ) {
+                selected = false;
+                final String classifier = entry.getValue().getId().getClassifier();
+                for(final String c : selection) {
+                    if ( classifier == null ) {
+                        if ( ":".equals(c) ) {
+                            selected = true;
+                            break;
+                        }
+                    } else if ( classifier.equals(c)) {
+                        selected = true;
+                        break;
+                    }
+                }
+            }
+            if ( selected ) {
+                features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
+            }
         }
         if (features.isEmpty()) {
             throw new MojoExecutionException("No features found in project!");
