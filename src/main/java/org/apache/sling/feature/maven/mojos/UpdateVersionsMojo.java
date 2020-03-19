@@ -163,7 +163,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                             selected = true;
                             break;
                         }
-                    } else if ( classifier.equals(c)) {
+                    } else if ( classifier.trim().equals(c)) {
                         selected = true;
                         break;
                     }

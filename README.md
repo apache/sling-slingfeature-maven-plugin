@@ -276,7 +276,7 @@ found in `src/main/features` as well as features produce with the `aggregate-fea
 Attach a feature archive for each feature in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
-## extract-extension
+## Extract contents of an Extension (extract-extension)
 This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
 
 The goal is configured as in the following example:
@@ -304,7 +304,7 @@ Output files are written to the output directory follows where the file name is 
 * ARTIFACT extensions: the file contains the Maven IDs for each artifact. One ID per line.
 
 
-## update-feature-versions
+## Update artifact Versions (update-feature-versions)
 
 Dependencies get out of date over time, with the `update-feature-versions` goal, all artifacts in a feature can be checked for available updates and updated to a newer version. By default all artifacts in all feature files in the project are checked and updated:
 
@@ -346,7 +346,7 @@ Instead of specifying a scope, `includes` can also be used to define a specific 
 ```
 
 
-## repository
+## Create an artifact repository (repository)
 
 With the repository goal, a directory with all artifacts from the selected features will be created.
 
@@ -371,6 +371,50 @@ With the repository goal, a directory with all artifacts from the selected featu
    </configuration>
  </execution>
 ```
+
+## Extract Infos (info)
+
+The `info` goal allows to extract information about one or more features. It can be used within a Maven project or standalone.
+
+### Duplicates Report
+
+The duplicates report is turned off by default, it can be enabled by specifying the `outputDuplicates` either as a configuration for the mojo or a parameter from the command line. Possible values are `all`, `bundles`, `configurations`, `artifacts`, `framework-properties`. The value can be a comma separated list of these values.
+
+The report will be generated in the build directory in a file named 'duplicates-report.txt'.
+
+### Exported Packages
+
+By default a text file with a list of exported packages is generated for each feature. Generation of this file can be turned off by specifying the configuration/command line parameter `outputExportedPackages` with a value of *false*.
+
+### Usage in a Maven Project
+
+When used in a Maven project, the list of features for the input goal can be specified by defining the feature set for the goal. The features are configured as described in the global configuration section above. If no configuration is provided, all feature files from the project are used.
+
+```
+<execution>
+  <id>info</id>
+  <goals>
+    <goal>info</goal>
+  </goals>
+  <configuration>
+    <infoFeatures>
+        <!-- specify which feature files to include -->
+        <!-- optional include for local files, this can be specified more than once -->
+        <filesInclude>**/*.json</filesInclude>
+    </infoFeatures>
+  </configuration>
+</execution>
+```
+
+
+### Standalone Usage
+
+The `info` goal can also be used standalone without a maven project. In this case the property `featureFile` needs to point to a feature file:
+
+```
+    mvn slingfeature:info -DfeatureFile=/path/to/my/feature.json
+```
+
 
 ## Feature Launcher (launch-features)
 
