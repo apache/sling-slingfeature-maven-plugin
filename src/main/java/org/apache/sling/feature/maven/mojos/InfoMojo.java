@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -59,8 +58,11 @@ import org.apache.sling.feature.scanner.Scanner;
  * can be run by just pointing it at a feature file. When run from within a
  * project, the normal feature selection mechanism can be used.
  *
- * This mojo currently only extracts the exported packages and writes them to a
- * file.
+ * This mojo supports
+ * <ul>
+ * <li>Extracting the exported packages per feature and writing them to a file
+ * <li>Detecting duplicates across features and writing a report
+ * </ul>
  *
  */
 @Mojo(requiresProject = false, name = "info", threadSafe = true)
@@ -178,10 +180,10 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     private void processDuplicates(final String duplicatesConfig, List<Map.Entry<Feature, File>> selection) throws MojoExecutionException {
          final Set<DUPLICATE> cfg = getDuplicateConfiguration(duplicatesConfig);
 
-         final Map<String, List<ArtifactId>> artifactMap = new TreeMap<>();
-         final Map<String, List<ArtifactId>> bundleMap = new TreeMap<>();
-         final Map<String, List<ArtifactId>> configMap = new TreeMap<>();
-         final Map<String, List<ArtifactId>> propsMap = new TreeMap<>();
+         final Map<String, Set<String>> artifactMap = new TreeMap<>();
+         final Map<String, Set<String>> bundleMap = new TreeMap<>();
+         final Map<String, Set<String>> configMap = new TreeMap<>();
+         final Map<String, Set<String>> propsMap = new TreeMap<>();
 
          for(final Map.Entry<Feature, File> entry : selection) {
              final Feature feature = entry.getKey();
@@ -189,8 +191,8 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
                  for(final Extension ext : feature.getExtensions()) {
                      if ( ext.getType() == ExtensionType.ARTIFACTS ) {
                          for(final Artifact a : ext.getArtifacts()) {
-                             artifactMap.putIfAbsent(a.getId().toMvnId(), new ArrayList<>());
-                             artifactMap.get(a.getId().toMvnId()).add(feature.getId());
+                             final String key = a.getId().changeVersion("0").toMvnId();
+                             artifactMap.computeIfAbsent(key, k -> new HashSet<>()).add(feature.getId().getClassifier().concat("(").concat(a.getId().getVersion()).concat(")"));
                          }
                      }
                  }
@@ -198,22 +200,20 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
              if ( cfg.contains(DUPLICATE.bundles)) {
                  for(final Artifact a : feature.getBundles()) {
-                     bundleMap.putIfAbsent(a.getId().toMvnId(), new ArrayList<>());
-                     bundleMap.get(a.getId().toMvnId()).add(feature.getId());
+                     final String key = a.getId().changeVersion("0").toMvnId();
+                     bundleMap.computeIfAbsent(key, k -> new HashSet<>()).add(feature.getId().getClassifier().concat("(").concat(a.getId().getVersion()).concat(")"));
                  }
              }
 
              if ( cfg.contains(DUPLICATE.configurations)) {
                  for(final Configuration c : feature.getConfigurations()) {
-                     configMap.putIfAbsent(c.getPid(), new ArrayList<>());
-                     configMap.get(c.getPid()).add(feature.getId());
+                     configMap.computeIfAbsent(c.getPid(), k -> new HashSet<>()).add(feature.getId().getClassifier());
                  }
              }
 
              if ( cfg.contains(DUPLICATE.frameworkproperties)) {
                  for(final String a : feature.getFrameworkProperties().keySet()) {
-                     propsMap.putIfAbsent(a, new ArrayList<>());
-                     propsMap.get(a).add(feature.getId());
+                     propsMap.computeIfAbsent(a, k -> new HashSet<>()).add(feature.getId().getClassifier());
                  }
              }
          }
@@ -235,18 +235,18 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
          getLog().info("Generated duplicates report at " + out);
     }
 
-    private void outputDuplicates(final List<String> output, final String key, final Map<String, List<ArtifactId>> duplicates) {
+    private void outputDuplicates(final List<String> output, final String key, final Map<String, Set<String>> duplicates) {
         boolean writeHeader;
         if ( !duplicates.isEmpty() ) {
             writeHeader = true;
-            for(final Map.Entry<String, List<ArtifactId>> entry : duplicates.entrySet()) {
+            for(final Map.Entry<String, Set<String>> entry : duplicates.entrySet()) {
                 if ( entry.getValue().size() > 1 ) {
                     if ( writeHeader ) {
                         writeHeader = false;
                         output.add(key);
                         output.add("-------------------------------------------");
                     }
-                    output.add(entry.getKey().concat(" : ").concat(entry.getValue().stream().map(id -> id.getClassifier()).collect(Collectors.toList()).toString()));
+                    output.add(entry.getKey().concat(" : ").concat(entry.getValue().toString()));
                 }
             }
             if ( !writeHeader ) {
