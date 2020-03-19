@@ -374,17 +374,21 @@ With the repository goal, a directory with all artifacts from the selected featu
 
 ## Extract Infos (info)
 
-The `info` goal allows to extract information about one or more features. It can be used within a Maven project or standalone.
+The `info` goal allows to extract information about one or more features and generate some reports. It can be used within a Maven project or standalone.
 
-### Duplicates Report
+The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either `log` in which case all output goes to the log or `file` (the default) in which case files for each report are generated.
 
-The duplicates report is turned off by default, it can be enabled by specifying the `outputDuplicates` either as a configuration for the mojo or a parameter from the command line. Possible values are `all`, `bundles`, `configurations`, `artifacts`, `framework-properties`. The value can be a comma separated list of these values.
+### Duplicates Report (duplicates)
 
-The report will be generated in the build directory in a file named 'duplicates-report.txt'.
+This report is done across all specified features and reports duplicates (bundles, configurations, artifacts or framework properties)
 
-### Exported Packages
+### Exported Packages (exported-packages)
 
-By default a text file with a list of exported packages is generated for each feature. Generation of this file can be turned off by specifying the configuration/command line parameter `outputExportedPackages` with a value of *false*.
+A text file with a list of exported packages is generated for each feature.
+
+### Contents (contents)
+
+This report is done across all features and list the contents (bundles and artifacts).
 
 ### Usage in a Maven Project
 
@@ -409,10 +413,18 @@ When used in a Maven project, the list of features for the input goal can be spe
 
 ### Standalone Usage
 
-The `info` goal can also be used standalone without a maven project. In this case the property `featureFile` needs to point to a feature file:
+The `info` goal can also be used standalone without a maven project. In this case the property `infoFeatureFiles` must be specified with a comma separated list of feature files:
 
 ```
-    mvn slingfeature:info -DfeatureFile=/path/to/my/feature.json
+    mvn slingfeature:info -DinfoFeatureFiles=/path/to/my/feature.json
+```
+
+### Example
+
+To generate the `duplicates` report to the log use:
+
+```
+    mvn slingfeature:info -Dreports=duplicates -DoutputFormat=log
 ```
 
 

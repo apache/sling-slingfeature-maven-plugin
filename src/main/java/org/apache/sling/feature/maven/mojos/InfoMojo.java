@@ -28,25 +28,24 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Configuration;
-import org.apache.sling.feature.Extension;
-import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.ProjectHelper;
+import org.apache.sling.feature.maven.mojos.reports.ContentsReporter;
+import org.apache.sling.feature.maven.mojos.reports.DuplicatesReporter;
+import org.apache.sling.feature.maven.mojos.reports.ExportPackagesReporter;
+import org.apache.sling.feature.maven.mojos.reports.ReportContext;
+import org.apache.sling.feature.maven.mojos.reports.Reporter;
 import org.apache.sling.feature.scanner.BundleDescriptor;
 import org.apache.sling.feature.scanner.FeatureDescriptor;
 import org.apache.sling.feature.scanner.PackageInfo;
@@ -68,216 +67,156 @@ import org.apache.sling.feature.scanner.Scanner;
 @Mojo(requiresProject = false, name = "info", threadSafe = true)
 public class InfoMojo extends AbstractIncludingFeatureMojo {
 
-    public enum DUPLICATE {
-        bundles,
-        configurations,
-        artifacts,
-        frameworkproperties
-    }
-
-    private static final String FILE_EXPORT_PACKAGES = "export-packages.txt";
-
-    private static final String FILE_DUPLICATES_REPORT = "duplicates-report.txt";
-
-    private static final String DUPLICATES_ALL = "all";
-
-    private static final String DUPLICATES_BUNDLES = "bundles";
-
-    private static final String DUPLICATES_CONFIGURATIONS = "configurations";
-
-    private static final String DUPLICATES_ARTIFACTS = "artifacts";
-
-    private static final String DUPLICATES_PROPERTIES = "framework-properties";
-
-    @Parameter(property = "featureFile")
-    private File featureFile;
-
-    @Parameter(property = "outputExportedPackages", defaultValue = "true")
-    private boolean outputExportedPackages;
-
-    @Parameter(property = "outputDuplicates")
-    private String outputDuplicates;
-
-    @Parameter(readonly = true, defaultValue = "${project.build.directory}")
-    private File buildDirectory;
-
     /**
      * Select the features for info generation.
      */
     @Parameter
     private FeatureSelectionConfig infoFeatures;
 
+    /**
+     * Select the feature files if run in standalone mode; comma separated list of file names.
+     */
+    @Parameter(property = "infoFeatureFiles")
+    private String infoFeatureFiles;
+
+    /**
+     * Comma separated list of reports.
+     */
+    @Parameter(property = "reports", defaultValue = "exported-packages")
+    private String reports;
+
+    @Deprecated
+    @Parameter(property = "featureFile")
+    private File featureFile;
+
+    @Deprecated
+    @Parameter(property = "outputExportedPackages", defaultValue = "true")
+    private boolean outputExportedPackages;
+
+    @Parameter(readonly = true, defaultValue = "${project.build.directory}")
+    private File buildDirectory;
+
+    @Parameter(property = "outputFormat", defaultValue = "file")
+    private String outputFormat;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final boolean isStandalone = "standalone-pom".equals(project.getArtifactId());
 
-        final List<Map.Entry<Feature, File>> selection = selectFeatures(isStandalone);
-
-        if (outputExportedPackages) {
-            // setup scanner
-            final Scanner scanner = setupScanner();
-            for(final Map.Entry<Feature, File> entry : selection ) {
-                process(scanner, entry.getKey(), entry.getValue());
+        if ( featureFile != null ) {
+            getLog().warn("Deprecated configuration 'featureFile' is used. Change to 'infoFeatureFiles'");
+            if ( infoFeatureFiles == null ) {
+                infoFeatureFiles = featureFile.getAbsolutePath();
+            } else {
+                infoFeatureFiles = infoFeatureFiles.concat(",").concat(featureFile.getAbsolutePath());
             }
         }
-        if ( selection.size() > 1 && this.outputDuplicates != null ) {
-            processDuplicates(this.outputDuplicates, selection);
+        if ( isStandalone && infoFeatureFiles == null ) {
+            throw new MojoExecutionException("Required configuration for standalone execution is missing. Please specify 'infoFeatureFiles'.");
+        }
+        boolean outputFile = "file".equals(outputFormat);
+        if ( !outputFile && !"log".equals(outputFormat)) {
+            throw new MojoExecutionException("Invalid value for 'outputFormat', allowed values are file or log, configured : ".concat(outputFormat));
+        }
+
+        final List<Reporter> reporters = getReporters(this.reports);
+        if ( reporters.isEmpty() ) {
+            getLog().warn("No reporters specified.");
+            return;
+        }
+        final List<Feature> selection = selectFeatures(infoFeatureFiles);
+
+        // setup scanner
+        final Scanner scanner = setupScanner();
+        final Map<String, List<String>> reports = new LinkedHashMap<>();
+        final ReportContext ctx = new ReportContext() {
+
+            @Override
+            public Scanner getScanner() {
+                return scanner;
+            }
+
+            @Override
+            public List<Feature> getFeatures() {
+                return selection;
+            }
+
+            @Override
+            public void addReport(final String key, final List<String> output) {
+                reports.put(key, output);
+            }
+        };
+        for(final Reporter reporter : reporters) {
+            getLog().info("Generating report ".concat(reporter.getName().concat("...")));
+            reporter.generateReport(ctx);
+        }
+
+        final File outputDirectory;
+        if ( isStandalone ) {
+            // wired code to get the current directory, but its needed
+            outputDirectory = Paths.get(".").toAbsolutePath().getParent().toFile();
+        } else {
+            outputDirectory = buildDirectory;
+        }
+        for(final Map.Entry<String, List<String>> entry : reports.entrySet()) {
+            if ( outputFile ) {
+                try {
+                    Files.write(new File(outputDirectory, entry.getKey()).toPath(), entry.getValue());
+                } catch (final IOException e) {
+                    throw new MojoExecutionException("Unable to write file: " + e.getMessage(), e);
+                }
+            } else {
+                getLog().info("");
+                getLog().info("Report ".concat(entry.getKey()));
+                getLog().info("================================================================");
+                entry.getValue().stream().forEach(l -> getLog().info(l));
+                getLog().info("");
+            }
         }
     }
 
+    private List<Reporter> getReporters(final String reports) throws MojoExecutionException {
+        if ( reports == null ) {
+            throw new MojoExecutionException("No reports configured.");
+        }
+        final List<Reporter> available = new ArrayList<>();
+        available.add(new ExportPackagesReporter());
+        available.add(new DuplicatesReporter());
+        available.add(new ContentsReporter());
+
+        final List<Reporter> result = new ArrayList<>();
+        for(final String r : reports.split(",")) {
+            for(final Reporter current : available) {
+                if ( current.getName().equals(r.trim())) {
+                    result.add(current);
+                    break;
+                }
+            }
+        }
+
+        return result;
+    }
 
     /**
      * Select the features to process
      * @throws MojoExecutionException
      */
-    private List<Map.Entry<Feature, File>>  selectFeatures(final boolean isStandalone) throws MojoExecutionException {
-        final List<Map.Entry<Feature, File>> result = new ArrayList<>();
-        if (isStandalone || featureFile != null) {
-            final Map.Entry<Feature, File> entry = new MapEntry(readFeature(), Paths.get(".").toAbsolutePath().getParent().toFile());
-
-            result.add(entry);
+    private List<Feature>  selectFeatures(final String infoFeatureFiles) throws MojoExecutionException {
+        final List<Feature> result = new ArrayList<>();
+        if ( infoFeatureFiles != null ) {
+            for(final String file : infoFeatureFiles.split(",")) {
+                final File f = new File(file.trim());
+                result.add(readFeature(f));
+            }
         } else {
             checkPreconditions();
 
             final Map<String, Feature> features = infoFeatures == null ? this.selectAllFeatureFiles() : this.getSelectedFeatures(infoFeatures);
             for (final Feature f : features.values()) {
-                final Map.Entry<Feature, File> entry = new MapEntry(f, new File(
-                        this.project.getBuild().getDirectory() + File.separator + f.getId().toMvnName() + ".info"));
-                result.add(entry);
+                result.add(f);
             }
         }
         return result;
-    }
-
-    private Set<DUPLICATE> getDuplicateConfiguration(final String duplicatesConfig) throws MojoExecutionException {
-        final Set<DUPLICATE> cfg = new HashSet<>();
-        for(final String c : duplicatesConfig.split(",")) {
-            final String value = c.trim();
-            boolean valid = false;
-            if ( DUPLICATES_ARTIFACTS.equals(value) || DUPLICATES_ALL.equals(value)) {
-                cfg.add(DUPLICATE.artifacts);
-                valid = true;
-            }
-            if ( DUPLICATES_BUNDLES.equals(value) || DUPLICATES_ALL.equals(value)) {
-                cfg.add(DUPLICATE.bundles);
-                valid = true;
-            }
-            if ( DUPLICATES_CONFIGURATIONS.equals(value) || DUPLICATES_ALL.equals(value)) {
-                cfg.add(DUPLICATE.configurations);
-                valid = true;
-            }
-            if ( DUPLICATES_PROPERTIES.equals(value) || DUPLICATES_ALL.equals(value)) {
-                cfg.add(DUPLICATE.frameworkproperties);
-                valid = true;
-            }
-            if ( !valid) {
-                throw new MojoExecutionException("Invalid configuration value for duplicates : " + value);
-            }
-        }
-        return cfg;
-    }
-
-    private void processDuplicates(final String duplicatesConfig, List<Map.Entry<Feature, File>> selection) throws MojoExecutionException {
-         final Set<DUPLICATE> cfg = getDuplicateConfiguration(duplicatesConfig);
-
-         final Map<String, Set<String>> artifactMap = new TreeMap<>();
-         final Map<String, Set<String>> bundleMap = new TreeMap<>();
-         final Map<String, Set<String>> configMap = new TreeMap<>();
-         final Map<String, Set<String>> propsMap = new TreeMap<>();
-
-         for(final Map.Entry<Feature, File> entry : selection) {
-             final Feature feature = entry.getKey();
-             if ( cfg.contains(DUPLICATE.artifacts)) {
-                 for(final Extension ext : feature.getExtensions()) {
-                     if ( ext.getType() == ExtensionType.ARTIFACTS ) {
-                         for(final Artifact a : ext.getArtifacts()) {
-                             final String key = a.getId().changeVersion("0").toMvnId();
-                             artifactMap.computeIfAbsent(key, k -> new HashSet<>()).add(feature.getId().getClassifier().concat("(").concat(a.getId().getVersion()).concat(")"));
-                         }
-                     }
-                 }
-             }
-
-             if ( cfg.contains(DUPLICATE.bundles)) {
-                 for(final Artifact a : feature.getBundles()) {
-                     final String key = a.getId().changeVersion("0").toMvnId();
-                     bundleMap.computeIfAbsent(key, k -> new HashSet<>()).add(feature.getId().getClassifier().concat("(").concat(a.getId().getVersion()).concat(")"));
-                 }
-             }
-
-             if ( cfg.contains(DUPLICATE.configurations)) {
-                 for(final Configuration c : feature.getConfigurations()) {
-                     configMap.computeIfAbsent(c.getPid(), k -> new HashSet<>()).add(feature.getId().getClassifier());
-                 }
-             }
-
-             if ( cfg.contains(DUPLICATE.frameworkproperties)) {
-                 for(final String a : feature.getFrameworkProperties().keySet()) {
-                     propsMap.computeIfAbsent(a, k -> new HashSet<>()).add(feature.getId().getClassifier());
-                 }
-             }
-         }
-         final List<String> output = new ArrayList<>();
-         outputDuplicates(output, DUPLICATES_PROPERTIES, propsMap);
-         outputDuplicates(output, DUPLICATES_BUNDLES, bundleMap);
-         outputDuplicates(output, DUPLICATES_CONFIGURATIONS, configMap);
-         outputDuplicates(output, DUPLICATES_ARTIFACTS, artifactMap);
-         if ( output.isEmpty()) {
-             output.add("No duplicates found");
-         }
-
-         final File out = new File(this.buildDirectory, FILE_DUPLICATES_REPORT);
-         try {
-             Files.write(out.toPath(), output);
-         } catch (IOException e) {
-             throw new MojoExecutionException("Unable to write report", e);
-         }
-         getLog().info("Generated duplicates report at " + out);
-    }
-
-    private void outputDuplicates(final List<String> output, final String key, final Map<String, Set<String>> duplicates) {
-        boolean writeHeader;
-        if ( !duplicates.isEmpty() ) {
-            writeHeader = true;
-            for(final Map.Entry<String, Set<String>> entry : duplicates.entrySet()) {
-                if ( entry.getValue().size() > 1 ) {
-                    if ( writeHeader ) {
-                        writeHeader = false;
-                        output.add(key);
-                        output.add("-------------------------------------------");
-                    }
-                    output.add(entry.getKey().concat(" : ").concat(entry.getValue().toString()));
-                }
-            }
-            if ( !writeHeader ) {
-                output.add("");
-            }
-        }
-    }
-
-    private void process(final Scanner scanner, final Feature feature, final File directory)
-            throws MojoExecutionException {
-        getLog().info("Processing feature ".concat(feature.getId().toMvnId()));
-        FeatureDescriptor fd;
-        try {
-            fd = scanner.scan(feature);
-        } catch (final IOException e) {
-            throw new MojoExecutionException("Unable to scan feature " + e.getMessage(), e);
-        }
-
-        processExportedPackages(fd, directory);
-    }
-
-    private void processExportedPackages(final FeatureDescriptor fd, final File directory)
-            throws MojoExecutionException {
-        if (outputExportedPackages) {
-            final List<String> exportedPackages = this.getExportedPackages(fd);
-
-            final File out = new File(directory, FILE_EXPORT_PACKAGES);
-            getLog().info("- writing ".concat(out.getAbsolutePath()));
-            this.writeFile(out, exportedPackages);
-        }
-
     }
 
     private Scanner setupScanner() throws MojoExecutionException {
@@ -305,12 +244,8 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private Feature readFeature() throws MojoExecutionException {
-        if (featureFile == null) {
-            throw new MojoExecutionException("No feature file specified");
-        }
-
-        try (final Reader reader = new FileReader(this.featureFile)) {
+    private Feature readFeature(final File file) throws MojoExecutionException {
+        try (final Reader reader = new FileReader(file)) {
             final Feature f = FeatureJSONReader.read(reader, this.featureFile.getAbsolutePath());
 
             return f;
