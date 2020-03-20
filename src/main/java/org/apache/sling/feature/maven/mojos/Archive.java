@@ -23,6 +23,12 @@ public class Archive extends FeatureSelectionConfig {
 
     private String classifier;
 
+    /**
+     * If this is set to {@code false} the archive is not added to the project
+     * artifacts.
+     */
+    public boolean attach = true;
+
     public String getClassifier() {
         return classifier;
     }
@@ -34,6 +40,6 @@ public class Archive extends FeatureSelectionConfig {
     @Override
     public String toString() {
         return "Archive [classifier=" + classifier + ", getFilesExcludes()=" + getFilesExcludes() + ", getSelections()="
-                + getSelections() + "]";
+                + getSelections() + ", attach()=" + attach + "]";
     }
 }

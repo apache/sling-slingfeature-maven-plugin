@@ -23,7 +23,6 @@ import java.io.StringReader;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
@@ -302,16 +301,6 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     protected class BaseArtifactProvider implements ArtifactProvider {
         @Override
         public URL provide(final ArtifactId id) {
-            if (ProjectHelper.isLocalProjectArtifact(project, id)) {
-                for (final Map.Entry<String, Feature> entry : ProjectHelper.getAssembledFeatures(project)
-                    .entrySet()) {
-                    if (entry.getValue().getId().equals(id)) {
-                        // TODO - we might need to create a file to return it here
-                        throw new RuntimeException(
-                            "Unable to get file for project feature " + entry.getValue().getId().toMvnId());
-                    }
-                }
-            }
             try {
                 return ProjectHelper
                     .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)

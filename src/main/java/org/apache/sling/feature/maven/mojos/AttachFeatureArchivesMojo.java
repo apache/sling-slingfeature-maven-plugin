@@ -74,7 +74,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                 }
                 final List<Feature> features = new ArrayList<>();
                 features.addAll(this.getSelectedFeatures(archive).values());
-                this.attachArchives(features, archive.getClassifier());
+                this.attachArchives(features, archive.getClassifier(), archive.attach);
             }
         }
     }
@@ -96,7 +96,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
             if (add) {
                 final String classifier = entry.getValue().getId().getClassifier() == null ? CLASSIFIER
                         : entry.getValue().getId().getClassifier().concat(CLASSIFIER);
-                attachArchives(Collections.singletonList(entry.getValue()), classifier);
+                attachArchives(Collections.singletonList(entry.getValue()), classifier, true);
             }
         }
     }
@@ -146,7 +146,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
         return mf;
     }
 
-    private void attachArchives(final List<Feature> features, final String classifier) throws MojoExecutionException {
+    private void attachArchives(final List<Feature> features, final String classifier, final boolean attach) throws MojoExecutionException {
         final ArtifactId archiveId = features.get(0).getId().changeClassifier(classifier).changeType(EXTENSION);
 
         // write the feature model archive
@@ -154,6 +154,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                 this.project.getBuild().getDirectory().concat(File.separator).concat(archiveId.toMvnName()));
         outputFile.getParentFile().mkdirs();
 
+        getLog().info("Creating feature archive " + outputFile.getName());
         try ( final FileOutputStream fos = new FileOutputStream(outputFile)) {
             final JarOutputStream jos = ArchiveWriter.write(fos,
                     createBaseManifest(features.size() == 1 ? features.get(0) : null), id -> {
@@ -198,7 +199,9 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                     "Unable to write feature model archive to " + outputFile + " : " + e.getMessage(), e);
         }
 
-        // attach it as an additional artifact
-        projectHelper.attachArtifact(project, archiveId.getType(), archiveId.getClassifier(), outputFile);
+        if ( attach ) {
+            // attach it as an additional artifact
+            projectHelper.attachArtifact(project, archiveId.getType(), archiveId.getClassifier(), outputFile);
+        }
     }
 }

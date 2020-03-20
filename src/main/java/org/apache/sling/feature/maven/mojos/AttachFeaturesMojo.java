@@ -32,7 +32,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.IOUtils;
-import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
@@ -74,14 +73,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     throws MojoExecutionException {
         final String classifier = feature.getId().getClassifier();
         // write the feature
-        final File outputFile = new File(this.getTmpDir(), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
-        outputFile.getParentFile().mkdirs();
-
-        try ( final Writer writer = new FileWriter(outputFile)) {
-            FeatureJSONWriter.write(writer, feature);
-        } catch (final IOException e) {
-            throw new MojoExecutionException("Unable to write feature " + feature.getId().toMvnId() + " to " + outputFile, e);
-        }
+        final File outputFile = ProjectHelper.createTmpFeatureFile(project, feature);
 
         // if this project is a feature, it's the main artifact
         if ( project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE)

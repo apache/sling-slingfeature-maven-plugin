@@ -18,12 +18,14 @@ package org.apache.sling.feature.maven;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -234,6 +236,44 @@ public abstract class ProjectHelper {
         return values.isEmpty() ? defaultValue : values.iterator().next();
     }
 
+    private static Artifact findArtifact(final ArtifactId id, final Collection<Artifact> artifacts) {
+        if (artifacts != null) {
+            for(final Artifact artifact : artifacts) {
+                if ( artifact.getGroupId().equals(id.getGroupId())
+                   && artifact.getArtifactId().equals(id.getArtifactId())
+                   && artifact.getVersion().equals(id.getVersion())
+                   && artifact.getType().equals(id.getVersion())
+                   && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
+                    return artifact;
+                }
+            }
+        }
+        return null;
+    }
+
+    public static File getTmpDir(final MavenProject project) {
+        final File dir = new File(project.getBuild().getDirectory(), "slingfeature-tmp");
+        dir.mkdirs();
+        return dir;
+    }
+
+    public static File createTmpFeatureFile(final MavenProject project, final Feature feature) {
+        final String classifier = feature.getId().getClassifier();
+        final File outputFile = new File(getTmpDir(project), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
+        if ( !outputFile.exists() ) {
+            outputFile.getParentFile().mkdirs();
+
+            try ( final Writer writer = new FileWriter(outputFile)) {
+                FeatureJSONWriter.write(writer, feature);
+            } catch (final IOException e) {
+                throw new RuntimeException("Unable to write feature " + feature.getId().toMvnId() + " to " + outputFile, e);
+            }
+        }
+        return outputFile;
+    }
+
+
+
     /**
      * Get a resolved Artifact from the coordinates provided
      *
@@ -250,32 +290,40 @@ public abstract class ProjectHelper {
             final ArtifactHandlerManager artifactHandlerManager,
             final ArtifactResolver resolver,
             final ArtifactId id) {
-        final Set<Artifact> artifacts = project.getDependencyArtifacts();
-        if (artifacts != null) {
-            for(final Artifact artifact : artifacts) {
-                if ( artifact.getGroupId().equals(id.getGroupId())
-                   && artifact.getArtifactId().equals(id.getArtifactId())
-                   && artifact.getVersion().equals(id.getVersion())
-                   && artifact.getType().equals(id.getVersion())
-                   && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
-                    return artifact;
+        Artifact result = findArtifact(id, project.getAttachedArtifacts());
+        if ( result == null ) {
+            result = findArtifact(id, project.getDependencyArtifacts());
+            if ( result == null ) {
+                if ( isLocalProjectArtifact(project, id)) {
+                    for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
+                        if ( entry.getValue().getId().equals(id)) {
+                            final Artifact artifact = new DefaultArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), Artifact.SCOPE_PROVIDED, id.getType(), id.getClassifier(), null);
+                            artifact.setFile(createTmpFeatureFile(project, entry.getValue()));
+
+                            result = artifact;
+                            break;
+                        }
+                    }
+                }
+                if ( result == null ) {
+                    final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
+                            id.getArtifactId(),
+                            VersionRange.createFromVersion(id.getVersion()),
+                            Artifact.SCOPE_PROVIDED,
+                            id.getType(),
+                            id.getClassifier(),
+                            artifactHandlerManager.getArtifactHandler(id.getType()));
+                    try {
+                        resolver.resolve(prjArtifact, project.getRemoteArtifactRepositories(), session.getLocalRepository());
+                    } catch (final ArtifactResolutionException | ArtifactNotFoundException e) {
+                        throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
+                    }
+                    result = prjArtifact;
                 }
             }
         }
 
-        final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
-                id.getArtifactId(),
-                VersionRange.createFromVersion(id.getVersion()),
-                Artifact.SCOPE_PROVIDED,
-                id.getType(),
-                id.getClassifier(),
-                artifactHandlerManager.getArtifactHandler(id.getType()));
-        try {
-            resolver.resolve(prjArtifact, project.getRemoteArtifactRepositories(), session.getLocalRepository());
-        } catch (final ArtifactResolutionException | ArtifactNotFoundException e) {
-            throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
-        }
-        return prjArtifact;
+        return result;
     }
 
     public static Feature getOrResolveFeature(final MavenProject project, final MavenSession session,
