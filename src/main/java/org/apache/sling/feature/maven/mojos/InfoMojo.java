@@ -85,24 +85,37 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     @Parameter(property = "reports", defaultValue = "exported-packages")
     private String reports;
 
+    /**
+     * Output format, either file or log.
+     */
+    @Parameter(property = "outputFormat", defaultValue = "file")
+    private String outputFormat;
+
+    /**
+     * If output format is set to file, this can be used to change the output directory.
+     */
+    @Parameter(property = "outputDirectory")
+    private File outputDirectory;
+
     @Deprecated
     @Parameter(property = "featureFile")
     private File featureFile;
 
     @Deprecated
-    @Parameter(property = "outputExportedPackages", defaultValue = "true")
-    private boolean outputExportedPackages;
+    @Parameter(property = "outputExportedPackages")
+    private String outputExportedPackages;
 
-    @Parameter(readonly = true, defaultValue = "${project.build.directory}")
+    @Parameter(readonly = true, defaultValue = "${project.build.directory}/feature-reports")
     private File buildDirectory;
 
-    @Parameter(property = "outputFormat", defaultValue = "file")
-    private String outputFormat;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         final boolean isStandalone = "standalone-pom".equals(project.getArtifactId());
 
+        if ( outputExportedPackages != null ) {
+            getLog().warn("Deprecated configuration 'outputExportedPackages' is used. Please use 'reports' instead.");
+        }
         if ( featureFile != null ) {
             getLog().warn("Deprecated configuration 'featureFile' is used. Change to 'infoFeatureFiles'");
             if ( infoFeatureFiles == null ) {
@@ -151,17 +164,24 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
             reporter.generateReport(ctx);
         }
 
-        final File outputDirectory;
-        if ( isStandalone ) {
+        final File directory;
+        if ( outputDirectory != null ) {
+            directory = outputDirectory;
+        } else if ( isStandalone ) {
             // wired code to get the current directory, but its needed
-            outputDirectory = Paths.get(".").toAbsolutePath().getParent().toFile();
+            directory = Paths.get(".").toAbsolutePath().getParent().toFile();
         } else {
-            outputDirectory = buildDirectory;
+            directory = buildDirectory;
+        }
+        if ( outputFile ) {
+            directory.mkdirs();
         }
         for(final Map.Entry<String, List<String>> entry : reports.entrySet()) {
             if ( outputFile ) {
                 try {
-                    Files.write(new File(outputDirectory, entry.getKey()).toPath(), entry.getValue());
+                    final File out = new File(directory, entry.getKey());
+                    getLog().info("Writing " + out + "...");
+                    Files.write(out.toPath(), entry.getValue());
                 } catch (final IOException e) {
                     throw new MojoExecutionException("Unable to write file: " + e.getMessage(), e);
                 }

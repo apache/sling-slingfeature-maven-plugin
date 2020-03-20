@@ -376,7 +376,7 @@ With the repository goal, a directory with all artifacts from the selected featu
 
 The `info` goal allows to extract information about one or more features and generate some reports. It can be used within a Maven project or standalone.
 
-The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either `log` in which case all output goes to the log or `file` (the default) in which case files for each report are generated.
+The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either *log* in which case all output goes to the log or *file* (the default) in which case files for each report are generated.
 
 ### Duplicates Report (duplicates)
 
@@ -384,7 +384,7 @@ This report is done across all specified features and reports duplicates (bundle
 
 ### Exported Packages (exported-packages)
 
-A text file with a list of exported packages is generated for each feature.
+A text file with a list of exported packages is generated for each feature. If a feature does not export packages, no file is created.
 
 ### Contents (contents)
 
@@ -410,14 +410,16 @@ When used in a Maven project, the list of features for the input goal can be spe
 </execution>
 ```
 
-
 ### Standalone Usage
 
-The `info` goal can also be used standalone without a maven project. In this case the property `infoFeatureFiles` must be specified with a comma separated list of feature files:
+The `info` goal can also be used standalone without a Maven project. In this case the property `infoFeatureFiles` must be specified with a comma separated list of feature files:
 
 ```
     mvn slingfeature:info -DinfoFeatureFiles=/path/to/my/feature.json
 ```
+
+If the `outputFormat` is set to *file*, by default the files are generated in the current directory. `outputDirectory` can be used to specify an alternative directory.
+
 
 ### Example
 
@@ -426,6 +428,8 @@ To generate the `duplicates` report to the log use:
 ```
     mvn slingfeature:info -Dreports=duplicates -DoutputFormat=log
 ```
+
+If the `outputFormat` is set to *file*, by default the files are generated a directory named *feature-reports* in the build directory. `outputDirectory` can be used to specify an alternative directory.
 
 
 ## Feature Launcher (launch-features)
