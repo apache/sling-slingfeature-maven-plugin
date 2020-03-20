@@ -6,7 +6,7 @@
 
 This module is part of the [Apache Sling](https://sling.apache.org) project.
 
-Maven Plugin for OSGi Applications
+Maven Plugin for building OSGi features and applications.
 
 # Authoring Feature Files
 
@@ -46,6 +46,12 @@ If your feature is named `feature.json` then this becomes the main artifact of t
 * validateFeatures : Boolean switch defining whether the feature files should be validated against the schema. This is enabled by default.
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
+
+There might be other plugins involved which generate feature files are part of the build. This plugin by default looks into a directory named *generated-features* inside the build directory for such files. Including of generated files can be controlled with the following configurations:
+
+* generatedFeatures : Directory with the generated features. By default *generated-features* inside the build directory is used.
+* generatedFeaturesIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
+* generatedFeaturesExcludes : The exclude pattern for feature files from the above directory. Empty by default.
 
 # Supported goals
 
