@@ -25,7 +25,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
 public class FeatureSelectionConfig {
 
     enum SelectionType {
-        FILE_INCLUDE, AGGREGATE_CLASSIFIER, ARTIFACT
+        FILES_INCLUDE, CLASSIFIER, ARTIFACT, REFS_INCLUDE
     }
 
     static class Selection {
@@ -51,11 +51,15 @@ public class FeatureSelectionConfig {
     }
 
     public void setFilesInclude(final String val) {
-        selections.add(new Selection(SelectionType.FILE_INCLUDE, val));
+        selections.add(new Selection(SelectionType.FILES_INCLUDE, val));
     }
 
     public void setFilesExclude(final String val) {
         this.filesExcludes.add(val);
+    }
+
+    public void setRefsInclude(final String val) {
+        selections.add(new Selection(SelectionType.REFS_INCLUDE, val));
     }
 
     public void setIncludeArtifact(final Dependency a) {
@@ -63,7 +67,7 @@ public class FeatureSelectionConfig {
     }
 
     public void setIncludeClassifier(final String classifier) {
-        selections.add(new Selection(SelectionType.AGGREGATE_CLASSIFIER, ":".equals(classifier) ? "" : classifier));
+        selections.add(new Selection(SelectionType.CLASSIFIER, ":".equals(classifier) ? "" : classifier));
     }
 
     public List<String> getFilesExcludes() {

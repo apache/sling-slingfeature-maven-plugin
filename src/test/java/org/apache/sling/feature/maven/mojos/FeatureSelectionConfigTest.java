@@ -33,25 +33,33 @@ public class FeatureSelectionConfigTest {
         cfg.setFilesInclude("INC1");
         cfg.setIncludeClassifier("another");
         cfg.setFilesInclude("INC2");
+        cfg.setRefsInclude("src/main/references/**.ref");
+        cfg.setFilesInclude("INC3");
 
         // we should have five items
-        assertEquals(5, cfg.getSelections().size());
+        assertEquals(7, cfg.getSelections().size());
 
         // check ordering
-        assertEquals(FeatureSelectionConfig.SelectionType.AGGREGATE_CLASSIFIER, cfg.getSelections().get(0).type);
+        assertEquals(FeatureSelectionConfig.SelectionType.CLASSIFIER, cfg.getSelections().get(0).type);
         assertEquals("classifier", cfg.getSelections().get(0).instruction);
 
         assertEquals(FeatureSelectionConfig.SelectionType.ARTIFACT, cfg.getSelections().get(1).type);
         assertEquals("gr:ar:1.1", cfg.getSelections().get(1).instruction);
 
-        assertEquals(FeatureSelectionConfig.SelectionType.FILE_INCLUDE, cfg.getSelections().get(2).type);
+        assertEquals(FeatureSelectionConfig.SelectionType.FILES_INCLUDE, cfg.getSelections().get(2).type);
         assertEquals("INC1", cfg.getSelections().get(2).instruction);
 
-        assertEquals(FeatureSelectionConfig.SelectionType.AGGREGATE_CLASSIFIER, cfg.getSelections().get(3).type);
+        assertEquals(FeatureSelectionConfig.SelectionType.CLASSIFIER, cfg.getSelections().get(3).type);
         assertEquals("another", cfg.getSelections().get(3).instruction);
 
-        assertEquals(FeatureSelectionConfig.SelectionType.FILE_INCLUDE, cfg.getSelections().get(4).type);
+        assertEquals(FeatureSelectionConfig.SelectionType.FILES_INCLUDE, cfg.getSelections().get(4).type);
         assertEquals("INC2", cfg.getSelections().get(4).instruction);
+
+        assertEquals(FeatureSelectionConfig.SelectionType.REFS_INCLUDE, cfg.getSelections().get(5).type);
+        assertEquals("src/main/references/**.ref", cfg.getSelections().get(5).instruction);
+
+        assertEquals(FeatureSelectionConfig.SelectionType.FILES_INCLUDE, cfg.getSelections().get(4).type);
+        assertEquals("INC3", cfg.getSelections().get(6).instruction);
 
         // check excludes
         assertEquals(1, cfg.getFilesExcludes().size());

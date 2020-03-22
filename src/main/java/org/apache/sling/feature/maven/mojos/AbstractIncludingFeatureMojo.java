@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,8 +26,10 @@ import java.util.StringTokenizer;
 import java.util.TreeMap;
 
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.shared.utils.io.DirectoryScanner;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
@@ -40,15 +43,20 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
         for(final FeatureSelectionConfig.Selection selection : config.getSelections()) {
             switch ( selection.type ) {
-            case FILE_INCLUDE:
+            case FILES_INCLUDE:
                 hasFileInclude = true;
                 selectFeatureFiles(selection.instruction, config.getFilesExcludes(), result);
                 break;
-            case AGGREGATE_CLASSIFIER:
+            case CLASSIFIER:
                 selectFeatureClassifier(selection.instruction, result);
                 break;
             case ARTIFACT:
                 selectFeatureArtifact(selection.instruction, result);
+                break;
+            case REFS_INCLUDE:
+                selectRefsFiles(selection.instruction, config.getFilesExcludes(), result);
+                break;
+            default:
                 break;
             }
         }
@@ -130,6 +138,43 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                         throw new MojoExecutionException("FeatureExclude " + exclude + " not found.");
                     }
                 }
+            }
+        }
+    }
+
+    private void selectRefsFiles(final String selection, final List<String> excludes, final Map<String, Feature> result)
+            throws MojoExecutionException {
+        final DirectoryScanner scanner = new DirectoryScanner();
+        scanner.setBasedir(this.project.getBasedir());
+        if (!excludes.isEmpty()) {
+            scanner.setExcludes(excludes.toArray(new String[excludes.size()]));
+        }
+        scanner.setIncludes(new String[] { selection });
+        scanner.scan();
+
+        if (!selection.contains("*") && scanner.getIncludedFiles().length == 0 ) {
+            throw new MojoExecutionException("RefsInclude " + selection + " not found.");
+        }
+        for(final String path : scanner.getIncludedFiles()) {
+            final File selectedFile = new File(this.project.getBasedir(), path.replace('/', File.separatorChar));
+            try {
+                final List<String> urls = IOUtils.parseFeatureRefFile(selectedFile);
+                for(final String url : urls) {
+                    try {
+                        final ArtifactId id = ArtifactId.parse(url);
+                        if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
+                            throw new MojoExecutionException(
+                                        "RefsFile configuration is used to select a local feature: " + id.toMvnId());
+                        }
+                        final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
+                                this.artifactHandlerManager, this.artifactResolver, id);
+                        result.put(id.toMvnUrl(), feature);
+                    } catch ( final IllegalArgumentException e) {
+                        throw new MojoExecutionException("Reference " + url + " in " + selectedFile.getAbsolutePath() + " is not a supported url.");
+                    }
+                }
+            } catch (final IOException e) {
+                throw new MojoExecutionException(e.getMessage(), e);
             }
         }
     }
