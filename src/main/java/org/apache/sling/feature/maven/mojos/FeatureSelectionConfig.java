@@ -58,6 +58,11 @@ public class FeatureSelectionConfig {
         this.filesExcludes.add(val);
     }
 
+    /**
+     * Include refs files
+     * @param val A pattern
+     * @since 1.1.22
+     */
     public void setRefsInclude(final String val) {
         selections.add(new Selection(SelectionType.REFS_INCLUDE, val));
     }

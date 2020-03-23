@@ -33,8 +33,17 @@ import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
+import edu.emory.mathcs.backport.java.util.Collections;
+
 public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
+    /**
+     * Get all selected features for the provided configuratio
+     * @param config The selection configuration
+     * @return An ordered map of features
+     * @throws MojoExecutionException
+     */
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {
         final Map<String, Feature> result = new LinkedHashMap<>();
@@ -67,6 +76,11 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         return result;
     }
 
+    /**
+     * Select all feature files from the project
+     * @return Ordered map of feature files
+     * @throws MojoExecutionException
+     */
     protected Map<String, Feature> selectAllFeatureFiles() throws MojoExecutionException {
         final FeatureSelectionConfig config = new FeatureSelectionConfig();
         config.setFilesInclude("**/*.*");
@@ -74,6 +88,11 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         return this.getSelectedFeatures(config);
     }
 
+    /**
+     * Select all features including aggregates from the project
+     * @return Ordered map of features
+     * @throws MojoExecutionException
+     */
     protected Map<String, Feature> selectAllFeatureFilesAndAggregates() throws MojoExecutionException {
         final FeatureSelectionConfig config = new FeatureSelectionConfig();
         config.setFilesInclude("**/*.*");
@@ -81,6 +100,12 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         return this.getSelectedFeatures(config);
     }
 
+    /**
+     * Add the features with the specified classifier
+     * @param selection The classifier
+     * @param result Map containing the result
+     * @throws MojoExecutionException
+     */
     private void selectFeatureClassifier(final String selection, final Map<String, Feature> result)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
@@ -106,6 +131,13 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         }
     }
 
+    /**
+     * Add the feature files with the pattern
+     * @param include The pattern
+     * @param excludes The excludes
+     * @param result Map containing the result
+     * @throws MojoExecutionException
+     */
     private void selectFeatureFiles(final String include, final List<String> excludes,
             final Map<String, Feature> result)
             throws MojoExecutionException {
@@ -142,6 +174,13 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         }
     }
 
+    /**
+     * Add the feature from the ref files with the pattern
+     * @param selection The pattern
+     * @param excludes The excludes
+     * @param result Map containing the result
+     * @throws MojoExecutionException
+     */
     private void selectRefsFiles(final String selection, final List<String> excludes, final Map<String, Feature> result)
             throws MojoExecutionException {
         final DirectoryScanner scanner = new DirectoryScanner();
@@ -155,7 +194,11 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         if (!selection.contains("*") && scanner.getIncludedFiles().length == 0 ) {
             throw new MojoExecutionException("RefsInclude " + selection + " not found.");
         }
-        for(final String path : scanner.getIncludedFiles()) {
+        // sort result
+        @SuppressWarnings("unchecked")
+        final List<String> includedFiles = new ArrayList<>(Arrays.asList(scanner.getIncludedFiles()));
+        Collections.sort(includedFiles);
+        for(final String path : includedFiles) {
             final File selectedFile = new File(this.project.getBasedir(), path.replace('/', File.separatorChar));
             try {
                 final List<String> urls = IOUtils.parseFeatureRefFile(selectedFile);

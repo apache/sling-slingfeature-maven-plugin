@@ -63,6 +63,7 @@ import org.apache.sling.feature.scanner.Scanner;
  * <li>Detecting duplicates across features and writing a report
  * </ul>
  *
+ * @since 1.1.20
  */
 @Mojo(requiresProject = false, name = "info", threadSafe = true)
 public class InfoMojo extends AbstractIncludingFeatureMojo {
