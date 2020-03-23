@@ -18,16 +18,13 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,9 +43,6 @@ import org.apache.sling.feature.maven.mojos.reports.DuplicatesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ExportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ReportContext;
 import org.apache.sling.feature.maven.mojos.reports.Reporter;
-import org.apache.sling.feature.scanner.BundleDescriptor;
-import org.apache.sling.feature.scanner.FeatureDescriptor;
-import org.apache.sling.feature.scanner.PackageInfo;
 import org.apache.sling.feature.scanner.Scanner;
 
 
@@ -273,57 +267,6 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
         } catch (final IOException ioe) {
             throw new MojoExecutionException("Unable to read feature file " + ioe.getMessage(), ioe);
-        }
-    }
-
-    private List<String> getExportedPackages(final FeatureDescriptor fd) {
-        final List<String> packages = new ArrayList<>();
-
-        for (final BundleDescriptor bd : fd.getBundleDescriptors()) {
-            for (PackageInfo p : bd.getExportedPackages()) {
-                packages.add(p.getName());
-            }
-        }
-
-        Collections.sort(packages);
-        return packages;
-    }
-
-    private void writeFile(final File output, final List<String> infos) throws MojoExecutionException {
-        output.getParentFile().mkdirs();
-        try (final Writer fw = new FileWriter(output)) {
-            for (final String p : infos) {
-                fw.write(p);
-                fw.write(System.getProperty("line.separator"));
-            }
-        } catch (final IOException ioe) {
-            throw new MojoExecutionException("Unable to write output file " + ioe.getMessage(), ioe);
-        }
-    }
-
-    private static final class MapEntry implements Map.Entry<Feature, File> {
-
-        private final Feature feature;
-        private final File file;
-
-        public MapEntry(final Feature f, final File file) {
-            this.feature = f;
-            this.file = file;
-        }
-
-        @Override
-        public Feature getKey() {
-            return this.feature;
-        }
-
-        @Override
-        public File getValue() {
-            return this.file;
-        }
-
-        @Override
-        public File setValue(File value) {
-            return null;
         }
     }
 }
