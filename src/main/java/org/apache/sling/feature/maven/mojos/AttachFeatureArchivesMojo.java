@@ -155,20 +155,20 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
         outputFile.getParentFile().mkdirs();
 
         getLog().info("Creating feature archive " + outputFile.getName());
-        try ( final FileOutputStream fos = new FileOutputStream(outputFile)) {
-            final JarOutputStream jos = ArchiveWriter.write(fos,
-                    createBaseManifest(features.size() == 1 ? features.get(0) : null), id -> {
+        try ( final FileOutputStream fos = new FileOutputStream(outputFile);
+              final JarOutputStream jos = ArchiveWriter.write(fos,
+                        createBaseManifest(features.size() == 1 ? features.get(0) : null), id -> {
 
-                    try {
-                        return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager,
-                                artifactResolver, id).getFile().toURI().toURL();
-                    } catch (final MalformedURLException e) {
-                        getLog().debug("Malformed url " + e.getMessage(), e);
-                        // ignore
-                        return null;
+                        try {
+                            return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager,
+                                    artifactResolver, id).getFile().toURI().toURL();
+                        } catch (final MalformedURLException e) {
+                            getLog().debug("Malformed url " + e.getMessage(), e);
+                            // ignore
+                            return null;
+                        }
                     }
-                }
-                    , features.toArray(new Feature[features.size()]));
+                        , features.toArray(new Feature[features.size()]))) {
 
             // handle license etc.
             jos.setLevel(Deflater.BEST_COMPRESSION);
