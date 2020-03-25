@@ -106,7 +106,7 @@ import org.codehaus.plexus.components.io.fileselectors.IncludeExcludeFileSelecto
 import org.osgi.framework.Constants;
 
 /**
- * Generates the APIs JARs for each selected Feature file.
+ * Generates the APIs JARs for the selected feature files.
  */
 @Mojo(name = "apis-jar",
     defaultPhase = LifecyclePhase.PACKAGE,
@@ -147,7 +147,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
     private static final BiPredicate<Path, BasicFileAttributes> IS_JAVA_FILE = (p,a) -> p.toFile().isFile() && p.toFile().getName().endsWith(JAVA_EXTENSION);
 
     private static final Predicate<Path> IS_JAVA_CLASS_FILE = (p) -> p.toFile().isFile() && p.toFile().getName().endsWith(".class");
-    
+
     /**
      * Select the features for api generation.
      */
@@ -461,7 +461,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             onArtifact(artifactProvider, artifact, null, regions, ctx, deflatedBinDir,
                     deflatedSourcesDir, checkedOutSourcesDir);
         }
-        
+
         ctx.getPackagesWithoutJavaClasses().forEach( p -> getLog().info("Exported package " + p + " does not contain any java classes"));
 
         // recollect and package stuff
@@ -603,7 +603,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 // download sources
                 downloadSources(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir,
                         exportPackagesIncludes);
-                
+
                 try {
                     findExportsWithoutJavaClasses(deflatedBundleDirectory, exportedPackages, ctx);
                 } catch (IOException e) {
@@ -683,19 +683,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
 
     /**
      * Finds exported packages that contain no Java classess
-     * 
+     *
      * <p>We need to record this kind of packages and ensure we don't trigger warnings for them
      * when checking the api jars for correctness.</p>
-     * 
+     *
      * @param deflatedBundleDirectory
      * @param exportedPackages
      * @param ctx
-     * @throws IOException 
+     * @throws IOException
      */
     private void findExportsWithoutJavaClasses(File deflatedBundleDirectory, Clause[] exportedPackages, ApisJarContext ctx) throws IOException {
-        
+
         Path root = deflatedBundleDirectory.toPath();
-        
+
         Arrays.stream(exportedPackages)
             .map( Clause::getName )
             .map( pkg -> pkg.split("\\.") )
@@ -704,10 +704,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
             .forEach( dir -> {
                 try ( Stream<Path> entries = Files.list(dir)) {
                     boolean hasClasses = entries.anyMatch( IS_JAVA_CLASS_FILE );
-                    
+
                     if ( !hasClasses ) {
                         String exportedPackage = root.relativize(dir).toString().replace('/', '.');
-                        
+
                         getLog().debug("No classes found in " + exportedPackage);
                         ctx.addPackageWithoutJavaClasses(exportedPackage);
                     }
@@ -717,7 +717,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 }
             });
     }
-    
+
     // Guess the classifier based on the file name
     String inferClassifier(String bundleName, String artifactId, String version) {
         if (bundleName == null || artifactId == null || version == null)
@@ -941,9 +941,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         String scmLocation = artifact.getMetadata().get(SCM_LOCATION);
         if ( scmId != null && scmLocation != null)
             throw new MojoExecutionException("Both " + SCM_ID + " and " + SCM_LOCATION + " are defined for " + artifactId);
-        
+
         boolean fallbackToScmCheckout = false;
-        
+
         if ( scmId != null ) {
             final String value = scmId;
             for (final String id : value.split(",")) {
@@ -951,7 +951,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
                 downloadSourceAndDeflate(artifactProvider, sourcesArtifactId, deflatedSourcesDir, exportPackageIncludes,
                         artifactId, false);
             }
-        } else if ( scmLocation != null ) { 
+        } else if ( scmLocation != null ) {
             checkoutSourcesFromSCM(artifactProvider, artifact, deflatedSourcesDir, checkedOutSourcesDir,
                     exportPackageIncludes, artifactId);
         } else {
@@ -1285,6 +1285,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo implements Artifac
         String symbolicName = bundleName.replace('-', '.');
 
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
+        archiveConfiguration.setAddMavenDescriptor(false);
         if (APIS.equals(classifier)) {
             // APIs need OSGi Manifest entry
             archiveConfiguration.addManifestEntry("Export-Package", getApiExportClause(apiRegion));
