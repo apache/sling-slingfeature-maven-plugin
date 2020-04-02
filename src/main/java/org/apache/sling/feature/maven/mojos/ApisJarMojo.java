@@ -1257,6 +1257,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             if (project.getOrganization() != null) {
                 archiveConfiguration.addManifestEntry("Bundle-Vendor", project.getOrganization().getName());
             }
+
+            // add provide / require capability to make the jar unresolvable
+            archiveConfiguration.addManifestEntry("Provide-Capability", "osgi.unresolvable");
+            archiveConfiguration.addManifestEntry("Require-Capability", "osgi.unresolvable;filter:=\"(&(must.not.resolve=*)(!(must.not.resolve=*)))\",osgi.ee;filter:=\"(&(osgi.ee=JavaSE/compact2)(version=1.8))\"");
         }
         archiveConfiguration.addManifestEntry("Specification-Version", ctx.getFeatureId().getVersion());
         archiveConfiguration.addManifestEntry("Implementation-Title", artifactName);
