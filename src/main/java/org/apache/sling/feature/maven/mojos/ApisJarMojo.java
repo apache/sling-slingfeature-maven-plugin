@@ -644,9 +644,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             deflate(info.getBinDirectory(), binFile, exportedPackagesAndWrappedBundles);
 
-            // renaming potential name-collapsing resources
-            renameResources(info, binArtifact.getId());
         }
+        // renaming potential name-collapsing resources
+        renameResources(info, binArtifact.getId());
 
         // download sources
         if ( generateSourceJar || generateJavadocJar ) {
