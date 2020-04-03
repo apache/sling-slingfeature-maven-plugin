@@ -48,13 +48,11 @@ final class JavadocExecutor {
         }
     }
 
-    public <T> JavadocExecutor addArgument(T value) {
+    public JavadocExecutor addArgument(String value) {
         return this.addArgument(value, true);
     }
 
-    public <T> JavadocExecutor addArgument(T value, boolean newLine) {
-        String stringValue = String.valueOf(value);
-
+    public <T> JavadocExecutor addArgument(String stringValue, boolean newLine) {
         if (newLine) {
             argFileWriter.println(stringValue);
         } else {
@@ -64,31 +62,31 @@ final class JavadocExecutor {
         return this;
     }
 
-    public <T> JavadocExecutor addQuotedArgument(T value) {
-        return addArgument(StringUtils.quoteAndEscape(String.valueOf(value), QUOTE_CHAR));
+    public <T> JavadocExecutor addQuotedArgument(String value) {
+        return addArgument(StringUtils.quoteAndEscape(value, QUOTE_CHAR));
     }
 
-    public <T> JavadocExecutor addArgument(T[] value, String valueSeparator) {
+    public <T> JavadocExecutor addArgument(String[] value, String valueSeparator) {
         return addArgument(StringUtils.join(value, valueSeparator));
     }
 
-    public <T> JavadocExecutor addArgument(Collection<T> value, String valueSeparator) {
+    public JavadocExecutor addArgument(Collection<String> value, String valueSeparator) {
         return addArgument(StringUtils.join(value.iterator(), valueSeparator));
     }
 
-    public <T> JavadocExecutor addArguments(Collection<T> value) {
-        for (T current : value) {
+    public JavadocExecutor addArguments(Collection<String> value) {
+        for (String current : value) {
             addArgument(current);
         }
         return this;
     }
 
-    public <T> JavadocExecutor addArguments(String key, T[] values) {
+    public JavadocExecutor addArguments(String key, String[] values) {
         return addArguments(key, Arrays.asList(values));
     }
 
-    public <T> JavadocExecutor addArguments(String key, Collection<T> value) {
-        for (T current : value) {
+    public JavadocExecutor addArguments(String key, Collection<String> value) {
+        for (String current : value) {
             addArgument(key, false);
             addArgument(current);
         }

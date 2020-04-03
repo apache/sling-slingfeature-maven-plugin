@@ -36,7 +36,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.json.JsonArray;
@@ -430,10 +429,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             }
 
             if (generateJavadocJar) {
-                final Set<String> subpackageDirectories = calculateSubpackageDirectories(ctx.getArtifactInfos().stream().map(info -> info.getSourceDirectory()).filter(dir -> dir != null).collect(Collectors.toList()));
-                if (!subpackageDirectories.isEmpty()) {
-                    final File javadocsDir = new File(regionDir, JAVADOC);
-                    generateJavadoc(ctx, javadocsDir, subpackageDirectories);
+                final File javadocsDir = new File(regionDir, JAVADOC);
+                if ( generateJavadoc(ctx, apiRegion, javadocsDir) ) {
                     ctx.setJavadocDir(javadocsDir);
                     final File javadocJar = createArchive(ctx, apiRegion, JAVADOC, this.apiJavadocResources);
                     report(javadocJar, JAVADOC, apiRegion, "html", ctx);
@@ -541,17 +538,27 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
 
                 info.setBinDirectory(new File(ctx.getDeflatedBinDir(), info.getId().toMvnName()));
+                info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
+
                 final boolean skipBinDeflate = info.getBinDirectory().exists();
                 if ( skipBinDeflate ) {
                     getLog().debug("Artifact " + info.getId().toMvnName() + " already deflated");
                 }
+                final boolean skipSourceDeflate = info.getSourceDirectory().exists();
+                if ( skipSourceDeflate ) {
+                    getLog().debug("Source for artifact " + info.getId().toMvnName() + " already deflated");
+                }
 
-                processBinary(ctx, info, bundleFile, artifact, skipBinDeflate);
+                processBinary(ctx, info, bundleFile, artifact, skipBinDeflate, skipSourceDeflate);
 
                 // check if the bundle wraps other bundles
-                computeWrappedBundles(ctx, info, manifest, skipBinDeflate);
+                computeWrappedBundles(ctx, info, manifest, skipBinDeflate, skipSourceDeflate);
 
                 postProcessArtifact(ctx, info, artifact);
+
+                if ( !info.getSourceDirectory().exists() ) {
+                    info.setSourceDirectory(null);
+                }
 
                 if ( generateJavadocJar ) {
                     buildJavadocClasspath(artifact.getId()).forEach( ctx::addJavadocClasspath );
@@ -617,7 +624,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final ArtifactInfo info,
             final File binFile,
             final Artifact binArtifact,
-            final boolean skipBinDeflate)
+            final boolean skipBinDeflate,
+            final boolean skipSourceDeflate)
     throws MojoExecutionException {
         if ( !skipBinDeflate ) {
             // deflate all bundles first, in order to copy APIs and resources later,
@@ -636,7 +644,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // download sources
         if ( generateSourceJar || generateJavadocJar ) {
-            downloadSources(ctx, info, binArtifact);
+            if ( !skipSourceDeflate ) {
+                downloadSources(ctx, info, binArtifact);
+            }
         }
 
     }
@@ -659,7 +669,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private void computeWrappedBundles(final ApisJarContext ctx,
             final ArtifactInfo info,
             final Manifest manifest,
-            final boolean skipBinDeflate)
+            final boolean skipBinDeflate,
+            final boolean skipSourceDeflate)
     throws MojoExecutionException {
 
         final String bundleClassPath = manifest.getMainAttributes().getValue(Constants.BUNDLE_CLASSPATH);
@@ -711,7 +722,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         new ArtifactId(groupId, artifactId, version, classifier, null));
                 final File bundleFile = getArtifactFile(artifactProvider, syntheticArtifact.getId());
 
-                processBinary(ctx, info, bundleFile, syntheticArtifact, skipBinDeflate);
+                processBinary(ctx, info, bundleFile, syntheticArtifact, skipBinDeflate, skipSourceDeflate);
             }
         }
     }
@@ -914,13 +925,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final URL url = retrieve(artifactProvider, sourcesArtifactId);
             if (url != null) {
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
-                final File sourceDirectory = new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName());
-                info.setSourceDirectory(sourceDirectory);
-                if ( sourceDirectory.exists() ) {
-                    getLog().debug("Artifact " + sourcesArtifactId.toMvnName() + " already deflated");
-                } else {
-                    deflate(sourceDirectory, sourcesBundle, info.getUsedExportedPackageIncludes());
-                }
+                deflate(info.getSourceDirectory(), sourcesBundle, info.getUsedExportedPackageIncludes());
              } else {
                 if (!allowFallback) {
                     throw new MojoExecutionException("Unable to download sources for " + info.getId().toMvnId()
@@ -1203,7 +1208,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 final String[] usedExportedPackageIncludes = includeEntry.getUsedExportedPackageIncludes(apiRegion);
                 if ( usedExportedPackageIncludes.length > 0 ) {
-                    getLog().info("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
+                    getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
                     final DefaultFileSet fileSet = new DefaultFileSet(dir);
                     fileSet.setIncludingEmptyDirectories(false);
                     fileSet.setIncludes(usedExportedPackageIncludes);
@@ -1304,8 +1309,25 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return target;
     }
 
-    private void generateJavadoc(final ApisJarContext ctx, final File javadocDir, final Set<String> subpackageDirectories)
+    private boolean generateJavadoc(final ApisJarContext ctx, final ApiRegion region, final File javadocDir)
             throws MojoExecutionException {
+        final List<String> sourceDirectories = new ArrayList<>();
+        final Set<String> javadocPackages = new HashSet<>();
+        for(final ArtifactInfo info : ctx.getArtifactInfos()) {
+            boolean addDirectory = false;
+            for(final Clause clause : info.getUsedExportedPackages(region)) {
+                addDirectory = true;
+                javadocPackages.add(clause.getName());
+            }
+            if ( addDirectory && info.getSourceDirectory() != null ) {
+                sourceDirectories.add(info.getSourceDirectory().getAbsolutePath());
+            }
+        }
+
+        if (javadocPackages.isEmpty()) {
+            return false;
+        }
+
         javadocDir.mkdirs();
 
         JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
@@ -1319,7 +1341,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                           .addArgument("-d", false)
                                           .addArgument(javadocDir.getAbsolutePath())
                                           .addArgument("-sourcepath", false)
-                                          .addArgument(String.join(":", ctx.getArtifactInfos().stream().map( info -> info.getSourceDirectory()).filter(dir -> dir != null).map(dir -> dir.getAbsolutePath()).collect(Collectors.toList())));
+                                          .addArgument(String.join(":", sourceDirectories));
 
         if (isNotEmpty(javadocSourceLevel)) {
             javadocExecutor.addArgument("-source", false)
@@ -1363,41 +1385,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         javadocExecutor.addArgument("--allow-script-in-comments");
 
-        // use the -subpackages to reduce the list of the arguments
-        javadocExecutor.addArgument("-subpackages", false);
-        javadocExecutor.addArgument(subpackageDirectories, File.pathSeparator);
+        // list packages
+        javadocExecutor.addArguments(javadocPackages);
 
         // .addArgument("-J-Xmx2048m")
         javadocExecutor.execute(javadocDir, getLog(), this.ignoreJavadocErrors);
-    }
 
-    /**
-     * Returns the list of subdirectories that have at least one Java source file
-     *
-     * @param sourcesDir the directory with source files
-     * @return a list of subpackages, potentially empty, never <code>null</code>
-     */
-    private Set<String> calculateSubpackageDirectories(List<File> sourcesDirs) {
-        final Set<String> result = new HashSet<>();
-        for(final File sourcesDir : sourcesDirs) {
-            final int prefixLength = sourcesDir.getAbsolutePath().length() + 1;
-
-            // make sure to only include directories that have at least one java source file
-            collectSubpackageDirectories(prefixLength, sourcesDir, result);
-        }
-
-        return result;
-    }
-
-    private void collectSubpackageDirectories(final int prefixLength, final File dir, final Set<String> result) {
-        for(final File child : dir.listFiles()) {
-            if ( child.isDirectory() ) {
-                collectSubpackageDirectories(prefixLength, child, result);
-            } else if ( child.getName().endsWith(JAVA_EXTENSION) ) {
-                final String javaPackage = dir.getAbsolutePath().substring(prefixLength).replace(File.separatorChar, '.');
-                result.add(javaPackage);
-            }
-        }
+        return true;
     }
 
     private static <T> T setIfNull(T what, T with) {
