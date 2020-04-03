@@ -227,6 +227,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "true")
     private boolean generateJavadocJar;
 
+    /**
+     * Optional version to be put into the manifest of the created jars
+     */
+    @Parameter
+    private String apiVersion;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -1263,6 +1269,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         final String artifactName = String.format("%s-%s", project.getArtifactId(), finalClassifier);
 
+        final ArtifactId apiId = apiVersion == null ? ctx.getFeatureId() : ctx.getFeatureId().changeVersion(this.apiVersion);
+
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
         archiveConfiguration.setAddMavenDescriptor(false);
         if (APIS.equals(classifier)) {
@@ -1270,7 +1278,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             String symbolicName = artifactName.replace('-', '.');
             archiveConfiguration.addManifestEntry("Export-Package", getApiExportClause(ctx, apiRegion));
             archiveConfiguration.addManifestEntry("Bundle-Description", project.getDescription());
-            archiveConfiguration.addManifestEntry("Bundle-Version", ctx.getFeatureId().getOSGiVersion().toString());
+            archiveConfiguration.addManifestEntry("Bundle-Version", apiId.getOSGiVersion().toString());
             archiveConfiguration.addManifestEntry("Bundle-ManifestVersion", "2");
             archiveConfiguration.addManifestEntry("Bundle-SymbolicName", symbolicName);
             archiveConfiguration.addManifestEntry("Bundle-Name", artifactName);
@@ -1286,8 +1294,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Provide-Capability", "osgi.unresolvable");
             archiveConfiguration.addManifestEntry("Require-Capability", "osgi.unresolvable;filter:=\"(&(must.not.resolve=*)(!(must.not.resolve=*)))\",osgi.ee;filter:=\"(&(osgi.ee=JavaSE/compact2)(version=1.8))\"");
         }
-        archiveConfiguration.addManifestEntry("Specification-Version", ctx.getFeatureId().getVersion());
+        archiveConfiguration.addManifestEntry("Implementation-Version", apiId.getVersion());
+        archiveConfiguration.addManifestEntry("Specification-Version", apiId.getVersion());
+
         archiveConfiguration.addManifestEntry("Implementation-Title", artifactName);
+        archiveConfiguration.addManifestEntry("Specification-Title", artifactName);
+        if (project.getOrganization() != null) {
+            archiveConfiguration.addManifestEntry("Implementation-Vendor", project.getOrganization().getName());
+            archiveConfiguration.addManifestEntry("Specification-Vendor", project.getOrganization().getName());
+        }
 
         String targetName = String.format("%s-%s-%s.jar", project.getArtifactId(), project.getVersion(), finalClassifier);
         File target = new File(mainOutputDir, targetName);
