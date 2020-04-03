@@ -18,12 +18,15 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 
 class ApisJarContext {
@@ -36,11 +39,13 @@ class ApisJarContext {
 
         private File sourceDirectory;
 
-        private Clause[] exportedPackageClauses;
-
+        /** Exported packages used by all regions. */
         private Set<String> usedExportedPackages;
 
-        private final  Set<File> includedResources = new HashSet<>();
+        /** Exported packages per region. */
+        private final Map<String, Set<Clause>> usedExportedPackagesRegion = new HashMap<>();
+
+        private final Set<File> includedResources = new HashSet<>();
 
         public ArtifactInfo(final ArtifactId id) {
             this.id = id;
@@ -66,14 +71,6 @@ class ApisJarContext {
             this.sourceDirectory = sourceDirectory;
         }
 
-        public Clause[] getExportedPackageClauses() {
-            return exportedPackageClauses;
-        }
-
-        public void setExportedPackageClauses(final Clause[] exportedPackageClauses) {
-            this.exportedPackageClauses = exportedPackageClauses;
-        }
-
         public Set<String> getUsedExportedPackages() {
             return usedExportedPackages;
         }
@@ -86,6 +83,23 @@ class ApisJarContext {
             final Set<String> includes = new HashSet<>();
             for(final String pck : usedExportedPackages) {
                 includes.add(pck.replace('.', '/').concat("/*"));
+            }
+            return includes.toArray(new String[includes.size()]);
+        }
+
+        public Set<Clause> getUsedExportedPackages(final ApiRegion region) {
+            return this.usedExportedPackagesRegion.get(region.getName());
+        }
+
+        public void setUsedExportedPackages(final ApiRegion region, final Set<Clause> usedExportedPackages) {
+            this.usedExportedPackagesRegion.put(region.getName(), usedExportedPackages);
+        }
+
+        public String[] getUsedExportedPackageIncludes(final ApiRegion region) {
+            final Set<Clause> clauses = this.getUsedExportedPackages(region);
+            final Set<String> includes = new HashSet<>();
+            for(final Clause clause : clauses) {
+                includes.add(clause.getName().replace('.', '/').concat("/*"));
             }
             return includes.toArray(new String[includes.size()]);
         }
@@ -111,6 +125,8 @@ class ApisJarContext {
     private final ArtifactId featureId;
 
     private final ApiRegions apiRegions;
+
+    private final Set<String> nodeTypes = new HashSet<>();
 
     public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
         this.featureId = featureId;
@@ -181,5 +197,13 @@ class ApisJarContext {
 
     public void setJavadocDir(File javadocDir) {
         this.javadocDir = javadocDir;
+    }
+
+    public Set<String> getNodeTypes() {
+        return this.nodeTypes;
+    }
+
+    public void addNodeType(final String name) {
+        this.nodeTypes.add(name);
     }
 }
