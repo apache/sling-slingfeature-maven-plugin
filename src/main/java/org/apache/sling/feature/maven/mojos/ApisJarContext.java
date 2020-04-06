@@ -47,6 +47,8 @@ class ApisJarContext {
 
         private final Set<File> includedResources = new HashSet<>();
 
+        private final Set<String> nodeTypes = new HashSet<>();
+
         public ArtifactInfo(final ArtifactId id) {
             this.id = id;
         }
@@ -107,9 +109,19 @@ class ApisJarContext {
         public Set<File> getIncludedResources() {
             return includedResources;
         }
+
+
+        public Set<String> getNodeTypes() {
+            return this.nodeTypes;
+        }
+
+        public void addNodeType(final String name) {
+            this.nodeTypes.add(name);
+        }
     }
 
     private final Set<String> javadocClasspath = new HashSet<>();
+
     private final Set<String> packagesWithoutJavaClasses = new HashSet<>();
 
     private final File deflatedBinDir;
@@ -125,8 +137,6 @@ class ApisJarContext {
     private final ArtifactId featureId;
 
     private final ApiRegions apiRegions;
-
-    private final Set<String> nodeTypes = new HashSet<>();
 
     public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
         this.featureId = featureId;
@@ -197,13 +207,5 @@ class ApisJarContext {
 
     public void setJavadocDir(File javadocDir) {
         this.javadocDir = javadocDir;
-    }
-
-    public Set<String> getNodeTypes() {
-        return this.nodeTypes;
-    }
-
-    public void addNodeType(final String name) {
-        this.nodeTypes.add(name);
     }
 }
