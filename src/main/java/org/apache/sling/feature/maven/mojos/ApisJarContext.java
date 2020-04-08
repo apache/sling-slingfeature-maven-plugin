@@ -18,19 +18,30 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.felix.utils.manifest.Clause;
+import org.apache.maven.model.License;
+import org.apache.maven.model.Model;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 
+/**
+ * Context for creating the api jars
+ */
 class ApisJarContext {
 
+    /**
+     * Information about a single artifact (bundle) taking part in the api generation.
+     */
     public static final class ArtifactInfo {
 
         private ArtifactId id;
@@ -48,6 +59,8 @@ class ApisJarContext {
         private final Set<File> includedResources = new HashSet<>();
 
         private final Set<String> nodeTypes = new HashSet<>();
+
+        private List<License> licenses;
 
         public ArtifactInfo(final ArtifactId id) {
             this.id = id;
@@ -110,13 +123,20 @@ class ApisJarContext {
             return includedResources;
         }
 
-
+        /**
+         * Get all node types from this artifact
+         * @return The set of node types, might be empty
+         */
         public Set<String> getNodeTypes() {
             return this.nodeTypes;
         }
 
-        public void addNodeType(final String name) {
-            this.nodeTypes.add(name);
+        public List<License> getLicenses() {
+            return licenses;
+        }
+
+        public void setLicenses(List<License> licenses) {
+            this.licenses = licenses;
         }
     }
 
@@ -138,13 +158,17 @@ class ApisJarContext {
 
     private final ApiRegions apiRegions;
 
+    private final Map<ArtifactId, Model> modelCache = new HashMap<>();
+
+    private List<String[]> licenseDefaultMatches;
+
     public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
         this.featureId = featureId;
 
         // deflated and source dirs can be shared
-        this.deflatedBinDir = newDir(mainDir, "deflated-bin");
-        this.deflatedSourcesDir = newDir(mainDir, "deflated-sources");
-        this.checkedOutSourcesDir = newDir(mainDir, "checkouts");
+        this.deflatedBinDir = new File(mainDir, "deflated-bin");
+        this.deflatedSourcesDir = new File(mainDir, "deflated-sources");
+        this.checkedOutSourcesDir = new File(mainDir, "checkouts");
         this.apiRegions = regions;
     }
 
@@ -168,26 +192,28 @@ class ApisJarContext {
         return checkedOutSourcesDir;
     }
 
-    public boolean addJavadocClasspath(String classpathItem) {
+    public boolean addJavadocClasspath(final String classpathItem) {
         return javadocClasspath.add(classpathItem);
-    }
-
-    public boolean addPackageWithoutJavaClasses(String packageName) {
-        return packagesWithoutJavaClasses.add(packageName);
     }
 
     public Set<String> getJavadocClasspath() {
         return javadocClasspath;
     }
 
-    public Set<String> getPackagesWithoutJavaClasses() {
-        return packagesWithoutJavaClasses;
+    public File getJavadocDir() {
+        return javadocDir;
     }
 
-    private static File newDir(File parent, String child) {
-        File dir = new File(parent, child);
-        dir.mkdirs();
-        return dir;
+    public void setJavadocDir(final File javadocDir) {
+        this.javadocDir = javadocDir;
+    }
+
+    public boolean addPackageWithoutJavaClasses(final String packageName) {
+        return packagesWithoutJavaClasses.add(packageName);
+    }
+
+    public Set<String> getPackagesWithoutJavaClasses() {
+        return packagesWithoutJavaClasses;
     }
 
     public ArtifactInfo addArtifactInfo(final ArtifactId id) {
@@ -201,11 +227,95 @@ class ApisJarContext {
         return this.infos;
     }
 
-    public File getJavadocDir() {
-        return javadocDir;
+    public Map<ArtifactId, Model> getModelCache() {
+        return this.modelCache;
     }
 
-    public void setJavadocDir(File javadocDir) {
-        this.javadocDir = javadocDir;
+    public Collection<ArtifactInfo> getArtifactInfos(final ApiRegion region) {
+        final Map<ArtifactId, ArtifactInfo> result = new TreeMap<>();
+        for(final ArtifactInfo info : this.infos) {
+            if ( !info.getUsedExportedPackages(region).isEmpty() ) {
+                result.put(info.getId(), info);
+            }
+        }
+        return result.values();
+    }
+
+
+    public void setLicenseDefaults(final List<String> licenseDefaults) throws MojoExecutionException {
+        this.licenseDefaultMatches = parseMatches(licenseDefaults);
+    }
+
+    public String getLicenseDefault(final ArtifactId id) {
+        String result = null;
+        if (this.licenseDefaultMatches != null) {
+            result = match(id);
+        }
+        return result;
+    }
+    private List<String[]> parseMatches(final List<String> licenseDefaults) throws MojoExecutionException {
+        List<String[]> matches = null;
+        if (licenseDefaults != null && !licenseDefaults.isEmpty()) {
+            matches = new ArrayList<>();
+            for (final String t : licenseDefaults) {
+                final String[] parts;
+                if ( t.endsWith("=") ) {
+                    parts = new String[] {t.substring(0, t.length() - 1), ""};
+                } else {
+                    parts = t.split("=");
+                }
+                if ( parts.length != 2 ) {
+                    throw new MojoExecutionException("Illegal license default: " + t);
+                }
+                final String[] val = parts[0].split(":");
+                if (val.length > 5) {
+                    throw new MojoExecutionException("Illegal license default: " + t);
+                }
+                final String[] result = new String[val.length + 1];
+                System.arraycopy(val, 0, result, 1, val.length);
+                result[0] = parts[1];
+                matches.add(result);
+            }
+        }
+        return matches;
+    }
+
+    private boolean match(final String value, final String matcher) {
+        if (matcher.endsWith("*")) {
+            return value.startsWith(matcher.substring(0, matcher.length() - 1));
+        }
+        return matcher.equals(value);
+    }
+
+    private String match(final ArtifactId id) {
+        boolean match = false;
+
+        for(final String[] m : this.licenseDefaultMatches) {
+            match = match(id.getGroupId(), m[1]);
+            if (match && m.length > 2) {
+                match = match(id.getArtifactId(), m[2]);
+            }
+            if (match && m.length == 4) {
+                match = match(id.getVersion(), m[3]);
+            } else if (match && m.length == 5) {
+                match = match(id.getVersion(), m[4]);
+                if (match) {
+                    match = match(id.getType(), m[3]);
+                }
+            } else if (match && m.length == 6) {
+                match = match(id.getVersion(), m[5]);
+                if (match) {
+                    match = match(id.getType(), m[3]);
+                    if (match) {
+                        match = match(id.getClassifier(), m[4]);
+                    }
+                }
+            }
+            if (match) {
+                return m[0];
+            }
+        }
+
+        return null;
     }
 }

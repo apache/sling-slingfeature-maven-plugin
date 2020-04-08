@@ -21,6 +21,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -35,6 +36,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.json.JsonArray;
 
@@ -49,6 +51,7 @@ import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
 import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
 import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
+import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
 import org.apache.maven.model.building.ModelBuilder;
@@ -106,10 +109,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /** Alternative ID to a source artifact. */
     private static final String SCM_ID = "source-ids";
 
+    /** Tag for source when using SCM info */
     private static final String SCM_TAG = "scm-tag";
 
+    /** Alternative SCM location. */
     private static final String SCM_LOCATION = "scm-location";
 
+    /** Alternative SCM encoding, default is UTF-8 */
     private static final String SCM_ENCODING = "scm-encoding";
 
     private static final String APIS = "apis";
@@ -241,6 +247,38 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      */
     @Parameter(defaultValue = "META-INF,SLING-INF")
     private String resourceFolders;
+
+    /**
+     * Create a license report file. This is the name of that file within the jar
+     * @since 1.2.0
+     */
+    @Parameter
+    private String licenseReport;
+
+    /**
+     * A artifact patterns to match artifacts without a license. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". After the patter a "=" followed by
+     * the license information needs to be specified. This information is used in the
+     * license report if no license is specified for an artifact.
+     * @since 1.2.0
+     */
+    @Parameter
+    private List<String> licenseDefaults;
+
+    /**
+     * Header added on top of the license report
+     * @since 1.2.0
+     */
+    @Parameter(defaultValue = "This archive contains files from the following artifacts:")
+    private String licenseReportHeader;
+
+    /**
+     * Footer added at the bottom of the license report
+     * @since 1.2.0
+     */
+    @Parameter
+    private String licenseReportFooter;
+
 
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
@@ -421,6 +459,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // create an output directory per feature
         final File featureDir = new File(mainOutputDir, feature.getId().getArtifactId());
         final ApisJarContext ctx = new ApisJarContext(this.mainOutputDir, feature.getId(), regions);
+        ctx.setLicenseDefaults(licenseDefaults);
 
         // for each bundle included in the feature file and record directories
         for (final Artifact artifact : feature.getBundles()) {
@@ -947,7 +986,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
             if ( resourceName.endsWith(CND_EXTENSION)) {
-                info.addNodeType(resourceName);
+                info.getNodeTypes().add(resourceName);
             }
         }
 
@@ -1017,6 +1056,36 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
+    private Model getArtifactPom(final ApisJarContext ctx, final ArtifactId artifactId) throws MojoExecutionException {
+        final ArtifactId pomArtifactId = artifactId.changeClassifier(null).changeType("pom");
+        // check model cache
+        Model model = ctx.getModelCache().get(pomArtifactId);
+        if ( model == null ) {
+            getLog().debug("Retrieving POM " + pomArtifactId.toMvnId() + "...");
+            // POM file must exist, let the plugin fail otherwise
+            final URL pomURL = retrieve(artifactProvider, pomArtifactId);
+            if (pomURL == null) {
+                throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
+            }
+
+            File pomFile = null;
+            try {
+                pomFile = IOUtils.getFileFromURL(pomURL, true, null);
+            } catch (IOException e) {
+                throw new MojoExecutionException(e.getMessage());
+            }
+            getLog().debug("POM " + pomArtifactId.toMvnId() + " successfully retrieved, reading the model...");
+
+            // read model
+            model = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
+            getLog().debug("POM model " + pomArtifactId.toMvnId() + " successfully read");
+
+            // cache model
+            ctx.getModelCache().put(pomArtifactId, model);
+        }
+        return model;
+    }
+
     private void checkoutSourcesFromSCM(final ApisJarContext ctx,
             final ArtifactInfo info,
             final Artifact sourceArtifact)
@@ -1026,25 +1095,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         String tag = sourceArtifact.getMetadata().get(SCM_TAG);
 
         // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
-        final ArtifactId pomArtifactId = sourceArtifact.getId().changeClassifier(null).changeType("pom");
-        getLog().debug("Falling back to SCM checkout, retrieving POM " + pomArtifactId.toMvnId() + "...");
-        // POM file must exist, let the plugin fail otherwise
-        final URL pomURL = retrieve(artifactProvider, pomArtifactId);
-        if (pomURL == null) {
-            throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
-        }
-
-        File pomFile = null;
-        try {
-            pomFile = IOUtils.getFileFromURL(pomURL, true, null);
-        } catch (IOException e) {
-            throw new MojoExecutionException(e.getMessage());
-        }
-        getLog().debug("POM " + pomArtifactId.toMvnId() + " successfully retrieved, reading the model...");
-
-        // read model
-        Model pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
-        getLog().debug("POM model " + pomArtifactId.toMvnId() + " successfully read, processing the SCM...");
+        getLog().debug("Falling back to SCM checkout...");
+        final Model pomModel = getArtifactPom(ctx, sourceArtifact.getId());
+        getLog().debug("Processing SCM info from pom...");
 
         final Scm scm = pomModel.getScm();
         if (scm != null) {
@@ -1060,7 +1113,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId() + " : SCM not defined in "
                     + sourceArtifact.getId().toMvnId()
                           + " bundle neither in "
-                    + pomArtifactId.toMvnId() + " POM file.");
+                    + pomModel.getId() + " POM file.");
             return;
         }
 
@@ -1106,11 +1159,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             pomScanner.setIncludes("**/pom.xml");
             pomScanner.scan();
             for (String pomFileLocation : pomScanner.getIncludedFiles()) {
-                pomFile = new File(basedir, pomFileLocation);
-                pomModel = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false)
-                        .get();
+                final File pomFile = new File(basedir, pomFileLocation);
+                final Model model = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
 
-                if (sourceArtifact.getId().getArtifactId().equals(pomModel.getArtifactId())) {
+                if (sourceArtifact.getId().getArtifactId().equals(model.getArtifactId())) {
                     basedir = pomFile.getParentFile();
                     break;
                 }
@@ -1243,19 +1295,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final List<File> resources) throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
+        final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(apiRegion);
+
         if ( APIS.equals(classifier) || SOURCES.equals(classifier) ) {
             // api or source
-            for(final ArtifactInfo includeEntry : ctx.getArtifactInfos()) {
-                final File dir = APIS.equals(classifier) ? includeEntry.getBinDirectory() : includeEntry.getSourceDirectory();
+            for(final ArtifactInfo info : infos) {
+                final File dir = APIS.equals(classifier) ? info.getBinDirectory() : info.getSourceDirectory();
 
-                final String[] usedExportedPackageIncludes = includeEntry.getUsedExportedPackageIncludes(apiRegion);
-                if ( usedExportedPackageIncludes.length > 0 ) {
-                    getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
-                    final DefaultFileSet fileSet = new DefaultFileSet(dir);
-                    fileSet.setIncludingEmptyDirectories(false);
-                    fileSet.setIncludes(usedExportedPackageIncludes);
-                    jarArchiver.addFileSet(fileSet);
-                }
+                final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
+                getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
+                final DefaultFileSet fileSet = new DefaultFileSet(dir);
+                fileSet.setIncludingEmptyDirectories(false);
+                fileSet.setIncludes(usedExportedPackageIncludes);
+                jarArchiver.addFileSet(fileSet);
             }
         } else {
             // javadoc
@@ -1293,6 +1345,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     jarArchiver.addFile(rsrc, rsrc.getName());
                 }
             }
+        }
+
+        // check for license report
+        if ( this.licenseReport != null ) {
+            final File out = this.createLicenseReport(ctx, apiRegion, infos);
+            jarArchiver.addFile(out, this.licenseReport);
         }
 
         // build classifier
@@ -1473,6 +1531,85 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final List<String> sorted = new ArrayList<>(packages);
         Collections.sort(sorted);
         return sorted;
+    }
+
+    private File createLicenseReport(final ApisJarContext ctx, final ApiRegion region, final Collection<ArtifactInfo> infos) throws MojoExecutionException {
+        final File out = new File(this.getTmpDir(), region.getName() + "-license-report.txt");
+        if ( !out.exists() ) {
+
+            final List<String> output = new ArrayList<>();
+            output.add(licenseReportHeader);
+            output.add("");
+            for(final ArtifactInfo info : infos) {
+                final List<License> licenses = this.getLicenses(ctx, info);
+
+                boolean exclude = false;
+                final StringBuilder sb = new StringBuilder(info.getId().toMvnId());
+                if ( !licenses.isEmpty() ) {
+                    sb.append(" - License(s) : ");
+                    sb.append(String.join(", ",
+                            licenses.stream()
+                                    .map(l -> l.getName().concat(" (").concat(l.getUrl()).concat(")"))
+                                    .collect(Collectors.toList())));
+                } else {
+                    final String licenseDefault = ctx.getLicenseDefault(info.getId());
+                    if ( licenseDefault != null ) {
+                        if ( licenseDefault.isEmpty()) {
+                            exclude = true;
+                            getLog().debug("Excluding from license report " + info.getId().toMvnId());
+                        } else {
+                            sb.append(" - License(s) : ");
+                            sb.append(licenseDefault);
+                        }
+                    } else {
+                        getLog().warn("No license info found for " + info.getId().toMvnId());
+                    }
+                }
+                if ( !exclude ) {
+                    output.add(sb.toString());
+                }
+            }
+            if ( this.licenseReportFooter != null ) {
+                output.add("");
+                output.add(this.licenseReportFooter);
+            }
+            try {
+                Files.write(out.toPath(), output);
+            } catch (IOException e) {
+                throw new MojoExecutionException("Unable to write license report: " + e.getMessage(), e);
+            }
+        }
+        return out;
+    }
+
+    private List<License> getLicenses(final ApisJarContext ctx, final ArtifactInfo info) {
+        List<License> result = info.getLicenses();
+        if  ( result == null ) {
+            try {
+                ArtifactId id = info.getId();
+                do {
+                    final Model model = getArtifactPom(ctx, id);
+                    final List<License> ll = model.getLicenses();
+
+                    if ( ll != null && !ll.isEmpty() ) {
+                        result = ll;
+                    } else {
+                        if ( model.getParent() != null ) {
+                            id = new ArtifactId(model.getParent().getGroupId(), model.getParent().getArtifactId(), model.getParent().getVersion(), null, "pom");
+                        } else {
+                            break;
+                        }
+                    }
+                }  while (result == null);
+            } catch (MojoExecutionException m) {
+                // nothing to do
+            }
+            if ( result == null ) {
+                result = Collections.emptyList();
+            }
+            info.setLicenses(result);
+        }
+        return result;
     }
 }
 
