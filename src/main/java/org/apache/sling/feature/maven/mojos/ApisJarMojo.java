@@ -1435,8 +1435,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         for(final ArtifactInfo info : ctx.getArtifactInfos()) {
             boolean addDirectory = false;
             for(final Clause clause : info.getUsedExportedPackages(region)) {
-                addDirectory = true;
-                javadocPackages.add(clause.getName());
+                if ( !ctx.getPackagesWithoutJavaClasses().contains(clause.getName())) {
+                    addDirectory = true;
+                    javadocPackages.add(clause.getName());
+                }
             }
             if ( addDirectory && info.getSourceDirectory() != null ) {
                 sourceDirectories.add(info.getSourceDirectory().getAbsolutePath());
