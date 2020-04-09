@@ -145,6 +145,8 @@ class ApisJarContext {
 
     private final Set<String> packagesWithoutJavaClasses = new HashSet<>();
 
+    private final Set<String> packagesWithoutSources = new HashSet<>();
+
     private final File deflatedBinDir;
 
     private final File deflatedSourcesDir;
@@ -209,12 +211,12 @@ class ApisJarContext {
         this.javadocDir = javadocDir;
     }
 
-    public boolean addPackageWithoutJavaClasses(final String packageName) {
-        return packagesWithoutJavaClasses.add(packageName);
-    }
-
     public Set<String> getPackagesWithoutJavaClasses() {
         return packagesWithoutJavaClasses;
+    }
+
+    public Set<String> getPackagesWithoutSources() {
+        return packagesWithoutSources;
     }
 
     public ArtifactInfo addArtifactInfo(final ArtifactId id) {

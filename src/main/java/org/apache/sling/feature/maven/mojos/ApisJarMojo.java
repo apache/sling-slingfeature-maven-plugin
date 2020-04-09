@@ -467,6 +467,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         ctx.getPackagesWithoutJavaClasses().forEach( p -> getLog().info("Exported package " + p + " does not contain any java classes"));
+        ctx.getPackagesWithoutSources().forEach( p -> getLog().info("Exported package " + p + " does not have sources"));
 
         // recollect and package stuff
         for (final ApiRegion apiRegion : regions.listRegions()) {
@@ -500,11 +501,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension, ApisJarContext ctx) throws MojoExecutionException {
+        final Set<String> excludePackages = APIS.equals(apiType) ? ctx.getPackagesWithoutJavaClasses() : ctx.getPackagesWithoutSources();
+
         final List<String> packages = getPackages(jarFile, extension);
         final List<ApiExport> missing = new ArrayList<>();
         for (final ApiExport exp : apiRegion.listExports()) {
             String packageName = exp.getName();
-            if (!packages.remove(packageName) && !ctx.getPackagesWithoutJavaClasses().contains(packageName)) {
+            if (!packages.remove(packageName) && !excludePackages.contains(packageName)) {
                 missing.add(exp);
             }
         }
@@ -650,10 +653,20 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         this.postProcessBinDirectory(ctx, info, info.getBinDirectory(), "");
 
         // source post processing
-        if ( generateSourceJar || generateJavadocJar && info.getSourceDirectory() != null ) {
-            final String encoding = artifact.getMetadata().getOrDefault(SCM_ENCODING, "UTF-8");
-            if ( !"UTF-8".equals(encoding)) {
-                this.cleanupSources(info.getSourceDirectory(), encoding);
+        if ( (generateSourceJar || generateJavadocJar) ) {
+            final Set<String> foundPackages = new HashSet<>();
+            if ( info.getSourceDirectory() != null && info.getSourceDirectory().exists()) {
+                final String encoding = artifact.getMetadata().getOrDefault(SCM_ENCODING, "UTF-8");
+                this.postProcessSourcesDirectory(ctx, info, foundPackages, info.getSourceDirectory(), "UTF-8".equals(encoding) ? null : encoding, "");
+            }
+            // check for missing packages
+            for(final String pck : info.getUsedExportedPackages()) {
+                if ( !foundPackages.contains(pck) ) {
+                    // We need to record this kind of packages and ensure we don't trigger warnings for them
+                    // when checking the api jars for correctness.
+                    getLog().debug("No sources found in " + pck);
+                    ctx.getPackagesWithoutSources().add(pck);
+                }
             }
         }
 
@@ -674,9 +687,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         } else if ( !hasJavaFile && info.getUsedExportedPackages().contains(pck) ) {
 
             // We need to record this kind of packages and ensure we don't trigger warnings for them
-            // when checking the api jars for correctness.</p>
+            // when checking the api jars for correctness.
             getLog().debug("No classes found in " + pck);
-            ctx.addPackageWithoutJavaClasses(pck);
+            ctx.getPackagesWithoutJavaClasses().add(pck);
         }
     }
 
@@ -733,18 +746,34 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return pattern;
     }
 
-    private void cleanupSources(final File dir, final String readEncoding) throws MojoExecutionException {
+    private void postProcessSourcesDirectory(final ApisJarContext ctx, final ArtifactInfo info,
+            final Set<String> foundPackages,
+            final File dir,
+            final String readEncoding,
+            final String pck) throws MojoExecutionException {
+        boolean hasSourceFile = false;
         for(final File child : dir.listFiles()) {
             if ( child.isDirectory() ) {
-                cleanupSources(child, readEncoding);
+                postProcessSourcesDirectory(ctx, info,
+                        foundPackages, child, readEncoding,
+                        pck.isEmpty() ? child.getName() : pck.concat(".").concat(child.getName()));
             } else if ( child.getName().endsWith(JAVA_EXTENSION)) {
-                try {
-                    final String javaSource = FileUtils.fileRead(child, readEncoding);
-                    FileUtils.fileWrite(child, StandardCharsets.UTF_8.name(), javaSource);
-                } catch ( final IOException ioe) {
-                    throw new MojoExecutionException("Unable to clean up java source " + child, ioe);
+                hasSourceFile = true;
+                if (readEncoding != null ) {
+                    try {
+                        final String javaSource = FileUtils.fileRead(child, readEncoding);
+                        FileUtils.fileWrite(child, StandardCharsets.UTF_8.name(), javaSource);
+                    } catch ( final IOException ioe) {
+                        throw new MojoExecutionException("Unable to clean up java source " + child, ioe);
+                    }
                 }
             }
+        }
+        if ( dir.listFiles().length == 0 && !pck.isEmpty() ) {
+            // empty dir -> remove
+            dir.delete();
+        } else if ( hasSourceFile ) {
+            foundPackages.add(pck);
         }
     }
 
@@ -1428,6 +1457,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return target;
     }
 
+    /**
+     * Generate the javadoc
+     * @param ctx The generation context
+     * @param region The region
+     * @param javadocDir The output directory
+     * @return {@code true} if generation succeeded
+     * @throws MojoExecutionException on error
+     */
     private boolean generateJavadoc(final ApisJarContext ctx, final ApiRegion region, final File javadocDir)
             throws MojoExecutionException {
         final List<String> sourceDirectories = new ArrayList<>();
@@ -1435,7 +1472,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         for(final ArtifactInfo info : ctx.getArtifactInfos()) {
             boolean addDirectory = false;
             for(final Clause clause : info.getUsedExportedPackages(region)) {
-                if ( !ctx.getPackagesWithoutJavaClasses().contains(clause.getName())) {
+                if ( !ctx.getPackagesWithoutSources().contains(clause.getName())) {
                     addDirectory = true;
                     javadocPackages.add(clause.getName());
                 }
