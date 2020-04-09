@@ -18,6 +18,7 @@ package org.apache.sling.feature.maven.mojos.reports;
 
 import java.util.List;
 
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.scanner.Scanner;
 
@@ -28,4 +29,6 @@ public interface ReportContext {
     List<Feature> getFeatures();
 
     void addReport(String key, List<String> output);
+
+    boolean matches(ArtifactId id);
 }

@@ -244,7 +244,7 @@ public abstract class ProjectHelper {
                    && artifact.getVersion().equals(id.getVersion())
                    && artifact.getType().equals(id.getType())
                    && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
-                    return artifact;
+                    return artifact.getFile() == null ? null : artifact;
                 }
             }
         }

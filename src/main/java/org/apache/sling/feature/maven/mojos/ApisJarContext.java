@@ -33,6 +33,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
+import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 
 /**
  * Context for creating the api jars
@@ -160,7 +161,7 @@ class ApisJarContext {
 
     private final Map<ArtifactId, Model> modelCache = new HashMap<>();
 
-    private List<String[]> licenseDefaultMatches;
+    private IncludeExcludeMatcher licenseDefaultMatcher;
 
     public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
         this.featureId = featureId;
@@ -243,79 +244,10 @@ class ApisJarContext {
 
 
     public void setLicenseDefaults(final List<String> licenseDefaults) throws MojoExecutionException {
-        this.licenseDefaultMatches = parseMatches(licenseDefaults);
+        this.licenseDefaultMatcher = new IncludeExcludeMatcher(licenseDefaults, null, "=", true);
     }
 
     public String getLicenseDefault(final ArtifactId id) {
-        String result = null;
-        if (this.licenseDefaultMatches != null) {
-            result = match(id);
-        }
-        return result;
-    }
-    private List<String[]> parseMatches(final List<String> licenseDefaults) throws MojoExecutionException {
-        List<String[]> matches = null;
-        if (licenseDefaults != null && !licenseDefaults.isEmpty()) {
-            matches = new ArrayList<>();
-            for (final String t : licenseDefaults) {
-                final String[] parts;
-                if ( t.endsWith("=") ) {
-                    parts = new String[] {t.substring(0, t.length() - 1), ""};
-                } else {
-                    parts = t.split("=");
-                }
-                if ( parts.length != 2 ) {
-                    throw new MojoExecutionException("Illegal license default: " + t);
-                }
-                final String[] val = parts[0].split(":");
-                if (val.length > 5) {
-                    throw new MojoExecutionException("Illegal license default: " + t);
-                }
-                final String[] result = new String[val.length + 1];
-                System.arraycopy(val, 0, result, 1, val.length);
-                result[0] = parts[1];
-                matches.add(result);
-            }
-        }
-        return matches;
-    }
-
-    private boolean match(final String value, final String matcher) {
-        if (matcher.endsWith("*")) {
-            return value.startsWith(matcher.substring(0, matcher.length() - 1));
-        }
-        return matcher.equals(value);
-    }
-
-    private String match(final ArtifactId id) {
-        boolean match = false;
-
-        for(final String[] m : this.licenseDefaultMatches) {
-            match = match(id.getGroupId(), m[1]);
-            if (match && m.length > 2) {
-                match = match(id.getArtifactId(), m[2]);
-            }
-            if (match && m.length == 4) {
-                match = match(id.getVersion(), m[3]);
-            } else if (match && m.length == 5) {
-                match = match(id.getVersion(), m[4]);
-                if (match) {
-                    match = match(id.getType(), m[3]);
-                }
-            } else if (match && m.length == 6) {
-                match = match(id.getVersion(), m[5]);
-                if (match) {
-                    match = match(id.getType(), m[3]);
-                    if (match) {
-                        match = match(id.getClassifier(), m[4]);
-                    }
-                }
-            }
-            if (match) {
-                return m[0];
-            }
-        }
-
-        return null;
+        return this.licenseDefaultMatcher.matches(id);
     }
 }

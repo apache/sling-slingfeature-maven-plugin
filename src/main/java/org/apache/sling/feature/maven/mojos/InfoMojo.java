@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -43,6 +45,7 @@ import org.apache.sling.feature.maven.mojos.reports.DuplicatesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ExportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ReportContext;
 import org.apache.sling.feature.maven.mojos.reports.Reporter;
+import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 import org.apache.sling.feature.scanner.Scanner;
 
 
@@ -92,6 +95,24 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     @Parameter(property = "outputDirectory")
     private File outputDirectory;
 
+    /**
+     * A comma separated list of artifact patterns to include. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". Designed to allow specifying
+     * the set of includes from the command line.
+     * @since 1.2.0
+     */
+    @Parameter(property = "includes")
+    private String artifactIncludesList;
+
+    /**
+     * A comma separated list of artifact patterns to exclude. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". Designed to allow specifying
+     * the set of excludes from the command line.
+     * @since 1.2.0
+     */
+    @Parameter(property = "excludes")
+    private String artifactExcludesList;
+
     @Deprecated
     @Parameter(property = "featureFile")
     private File featureFile;
@@ -136,6 +157,14 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
         // setup scanner
         final Scanner scanner = setupScanner();
+        final IncludeExcludeMatcher matcher;
+        if ( this.artifactIncludesList != null && !this.artifactIncludesList.isEmpty()) {
+            matcher = new IncludeExcludeMatcher(Stream.of(this.artifactIncludesList.split(",")).map(v -> v.trim()).collect(Collectors.toList()),
+                    this.artifactExcludesList == null ? null : Stream.of(this.artifactExcludesList.split(",")).map(v -> v.trim()).collect(Collectors.toList()),
+                    null, false);
+        } else {
+            matcher = null;
+        }
         final Map<String, List<String>> reports = new LinkedHashMap<>();
         final ReportContext ctx = new ReportContext() {
 
@@ -152,6 +181,11 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
             @Override
             public void addReport(final String key, final List<String> output) {
                 reports.put(key, output);
+            }
+
+            @Override
+            public boolean matches(final ArtifactId id) {
+                return matcher == null || matcher.matches(id) != null;
             }
         };
         for(final Reporter reporter : reporters) {
@@ -239,6 +273,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
             @Override
             public URL provide(final ArtifactId id) {
+                getLog().info("Searching " + id.toMvnId());
                 try {
                     return ProjectHelper
                             .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)

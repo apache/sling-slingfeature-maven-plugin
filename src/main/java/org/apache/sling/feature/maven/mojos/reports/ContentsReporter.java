@@ -45,12 +45,16 @@ public class ContentsReporter implements Reporter {
 
         for (final Feature feature : ctx.getFeatures()) {
             for (final Artifact bundle : feature.getBundles()) {
-                 bundles.add(bundle.getId());
+                if ( ctx.matches(bundle.getId())) {
+                    bundles.add(bundle.getId());
+                }
             }
             for (final Extension ext : feature.getExtensions()) {
                 if (ext.getType() == ExtensionType.ARTIFACTS) {
                     for (final Artifact artifact : ext.getArtifacts()) {
-                        artifacts.add(artifact.getId());
+                        if ( ctx.matches(artifact.getId())) {
+                            artifacts.add(artifact.getId());
+                        }
                     }
                 }
             }
