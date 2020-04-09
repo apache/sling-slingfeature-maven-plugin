@@ -501,13 +501,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void report(final File jarFile, final String apiType, final ApiRegion apiRegion, final String extension, ApisJarContext ctx) throws MojoExecutionException {
-        final Set<String> excludePackages = APIS.equals(apiType) ? ctx.getPackagesWithoutJavaClasses() : ctx.getPackagesWithoutSources();
-
         final List<String> packages = getPackages(jarFile, extension);
         final List<ApiExport> missing = new ArrayList<>();
+
+        // for the report we always use the binaries as the source of truth
+        // that's why we check against getPackagesWithoutJavaClasses()
         for (final ApiExport exp : apiRegion.listExports()) {
             String packageName = exp.getName();
-            if (!packages.remove(packageName) && !excludePackages.contains(packageName)) {
+            if (!packages.remove(packageName) && !ctx.getPackagesWithoutJavaClasses().contains(packageName)) {
                 missing.add(exp);
             }
         }
