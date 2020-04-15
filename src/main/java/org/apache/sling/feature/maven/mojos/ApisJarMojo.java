@@ -1522,7 +1522,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                           .addArgument("-d", false)
                                           .addArgument(javadocDir.getAbsolutePath())
                                           .addArgument("-sourcepath", false)
-                                          .addArgument(String.join(":", sourceDirectories));
+                                          .addArgument(String.join(File.pathSeparator, sourceDirectories));
 
         javadocExecutor.addArgument("-source", false)
                        .addArgument(javadocSourceLevel);
