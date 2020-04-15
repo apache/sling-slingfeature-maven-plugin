@@ -694,6 +694,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
+    /**
+     * Process a binary
+     * Extract the binary, rename resources and (optional) download the sources
+     * @param ctx The context
+     * @param info The current artifact
+     * @param binFile The binary to extract
+     * @param binArtifact The artifact to extract
+     * @param embeddedBundles Embedded bundles (optional)
+     * @param skipBinDeflate Flag to skip deflating the binary
+     * @param skipSourceDeflate Flag to skip deflating the source
+     * @throws MojoExecutionException
+     */
     private void processBinary(final ApisJarContext ctx,
             final ArtifactInfo info,
             final File binFile,
@@ -705,37 +717,38 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if ( !skipBinDeflate ) {
             // deflate all bundles first, in order to copy APIs and resources later,
             // depending to the region
-            final List<String> exportedPackagesAndWrappedBundles = new ArrayList<>();
+            final List<String> deflateIncludes = new ArrayList<>();
+
             // add all used exported packages
-            exportedPackagesAndWrappedBundles.addAll(Arrays.asList(info.getUsedExportedPackageIncludes()));
+            deflateIncludes.addAll(Arrays.asList(info.getUsedExportedPackageIncludes()));
             // add embedded bundles
             if ( embeddedBundles != null ) {
                 for(final String jarName : embeddedBundles) {
                     if ( !".".equals(jarName) ) {
-                        exportedPackagesAndWrappedBundles.add(jarName);
+                        deflateIncludes.add(jarName);
                     }
                 }
             }
             // add resources from the folders
-            exportedPackagesAndWrappedBundles.addAll(getIncludeResourcePatterns());
+            deflateIncludes.addAll(getIncludeResourcePatterns(ctx, info.getId()));
 
             // deflate
-            deflate(info.getBinDirectory(), binFile, exportedPackagesAndWrappedBundles.toArray(new String[exportedPackagesAndWrappedBundles.size()]));
+            this.deflate(info.getBinDirectory(), binFile, deflateIncludes.toArray(new String[deflateIncludes.size()]));
 
         }
         // renaming potential name-collapsing resources
-        renameResources(info, binArtifact.getId());
+        this.renameResources(ctx, info, binArtifact.getId());
 
         // download sources
-        if ( generateSourceJar || generateJavadocJar ) {
+        if ( this.generateSourceJar || this.generateJavadocJar ) {
             if ( !skipSourceDeflate ) {
-                downloadSources(ctx, info, binArtifact);
+                this.downloadSources(ctx, info, binArtifact);
             }
         }
 
     }
 
-    private List<String> getIncludeResourcePatterns() {
+    private List<String> getIncludeResourcePatterns(final ApisJarContext ctx, final ArtifactId id) {
         final List<String> pattern = new ArrayList<>();
         if ( includeResources != null ) {
             for(final String folder : this.resourceFolders.split(",")) {
@@ -744,6 +757,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
+        // add NOTICE and LICENSE for license report
+        if ( this.licenseReport != null ) {
+            final String licenseDefault = ctx.getLicenseDefault(id);
+            if ( licenseDefault == null || !licenseDefault.isEmpty() ) {
+                pattern.add("META-INF/NOTICE");
+                pattern.add("META-INF/LICENSE");
+            }
+        }
+
         return pattern;
     }
 
@@ -975,8 +997,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         getLog().debug("Artifact " + artifact + " successfully deflated");
     }
 
-    private void renameResources(final ArtifactInfo info, final ArtifactId artifactId) throws MojoExecutionException {
-        final List<String> patterns = getIncludeResourcePatterns();
+    private void renameResources(final ApisJarContext ctx, final ArtifactInfo info, final ArtifactId artifactId) throws MojoExecutionException {
+        final List<String> patterns = getIncludeResourcePatterns(ctx, info.getId());
         if (patterns.isEmpty()) {
             getLog().debug("No configured resources to rename in " + info.getBinDirectory());
         }
