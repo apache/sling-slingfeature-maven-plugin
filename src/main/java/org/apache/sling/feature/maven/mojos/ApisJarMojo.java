@@ -1603,26 +1603,27 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             output.add(licenseReportHeader);
             output.add("");
             for(final ArtifactInfo info : infos) {
-                final List<License> licenses = this.getLicenses(ctx, info);
+                final String licenseDefault = ctx.getLicenseDefault(info.getId());
 
-                boolean exclude = false;
                 final StringBuilder sb = new StringBuilder(info.getId().toMvnId());
-                if ( !licenses.isEmpty() ) {
-                    sb.append(" - License(s) : ");
-                    sb.append(String.join(", ",
-                            licenses.stream()
-                                    .map(l -> l.getName().concat(" (").concat(l.getUrl()).concat(")"))
-                                    .collect(Collectors.toList())));
+                boolean exclude = false;
+                if ( licenseDefault != null ) {
+                    if ( licenseDefault.isEmpty()) {
+                        exclude = true;
+                        getLog().debug("Excluding from license report " + info.getId().toMvnId());
+                    } else {
+                        sb.append(" - License(s) : ");
+                        sb.append(licenseDefault);
+                    }
                 } else {
-                    final String licenseDefault = ctx.getLicenseDefault(info.getId());
-                    if ( licenseDefault != null ) {
-                        if ( licenseDefault.isEmpty()) {
-                            exclude = true;
-                            getLog().debug("Excluding from license report " + info.getId().toMvnId());
-                        } else {
-                            sb.append(" - License(s) : ");
-                            sb.append(licenseDefault);
-                        }
+                    final List<License> licenses = this.getLicenses(ctx, info);
+
+                    if ( !licenses.isEmpty() ) {
+                        sb.append(" - License(s) : ");
+                        sb.append(String.join(", ",
+                                licenses.stream()
+                                        .map(l -> l.getName().concat(" (").concat(l.getUrl()).concat(")"))
+                                        .collect(Collectors.toList())));
                     } else {
                         getLog().warn("No license info found for " + info.getId().toMvnId());
                     }
@@ -1645,6 +1646,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private List<License> getLicenses(final ApisJarContext ctx, final ArtifactInfo info) {
+        getLog().debug("Getting license for " + info.getId().toMvnId());
         List<License> result = info.getLicenses();
         if  ( result == null ) {
             try {
@@ -1654,10 +1656,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     final List<License> ll = model.getLicenses();
 
                     if ( ll != null && !ll.isEmpty() ) {
+                        getLog().debug("Found license for " + id.toMvnId());
                         result = ll;
                     } else {
                         if ( model.getParent() != null ) {
-                            id = new ArtifactId(model.getParent().getGroupId(), model.getParent().getArtifactId(), model.getParent().getVersion(), null, "pom");
+                            final ArtifactId newId = new ArtifactId(model.getParent().getGroupId(), model.getParent().getArtifactId(), model.getParent().getVersion(), null, "pom");
+                            if ( newId.equals(id) ) {
+                                break;
+                            } else {
+                                id = newId;
+                            }
                         } else {
                             break;
                         }
@@ -1671,6 +1679,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             }
             info.setLicenses(result);
         }
+        getLog().debug("License for " + info.getId().toMvnId() + " = " + result);
         return result;
     }
 }
