@@ -40,9 +40,8 @@ import java.util.Properties;
 import java.util.Set;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
@@ -62,8 +61,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 @SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
@@ -402,7 +399,6 @@ public class AggregateFeaturesMojoTest {
         assertEquals(expectedConfigs, actualConfigs);
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     public void testReadFeatureFromArtifact() throws Exception {
        File featureFile = new File(
@@ -438,6 +434,11 @@ public class AggregateFeaturesMojoTest {
             .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
+        final Artifact fileArtifact = new DefaultArtifact(dep.getGroupId(), dep.getArtifactId(),
+                dep.getVersion(), Artifact.SCOPE_COMPILE, dep.getType(), dep.getClassifier(), Mockito.mock(org.apache.maven.artifact.handler.ArtifactHandler.class));
+        fileArtifact.setFile(featureFile);
+
+        Mockito.when(mockProj.getAttachedArtifacts()).thenReturn(Collections.singletonList(fileArtifact));
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         fc.classifier = "mynewfeature";
         af.aggregates = Collections.singletonList(fc);
@@ -448,21 +449,6 @@ public class AggregateFeaturesMojoTest {
         af.features = featureFile.getParentFile();
 
         af.artifactResolver = Mockito.mock(ArtifactResolver.class);
-        Mockito.doAnswer(new Answer<Void>() {
-            @Override
-            public Void answer(InvocationOnMock invocation) throws Throwable {
-                Artifact artifact = invocation.getArgumentAt(0, Artifact.class);
-                if (artifact.getGroupId().equals(dep.getGroupId())
-                        && artifact.getArtifactId().equals(dep.getArtifactId())
-                        && artifact.getVersion().equals(dep.getVersion())
-                        && artifact.getClassifier().equals(dep.getClassifier())
-                        && artifact.getType().equals(dep.getType())) {
-                    artifact.setFile(featureFile);
-                    return null;
-                }
-                throw new ArtifactResolutionException("Not found", artifact);
-            }
-        }).when(af.artifactResolver).resolve(Mockito.any(Artifact.class), Mockito.anyList(), Mockito.any(ArtifactRepository.class));
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:mynewfeature:T");

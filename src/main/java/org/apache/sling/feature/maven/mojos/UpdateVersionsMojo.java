@@ -21,6 +21,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,9 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-
-import javax.json.stream.JsonGenerator;
-import javax.json.stream.JsonParsingException;
 
 import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
 import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
@@ -53,7 +51,7 @@ import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.apache.sling.feature.io.json.FeatureJSONWriter;
+import org.apache.sling.feature.maven.JSONFeatures;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.mojo.versions.api.ArtifactVersions;
 import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
@@ -208,9 +206,11 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
     private Feature readRawFeature(final String fileName) throws MojoExecutionException {
         // we need to read the raw file
-        final File out = new File(fileName);
-        try (final Reader r = new FileReader(out)) {
-            return SimpleFeatureJSONReader.read(r, fileName);
+        try (final Reader r = new FileReader(new File(fileName))) {
+            final String json = JSONFeatures.read(r, JSONFeatures.PLACEHOLDER_ID, fileName);
+            try ( final Reader featureReader = new StringReader(json)) {
+                return FeatureJSONReader.read(featureReader, fileName);
+            }
         } catch (final IOException e) {
             throw new MojoExecutionException("Unable to read feature file " + fileName, e);
         }
@@ -280,7 +280,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
                 if (updateVersions(entry.getKey(), rawFeature, result, globalPropertyUpdates) && !dryRun) {
                     try (final Writer w = new FileWriter(new File(entry.getKey()))) {
-                        SimpleFeatureJSONWriter.write(w, rawFeature);
+                        JSONFeatures.write(w, rawFeature);
                     } catch (final IOException e) {
                         throw new MojoExecutionException("Unable to write feature file " + entry.getValue(), e);
                     }
@@ -470,74 +470,6 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         public List<ArtifactUpdate> updates;
         public Map<String, String> propertyUpdates = new HashMap<>();
     }
-
-	public static class SimpleFeatureJSONReader extends FeatureJSONReader {
-
-		static final ArtifactId PLACEHOLDER_ID = new ArtifactId("_", "_", "1.0", null, null);
-
-		/**
-	     * Private constructor
-	     * @param location Optional location
-	     */
-	    protected SimpleFeatureJSONReader(final String location) {
-	        super(location);
-	    }
-
-	    @Override
-		protected ArtifactId getFeatureId(Map<String, Object> map) throws IOException {
-	    	final ArtifactId id;
-	        if ( !map.containsKey("id") ) {
-	        	id = PLACEHOLDER_ID;
-	        } else {
-	        	id = super.getFeatureId(map);
-	        }
-	        return id;
-	    }
-
-		/**
-	     * Read a new feature from the reader
-	     * The reader is not closed. It is up to the caller to close the reader.
-	     *
-	     * @param reader The reader for the feature
-	     * @param location Optional location
-	     * @return The read feature
-	     * @throws IOException If an IO errors occurs or the JSON is invalid.
-	     */
-	    public static Feature read(final Reader reader, final String location)
-	    throws IOException {
-	        try {
-	            final SimpleFeatureJSONReader mr = new SimpleFeatureJSONReader(location);
-	            return mr.readFeature(reader);
-	        } catch (final IllegalStateException | IllegalArgumentException | JsonParsingException e) {
-	            throw new IOException(e);
-	        }
-	    }
-	}
-
-	public static class SimpleFeatureJSONWriter extends FeatureJSONWriter {
-
-		private SimpleFeatureJSONWriter() {}
-
-	    /**
-	     * Writes the feature to the writer.
-	     * The writer is not closed.
-	     * @param writer Writer
-	     * @param feature Feature
-	     * @throws IOException If writing fails
-	     */
-	    public static void write(final Writer writer, final Feature feature)
-	    throws IOException {
-	        final SimpleFeatureJSONWriter w = new SimpleFeatureJSONWriter();
-	        w.writeFeature(writer, feature);
-	    }
-
-	    @Override
-		protected void writeFeatureId(JsonGenerator generator, Feature feature) {
-	    	if ( !feature.getId().equals(SimpleFeatureJSONReader.PLACEHOLDER_ID) ) {
-	            super.writeFeatureId(generator, feature);
-	        }
-	    }
-	}
 
     private String getVersion(final Map.Entry<Dependency, ArtifactVersions> entry, final UpdateScope scope) {
         ArtifactVersion latest;

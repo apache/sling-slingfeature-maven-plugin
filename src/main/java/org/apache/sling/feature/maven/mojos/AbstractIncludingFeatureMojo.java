@@ -39,7 +39,7 @@ import edu.emory.mathcs.backport.java.util.Collections;
 public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     /**
-     * Get all selected features for the provided configuratio
+     * Get all selected features for the provided configuration
      * @param config The selection configuration
      * @return An ordered map of features
      * @throws MojoExecutionException
