@@ -63,7 +63,7 @@ public class JSONFeatures {
                 featureObj = job.build();
             }
         } catch ( final JsonException je) {
-            throw new IOException(je.getMessage(), je);
+            throw new IOException(location.concat(" : " ).concat(je.getMessage()), je);
         }
 
         try ( final StringWriter writer = new StringWriter()) {
