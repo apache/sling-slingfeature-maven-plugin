@@ -21,6 +21,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.Collections;
 import java.util.Map;
 
 import javax.json.Json;
@@ -31,6 +32,7 @@ import javax.json.JsonReader;
 import javax.json.JsonValue;
 import javax.json.JsonWriter;
 import javax.json.stream.JsonGenerator;
+import javax.json.stream.JsonGeneratorFactory;
 
 import org.apache.felix.cm.json.Configurations;
 import org.apache.sling.feature.ArtifactId;
@@ -90,8 +92,9 @@ public class JSONFeatures {
                 try (JsonReader jsonReader = Json.createReader(new StringReader(stringWriter.toString()))) {
                     final JsonObject featureObj = jsonReader.readObject();
 
+                    final JsonGeneratorFactory factory = Json.createGeneratorFactory(Collections.singletonMap(JsonGenerator.PRETTY_PRINTING, true));
                     // write feature object, except id property
-                    try (final JsonGenerator generator = Json.createGenerator(writer)) {
+                    try (final JsonGenerator generator = factory.createGenerator(writer)) {
                         generator.writeStartObject();
 
                         for (final Map.Entry<String, JsonValue> entry : featureObj.entrySet()) {
@@ -101,6 +104,8 @@ public class JSONFeatures {
                         }
                         generator.writeEnd();
                     }
+                } catch ( final JsonException je) {
+                    throw new IOException(je.getMessage(), je);
                 }
             }
         } else {
