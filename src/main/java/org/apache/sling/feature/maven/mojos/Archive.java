@@ -21,7 +21,11 @@ package org.apache.sling.feature.maven.mojos;
  */
 public class Archive extends FeatureSelectionConfig {
 
+    public static final String DEFAULT_EXTENSION = "far";
+
     private String classifier;
+
+    private String type = DEFAULT_EXTENSION;
 
     /**
      * If this is set to {@code false} the archive is not added to the project
@@ -37,9 +41,17 @@ public class Archive extends FeatureSelectionConfig {
         this.classifier = classifier;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String value) {
+        this.type = value;
+    }
+
     @Override
     public String toString() {
-        return "Archive [classifier=" + classifier + ", getFilesExcludes()=" + getFilesExcludes() + ", getSelections()="
+        return "Archive [classifier=" + classifier + ", type=" + type + ", getFilesExcludes()=" + getFilesExcludes() + ", getSelections()="
                 + getSelections() + ", attach()=" + attach + "]";
     }
 }

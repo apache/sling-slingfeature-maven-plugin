@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.zip.Deflater;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -54,52 +53,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
     )
 public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
 
-    private static final String EXTENSION = "zip";
-
-    private static final String CLASSIFIER = "far";
-
-    @Parameter
-    private List<Archive> archives;
-
-    @Override
-    public void execute() throws MojoExecutionException, MojoFailureException {
-        checkPreconditions();
-        if (archives == null || archives.size() == 0) {
-            // by default create an archive of each feature individually
-            this.attachArchives(ProjectHelper.getFeatures(this.project));
-        } else {
-            for (final Archive archive : archives) {
-                if (archive.getClassifier() == null) {
-                    throw new MojoExecutionException("Classifier is missing for archive.");
-                }
-                final List<Feature> features = new ArrayList<>();
-                features.addAll(this.getSelectedFeatures(archive).values());
-                this.attachArchives(features, archive.getClassifier(), archive.attach);
-            }
-        }
-    }
-
-    /**
-     * Attach archives for all features
-     *
-     * @throws MojoExecutionException
-     */
-    void attachArchives(final Map<String, Feature> features) throws MojoExecutionException {
-        for (final Map.Entry<String, Feature> entry : features.entrySet()) {
-            final boolean add;
-            if (ProjectHelper.isAggregate(entry.getKey())) {
-                add = ProjectHelper.isAttachAggregate(entry.getKey());
-            } else {
-                add = true;
-            }
-
-            if (add) {
-                final String classifier = entry.getValue().getId().getClassifier() == null ? CLASSIFIER
-                        : entry.getValue().getId().getClassifier().concat(CLASSIFIER);
-                attachArchives(Collections.singletonList(entry.getValue()), classifier, true);
-            }
-        }
-    }
+    private static final String DEFAULT_CLASSIFIER = "far";
 
     public static final String ATTR_BUILT_BY = "Built-By";
 
@@ -120,6 +74,43 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
     public static final String ATTR_SPECIFICATION_VENDOR = "Specification-Vendor";
 
     public static final String ATTR_SPECIFICATION_VERSION = "Specification-Version";
+
+    @Parameter
+    private List<Archive> archives;
+
+    @Override
+    public void execute() throws MojoExecutionException, MojoFailureException {
+        checkPreconditions();
+        if (archives == null || archives.size() == 0) {
+            // by default create an archive of each feature individually
+            for (final Map.Entry<String, Feature> entry : ProjectHelper.getFeatures(this.project).entrySet()) {
+                final boolean add;
+                if (ProjectHelper.isAggregate(entry.getKey())) {
+                    add = ProjectHelper.isAttachAggregate(entry.getKey());
+                } else {
+                    add = true;
+                }
+
+                if (add) {
+                    final String classifier = entry.getValue().getId().getClassifier() == null ? DEFAULT_CLASSIFIER
+                            : entry.getValue().getId().getClassifier().concat(DEFAULT_CLASSIFIER);
+                    createArchive(Collections.singletonList(entry.getValue()), classifier, Archive.DEFAULT_EXTENSION, true);
+                }
+            }
+        } else {
+            for (final Archive archive : archives) {
+                if (archive.getClassifier() == null) {
+                    throw new MojoExecutionException("Classifier is missing for archive.");
+                }
+                if (archive.getType() == null) {
+                    throw new MojoExecutionException("Type is missing for archive.");
+                }
+                final List<Feature> features = new ArrayList<>();
+                features.addAll(this.getSelectedFeatures(archive).values());
+                this.createArchive(features, archive.getClassifier(), archive.getType(), archive.attach);
+            }
+        }
+    }
 
     private Manifest createBaseManifest(final Feature feature) {
         final Manifest mf = new Manifest();
@@ -146,8 +137,15 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
         return mf;
     }
 
-    private void attachArchives(final List<Feature> features, final String classifier, final boolean attach) throws MojoExecutionException {
-        final ArtifactId archiveId = features.get(0).getId().changeClassifier(classifier).changeType(EXTENSION);
+    /**
+     * Create feature archive
+     * @param features The features contained in the archive
+     * @param classifier The classifier to use for the archive
+     * @param type The type to use for the archive
+     * @param attach Whether the archive should be attached to the project
+     */
+    private void createArchive(final List<Feature> features, final String classifier, final String type, final boolean attach) throws MojoExecutionException {
+        final ArtifactId archiveId = features.get(0).getId().changeClassifier(classifier).changeType(type);
 
         // write the feature model archive
         final File outputFile = new File(
@@ -171,7 +169,6 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                         , features.toArray(new Feature[features.size()]))) {
 
             // handle license etc.
-            jos.setLevel(Deflater.BEST_COMPRESSION);
             final File classesDir = new File(this.project.getBuild().getOutputDirectory());
             if ( classesDir.exists() ) {
                 final File metaInfDir = new File(classesDir, "META-INF");
