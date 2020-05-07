@@ -16,8 +16,16 @@
  */
 package org.apache.sling.feature.maven.mojos.apis;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.LineNumberReader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.sling.feature.Artifact;
@@ -42,6 +50,9 @@ public class ApisUtil {
 
     /** Alternative IDS to a source artifact. */
     public static final String SCM_IDS = "source-ids";
+
+    /** Links for javadocs. */
+    public static final String JAVADOC_LINKS = "javadoc-links";
 
     public static List<ArtifactId> getSourceIds(final Artifact artifact) throws MojoExecutionException {
         final String val = artifact.getMetadata().get(SCM_IDS);
@@ -78,5 +89,42 @@ public class ApisUtil {
             return result;
         }
         return null;
+    }
+
+    public static List<String> getJavadocLinks(final Artifact artifact) {
+        final String val = artifact.getMetadata().get(JAVADOC_LINKS);
+        if ( val != null ) {
+            final List<String> result = new ArrayList<>();
+            for(String v : val.split(",")) {
+                v = v.trim();
+                if ( v.endsWith("/") ) {
+                    v = v.substring(0, v.length() - 1);
+                }
+                result.add(v);
+            }
+            return result;
+        }
+        return null;
+    }
+
+    public static void getPackageList(final String javadocUrl, final Set<String> linkedPackages,
+            final Map<String, Set<String>> linkedPackagesMap) throws MojoExecutionException {
+        Set<String> result = linkedPackagesMap.get(javadocUrl);
+        if ( result == null ) {
+            result = new HashSet<>();
+            linkedPackagesMap.put(javadocUrl, result);
+            try {
+                final URL url = new URL(javadocUrl.concat("/package-list"));
+                try (final LineNumberReader reader = new LineNumberReader(new InputStreamReader(url.openConnection().getInputStream(), StandardCharsets.UTF_8))) {
+                    String line = null;
+                    while ( (line = reader.readLine()) != null ) {
+                        result.add(line.trim());
+                    }
+                }
+            } catch (final IOException e) {
+                throw new MojoExecutionException("Unable to find/read package-list at ".concat(javadocUrl), e);
+            }
+        }
+        result.stream().forEach(v -> linkedPackages.add(v));
     }
 }

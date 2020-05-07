@@ -21,7 +21,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.util.Arrays;
 import java.util.Collection;
 
 import org.apache.commons.exec.CommandLine;
@@ -79,10 +78,6 @@ public final class JavadocExecutor {
             addArgument(current);
         }
         return this;
-    }
-
-    public JavadocExecutor addArguments(String key, String[] values) {
-        return addArguments(key, Arrays.asList(values));
     }
 
     public JavadocExecutor addArguments(String key, Collection<String> value) {

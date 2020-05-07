@@ -342,7 +342,7 @@ public class ApisJarContext {
                 try {
                     final URL url = new URL(server.concat(id.toMvnPath()));
                     try {
-                        url.openConnection().getInputStream();
+                        url.openConnection().getInputStream().close();
                         log.debug("Found ".concat(id.toMvnId()).concat(" at ").concat(url.toString()));
                         result = true;
                         break;

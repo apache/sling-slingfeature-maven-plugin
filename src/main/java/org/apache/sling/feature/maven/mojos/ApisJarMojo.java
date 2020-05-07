@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -1619,12 +1620,29 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      */
     private boolean generateJavadoc(final ApisJarContext ctx, final ApiRegion region, final File javadocDir)
             throws MojoExecutionException {
+        final List<String> docLinks = new ArrayList<>();
+        if ( this.javadocLinks != null ) {
+            for(final String val : this.javadocLinks) {
+                docLinks.add(val);
+            }
+        }
+
+        final Map<String, Set<String>> linkedPackagesMap = new HashMap<>();
+
         final List<String> sourceDirectories = new ArrayList<>();
         final Set<String> javadocPackages = new HashSet<>();
-        for(final ArtifactInfo info : ctx.getArtifactInfos()) {
+        for(final ArtifactInfo info : ctx.getArtifactInfos(region, false)) {
+            final Set<String> linkedPackages = new HashSet<>();
+            final List<String> links = ApisUtil.getJavadocLinks(info.getArtifact());
+            if ( links != null ) {
+                for(final String v : links) {
+                    ApisUtil.getPackageList(v, linkedPackages, linkedPackagesMap);
+                    docLinks.add(v);
+                }
+            }
             boolean addDirectory = false;
             for(final Clause clause : info.getUsedExportedPackages(region)) {
-                if ( !ctx.getPackagesWithoutSources().contains(clause.getName())) {
+                if ( !ctx.getPackagesWithoutSources().contains(clause.getName()) && !linkedPackages.contains(clause.getName())) {
                     addDirectory = true;
                     javadocPackages.add(clause.getName());
                 }
@@ -1640,7 +1658,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         javadocDir.mkdirs();
 
-        JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
+        final JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
                                           .addArgument("-public")
                                           .addArgument("-encoding", false)
                                           .addArgument("UTF-8")
@@ -1656,14 +1674,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         javadocExecutor.addArgument("-source", false)
                        .addArgument(javadocSourceLevel);
 
+        final String versionSuffix = this.apiVersion != null ? this.apiVersion : ctx.getFeatureId().getVersion();
+
         if (!StringUtils.isBlank(project.getName())) {
             javadocExecutor.addArgument("-doctitle", false)
-                           .addQuotedArgument(project.getName());
+                           .addQuotedArgument(project.getName().trim().concat(" ").concat(versionSuffix));
         }
 
         if (!StringUtils.isBlank(project.getDescription())) {
             javadocExecutor.addArgument("-windowtitle", false)
-                           .addQuotedArgument(project.getDescription());
+                           .addQuotedArgument(project.getDescription().trim().concat(" ").concat(versionSuffix));
         }
 
         if (!StringUtils.isBlank(project.getInceptionYear())
@@ -1671,13 +1691,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 && !StringUtils.isBlank(project.getOrganization().getName())) {
             javadocExecutor.addArgument("-bottom", false)
                            .addQuotedArgument(String.format("Copyright &copy; %s - %s %s. All Rights Reserved",
-                                              project.getInceptionYear(),
+                                              project.getInceptionYear().trim(),
                                               Calendar.getInstance().get(Calendar.YEAR),
-                                              project.getOrganization().getName()));
+                                              project.getOrganization().getName().trim()));
         }
 
-        if (javadocLinks != null && javadocLinks.length > 0) {
-            javadocExecutor.addArguments("-link", javadocLinks);
+        if ( !docLinks.isEmpty()) {
+            javadocExecutor.addArguments("-link", docLinks);
         }
 
         if (!ctx.getJavadocClasspath().isEmpty()) {
