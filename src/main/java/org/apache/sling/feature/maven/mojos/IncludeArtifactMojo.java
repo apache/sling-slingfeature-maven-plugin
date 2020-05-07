@@ -16,6 +16,13 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Writer;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -35,13 +42,6 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.List;
-import java.util.Map;
 
 /**
  * This goal creates a Feature Model file that includes the Module Artifact as
@@ -77,9 +77,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     public static final String CFG_START_ORDER = "bundleStartOrder";
     public static final String CFG_INCLUDE_DEPENDENCIES_WITH_SCOPE = "includeDependenciesWithScope";
 
-    @Component
-    protected ArtifactInstaller installer;
-
     /**
      * Classifier of the feature the current artifact is included in.
      * For simple projects a artifact classifier is not needed but in multi
@@ -107,6 +104,25 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private String includeArtifactExtension;
 
+    /**
+     * Name of the classifier for the artifact to be included. By default
+     * the main artifact (no classifier) will be included.
+     * @since 1.3.0
+     */
+    @Parameter
+    private String includeClassifier;
+
+    /**
+     * Name of the type for the artifact to be included. By default
+     * the type of the main artifact is used.
+     * @since 1.3.0
+     */
+    @Parameter
+    private String includeType;
+
+    @Component
+    protected ArtifactInstaller installer;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
@@ -122,8 +138,6 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
                 break;
             }
         }
-        final Artifact art = new Artifact(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
-                this.project.getVersion(), null, this.project.getArtifact().getType()));
         File file = null;
         if (found == null) {
             found = new Feature(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
@@ -136,7 +150,11 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.getFeatures(this.project).put(key, found);
             ProjectHelper.getAssembledFeatures(this.project).put(key, found);
         }
+
+        final Artifact art = new Artifact(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
+                this.project.getVersion(), includeClassifier, includeType != null ? includeType : this.project.getArtifact().getType()));
         includeArtifact(found, includeArtifactExtension, art);
+
         includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
                 art.copy(art.getId()));
 
