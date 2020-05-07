@@ -14,9 +14,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.sling.feature.maven.mojos;
+package org.apache.sling.feature.maven.mojos.apis;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -30,6 +33,8 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
+import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
@@ -38,14 +43,14 @@ import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 /**
  * Context for creating the api jars
  */
-class ApisJarContext {
+public class ApisJarContext {
 
     /**
      * Information about a single artifact (bundle) taking part in the api generation.
      */
     public static final class ArtifactInfo {
 
-        private ArtifactId id;
+        private Artifact artifact;
 
         private File binDirectory;
 
@@ -57,18 +62,25 @@ class ApisJarContext {
         /** Exported packages per region. */
         private final Map<String, Set<Clause>> usedExportedPackagesRegion = new HashMap<>();
 
+        /** Flag if used as dependency */
+        private final Map<String, Boolean> useAsDependencyPerRegion = new HashMap<>();
+
         private final Set<File> includedResources = new HashSet<>();
 
         private final Set<String> nodeTypes = new HashSet<>();
 
         private List<License> licenses;
 
-        public ArtifactInfo(final ArtifactId id) {
-            this.id = id;
+        public ArtifactInfo(final Artifact artifact) {
+            this.artifact = artifact;
         }
 
         public ArtifactId getId() {
-            return this.id;
+            return this.artifact.getId();
+        }
+
+        public Artifact getArtifact() {
+            return this.artifact;
         }
 
         public File getBinDirectory() {
@@ -107,8 +119,9 @@ class ApisJarContext {
             return this.usedExportedPackagesRegion.get(region.getName());
         }
 
-        public void setUsedExportedPackages(final ApiRegion region, final Set<Clause> usedExportedPackages) {
+        public void setUsedExportedPackages(final ApiRegion region, final Set<Clause> usedExportedPackages, final boolean useAsDependency) {
             this.usedExportedPackagesRegion.put(region.getName(), usedExportedPackages);
+            this.useAsDependencyPerRegion.put(region.getName(), useAsDependency);
         }
 
         public String[] getUsedExportedPackageIncludes(final ApiRegion region) {
@@ -118,6 +131,10 @@ class ApisJarContext {
                 includes.add(clause.getName().replace('.', '/').concat("/*"));
             }
             return includes.toArray(new String[includes.size()]);
+        }
+
+        public boolean isUseAsDependencyPerRegion(final ApiRegion region) {
+            return this.useAsDependencyPerRegion.get(region.getName());
         }
 
         public Set<File> getIncludedResources() {
@@ -138,6 +155,39 @@ class ApisJarContext {
 
         public void setLicenses(List<License> licenses) {
             this.licenses = licenses;
+        }
+
+        /**
+         * Get the dependency artifacts
+         * <ol>
+         * <li>If {@code ApisUtil#API_IDS} is provided as metadata for the artifact,
+         * the value is used as a list of artifacts
+         * <li>If {@code ApisUtil#SCM_IDS} is provided as metadata for the artifact,
+         * the value is used as a list of artifacts. The artifacts must have a classifier
+         * set. The classifier is removed and then the artifacts are used
+         * <li>The artifact itself is used
+         * </ol>
+         * @return The list of dependency artifacts
+         * @throws MojoExecutionException
+         */
+        public List<ArtifactId> getDependencyArtifacts() throws MojoExecutionException {
+            final List<ArtifactId> dependencies = new ArrayList<>();
+            final List<ArtifactId> apiIds = ApisUtil.getApiIds(artifact);
+            if ( apiIds != null ) {
+                for(final ArtifactId id : apiIds) {
+                    dependencies.add(id);
+                }
+            } else {
+                final List<ArtifactId> sourceIds = ApisUtil.getSourceIds(artifact);
+                if ( sourceIds != null ) {
+                    for(final ArtifactId id : sourceIds) {
+                        dependencies.add(id.changeClassifier(null));
+                    }
+                } else {
+                    dependencies.add(getId());
+                }
+            }
+            return dependencies;
         }
     }
 
@@ -164,6 +214,9 @@ class ApisJarContext {
     private final Map<ArtifactId, Model> modelCache = new HashMap<>();
 
     private IncludeExcludeMatcher licenseDefaultMatcher;
+
+    /** The set of dependency repositories (URLs) */
+    private Set<String> dependencyRepositories = new HashSet<>();
 
     public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
         this.featureId = featureId;
@@ -219,8 +272,8 @@ class ApisJarContext {
         return packagesWithoutSources;
     }
 
-    public ArtifactInfo addArtifactInfo(final ArtifactId id) {
-        final ArtifactInfo info = new ArtifactInfo(id);
+    public ArtifactInfo addArtifactInfo(final Artifact artifact) {
+        final ArtifactInfo info = new ArtifactInfo(artifact);
         this.infos.add(info);
 
         return info;
@@ -234,11 +287,13 @@ class ApisJarContext {
         return this.modelCache;
     }
 
-    public Collection<ArtifactInfo> getArtifactInfos(final ApiRegion region) {
+    public Collection<ArtifactInfo> getArtifactInfos(final ApiRegion region, final boolean omitDependencyArtifacts) {
         final Map<ArtifactId, ArtifactInfo> result = new TreeMap<>();
         for(final ArtifactInfo info : this.infos) {
             if ( !info.getUsedExportedPackages(region).isEmpty() ) {
-                result.put(info.getId(), info);
+                if ( !omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(region) ) {
+                    result.put(info.getId(), info);
+                }
             }
         }
         return result.values();
@@ -251,5 +306,73 @@ class ApisJarContext {
 
     public String getLicenseDefault(final ArtifactId id) {
         return this.licenseDefaultMatcher.matches(id);
+    }
+
+    /**
+     * Set the dependency repositories
+     * @param list Comma separated list or {@code null}
+     */
+    public void setDependencyRepositories(final String list) {
+        this.dependencyRepositories.clear();
+        if ( list != null ) {
+            for(String val : list.split(",") ) {
+                val = val.trim();
+                if ( !val.endsWith("/") ) {
+                    val = val.concat("/");
+                }
+                this.dependencyRepositories.add(val);
+            }
+        }
+    }
+
+    /**
+     * Find a an artifact
+     * If dependency repositories are configured, one of them must provide the artifact
+     * @param log Logger
+     * @param id The artifact id
+     * @return {@code true} if the artifact could be found.
+     * @throws MojoExecutionException
+     */
+    private boolean findDependencyArtifact(final Log log, final ArtifactId id) throws MojoExecutionException {
+        boolean result = true;
+        if ( !this.dependencyRepositories.isEmpty() ) {
+            result = false;
+            log.debug("Trying to resolve ".concat(id.toMvnId()).concat(" from ").concat(this.dependencyRepositories.toString()));
+            for(final String server : this.dependencyRepositories) {
+                try {
+                    final URL url = new URL(server.concat(id.toMvnPath()));
+                    try {
+                        url.openConnection().getInputStream();
+                        log.debug("Found ".concat(id.toMvnId()).concat(" at ").concat(url.toString()));
+                        result = true;
+                        break;
+                    } catch (IOException e) {
+                        // not available
+                        log.debug("Missed ".concat(id.toMvnId()).concat(" at ").concat(url.toString()).concat(" : ").concat(e.toString()));
+                    }
+                } catch ( final MalformedURLException mue) {
+                    throw new MojoExecutionException("Unable to find dependency on ".concat(server), mue);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Check if all dependency artifacts can be found
+     * @param log The logger
+     * @param info The artifact info
+     * @return {@code true} if all artifacts are publically available
+     * @throws MojoExecutionException
+     */
+    public boolean findDependencyArtifact(final Log log, final ArtifactInfo info) throws MojoExecutionException {
+        boolean result = true;
+        for(final ArtifactId id : info.getDependencyArtifacts()) {
+            if ( !findDependencyArtifact(log, id) ) {
+                result = false;
+                break;
+            }
+        }
+        return result;
     }
 }

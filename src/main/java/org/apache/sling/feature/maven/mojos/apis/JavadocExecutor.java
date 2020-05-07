@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.sling.feature.maven.mojos;
+package org.apache.sling.feature.maven.mojos.apis;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -31,7 +31,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.util.StringUtils;
 
-final class JavadocExecutor {
+public final class JavadocExecutor {
 
     private static final char QUOTE_CHAR = '"';
 
