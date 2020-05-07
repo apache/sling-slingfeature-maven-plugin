@@ -297,6 +297,8 @@ By default all features known to the project are used to create feature archive 
 
 It is possible to refine which feature archives should be created by selecting features as well as creating multiple features. The below configuration creates two feature archives. The first one with the classifier *platformarchive* contains a single feature with the classifier *platform*. The second archive gets the classifier *uiarchive* and contains two features with the classifiers *uibase* and *ui*.
 
+By default, a feature archive gets the type `far`. By specifying the optional `type` configuration this can be changed to another type.
+
 ```
 <execution>
     <id>create-feature-archives</id>
@@ -308,6 +310,8 @@ It is possible to refine which feature archives should be created by selecting f
             <archive>
                 <classifier>platformarchive</classifier>
                 <includeClassifier>platform</includeClassifier>
+                // optional type
+                <type>zip</type>
             </archive>
             <archive>
                 <classifier>uiarchive</classifier>
