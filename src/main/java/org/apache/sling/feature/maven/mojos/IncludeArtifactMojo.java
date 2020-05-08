@@ -120,6 +120,12 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private String includeType;
 
+    /**
+     * Metadata for the included artifact.
+     */
+    @Parameter
+    private Map<String, String> metadata;
+
     @Component
     protected ArtifactInstaller installer;
 
@@ -153,6 +159,9 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
         final Artifact art = new Artifact(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
                 this.project.getVersion(), includeClassifier, includeType != null ? includeType : this.project.getArtifact().getType()));
+        if (metadata != null && metadata.size() > 0) {
+            art.getMetadata().putAll(metadata);
+        }
         includeArtifact(found, includeArtifactExtension, art);
 
         includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
