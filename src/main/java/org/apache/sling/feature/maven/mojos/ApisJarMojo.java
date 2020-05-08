@@ -1199,7 +1199,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         ArtifactId artifactId = artifact.getId();
         getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
 
-        List<ArtifactId> scmIds = ApisUtil.getApiIds(artifact);
+        List<ArtifactId> scmIds = ApisUtil.getSourceIds(artifact);
         String scmLocation = artifact.getMetadata().get(ApisUtil.SCM_LOCATION);
         if ( scmIds != null && scmLocation != null) {
             throw new MojoExecutionException("Both " + ApisUtil.SCM_IDS + " and " + ApisUtil.SCM_LOCATION + " are defined for " + artifactId);
@@ -1647,19 +1647,22 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      */
     private boolean generateJavadoc(final ApisJarContext ctx, final ApiRegion region, final File javadocDir)
             throws MojoExecutionException {
+        final Map<String, Set<String>> linkedPackagesMap = new HashMap<>();
+        final Set<String> linkedGlobalPackages = new HashSet<>();
+
         final List<String> docLinks = new ArrayList<>();
         if ( this.javadocLinks != null ) {
             for(final String val : this.javadocLinks) {
                 docLinks.add(val);
+                ApisUtil.getPackageList(val, linkedGlobalPackages, linkedPackagesMap);
             }
         }
 
-        final Map<String, Set<String>> linkedPackagesMap = new HashMap<>();
 
         final List<String> sourceDirectories = new ArrayList<>();
         final Set<String> javadocPackages = new HashSet<>();
         for(final ArtifactInfo info : ctx.getArtifactInfos(region, false)) {
-            final Set<String> linkedPackages = new HashSet<>();
+            final Set<String> linkedPackages = new HashSet<>(linkedGlobalPackages);
             final List<String> links = ApisUtil.getJavadocLinks(info.getArtifact());
             if ( links != null ) {
                 for(final String v : links) {
