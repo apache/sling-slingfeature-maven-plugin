@@ -503,11 +503,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         if ( !ctx.getPackagesWithoutJavaClassesMap().isEmpty() ) {
             globalReport.add("The following exported packages do not contain any java classes:");
-            ctx.getPackagesWithoutJavaClassesMap().entrySet().forEach(p -> "- ".concat(p.getKey()).concat(" from ").concat(p.getValue().toMvnId()));
+            ctx.getPackagesWithoutJavaClassesMap().entrySet().forEach(p -> globalReport.add("- ".concat(p.getKey()).concat(" from ").concat(p.getValue().toMvnId())));
         }
         if ( !ctx.getPackagesWithoutSourcesMap().isEmpty() ) {
             globalReport.add("The following exported packages do not have sources:");
-            ctx.getPackagesWithoutSourcesMap().entrySet().forEach(p -> "- ".concat(p.getKey()).concat(" from ").concat(p.getValue().toMvnId()));
+            ctx.getPackagesWithoutSourcesMap().entrySet().forEach(p -> globalReport.add("- ".concat(p.getKey()).concat(" from ").concat(p.getValue().toMvnId())));
         }
 
         // recollect and package stuff per region
