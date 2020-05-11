@@ -1491,12 +1491,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             for(final ArtifactInfo info : infos) {
                 final File dir = archiveType == ArtifactType.APIS ? info.getBinDirectory() : info.getSourceDirectory();
 
-                final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
-                getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
-                final DefaultFileSet fileSet = new DefaultFileSet(dir);
-                fileSet.setIncludingEmptyDirectories(false);
-                fileSet.setIncludes(usedExportedPackageIncludes);
-                jarArchiver.addFileSet(fileSet);
+                if ( dir != null ) {
+                    final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
+                    getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
+                    final DefaultFileSet fileSet = new DefaultFileSet(dir);
+                    fileSet.setIncludingEmptyDirectories(false);
+                    fileSet.setIncludes(usedExportedPackageIncludes);
+                    jarArchiver.addFileSet(fileSet);
+                }
             }
         } else {
             // javadoc
