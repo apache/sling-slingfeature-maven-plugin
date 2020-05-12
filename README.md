@@ -545,6 +545,22 @@ Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
 
+**Support for Feature Archives**: feature archives (FAR) are supported now
+and can be added to the project either:
+
+1. By its classifier if part of the project
+```xml
+   <featureArchiveClassifiers>
+       <featureArchiveClassifier>sling12archive</featureArchiveClassifier>
+   </featureArchiveClassifiers>
+```
+2. Or by its Artifact Id when installed in the local Maven Repo
+```xml
+     <featureArchiveIds> 
+         <featureArchiveId>org.apache.sling.sample.far:sling-sample-far:far:samplefararchive:1.0.0-SNAPSHOT</featureArchiveId> 
+     </featureArchiveIds> 
+```
+
 ## Create Feature Model Descriptor from POM (include-artifact)
 
 With the **include-artifact** goal it is possible to generate a POM based

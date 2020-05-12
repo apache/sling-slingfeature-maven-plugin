@@ -39,10 +39,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Build;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.junit.After;
@@ -93,6 +95,11 @@ public class FeatureLauncherMojoTest {
         project.setVersion("1.0.1");
         project.setBuild(mockBuild);
         project.setContextValue(cacheKey, featureMap);
+        ProjectBuildingRequest projectBuildingRequest = mock(ProjectBuildingRequest.class);
+        project.setProjectBuildingRequest(projectBuildingRequest);
+        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        when(projectBuildingRequest.getLocalRepository()).thenReturn(artifactRepository);
+        when(artifactRepository.getBasedir()).thenReturn("");
         mojo.project = project;
 
         doNothing().when(mojo).checkPreconditions();
@@ -145,6 +152,11 @@ public class FeatureLauncherMojoTest {
         project.setVersion("1.0.1");
         project.setBuild(mockBuild);
         project.setContextValue(cacheKey, featureMap);
+        ProjectBuildingRequest projectBuildingRequest = mock(ProjectBuildingRequest.class);
+        project.setProjectBuildingRequest(projectBuildingRequest);
+        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        when(projectBuildingRequest.getLocalRepository()).thenReturn(artifactRepository);
+        when(artifactRepository.getBasedir()).thenReturn("");
         mojo.project = project;
 
         doNothing().when(mojo).checkPreconditions();
@@ -187,6 +199,11 @@ public class FeatureLauncherMojoTest {
         project.setVersion("1.0.1");
         project.setBuild(mockBuild);
         project.setContextValue(cacheKey, featureMap);
+        ProjectBuildingRequest projectBuildingRequest = mock(ProjectBuildingRequest.class);
+        project.setProjectBuildingRequest(projectBuildingRequest);
+        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        when(projectBuildingRequest.getLocalRepository()).thenReturn(artifactRepository);
+        when(artifactRepository.getBasedir()).thenReturn("");
         mojo.project = project;
 
         doNothing().when(mojo).checkPreconditions();
@@ -218,6 +235,11 @@ public class FeatureLauncherMojoTest {
         project.setVersion("1.0.1");
         project.setBuild(mockBuild);
         project.setContextValue(cacheKey, featureMap);
+        ProjectBuildingRequest projectBuildingRequest = mock(ProjectBuildingRequest.class);
+        project.setProjectBuildingRequest(projectBuildingRequest);
+        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        when(projectBuildingRequest.getLocalRepository()).thenReturn(artifactRepository);
+        when(artifactRepository.getBasedir()).thenReturn("");
         mojo.project = project;
 
         doNothing().when(mojo).checkPreconditions();
@@ -253,6 +275,11 @@ public class FeatureLauncherMojoTest {
         project.setVersion("1.0.1");
         project.setBuild(mockBuild);
         project.setContextValue(cacheKey, featureMap);
+        ProjectBuildingRequest projectBuildingRequest = mock(ProjectBuildingRequest.class);
+        project.setProjectBuildingRequest(projectBuildingRequest);
+        ArtifactRepository artifactRepository = mock(ArtifactRepository.class);
+        when(projectBuildingRequest.getLocalRepository()).thenReturn(artifactRepository);
+        when(artifactRepository.getBasedir()).thenReturn("");
         mojo.project = project;
 
         doNothing().when(mojo).checkPreconditions();

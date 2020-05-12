@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos;
 
 import com.google.common.io.Files;
+import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -34,6 +35,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Launches the given Feature File
@@ -45,6 +47,9 @@ import java.util.List;
 )
 public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
+    public static final String CFG_FEATURE_ARCHIVE_FILES = "featureArchiveFiles";
+    public static final String CFG_FEATURE_ARCHIVE_IDS = "featureArchiveIds";
+    public static final String CFG_FEATURE_ARCHIVE_CLASSIFIERS = "featureArchiveClassifiers";
     public static final String CFG_ARTIFACT_CLASH_OVERRIDES = "artifactClashOverrides";
     public static final String CFG_REPOSITORY_URL = "frameworkRepositoryUrl";
     public static final String CFG_FRAMEWORK_PROPERTIES = "frameworkProperties";
@@ -58,6 +63,24 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
     private FeatureSelectionConfig selection;
+
+    /**
+     * Feature Archive Files
+     */
+    @Parameter(property = CFG_FEATURE_ARCHIVE_FILES, required = false)
+    private Set<File> featureArchiveFiles;
+
+    /**
+     * Ids of Feature Archives to be obtained from local Maven repository
+     */
+    @Parameter(property = CFG_FEATURE_ARCHIVE_IDS, required = false)
+    private Set<String> featureArchiveIds;
+
+    /**
+     * Feature Archive Classifiers to be used from this project
+     */
+    @Parameter(property = CFG_FEATURE_ARCHIVE_CLASSIFIERS, required = false)
+    private Set<String> featureArchiveClassifiers;
 
     /**
      * The Artifact Id Overrides (see Feature Launcher for more info)
@@ -124,21 +147,54 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
         checkPreconditions();
         List<String> arguments = new ArrayList<>();
         getLog().info("Feature Selection: " + selection);
-        final Collection<Feature> features = getSelectedFeatures(selection).values();
-        getLog().info("Features from Selection: " + features);
-        for(Feature feature: features) {
-            // Loop over all features found, create a temporary file, write the features there and add them to the launcher's file list
-            File folder = Files.createTempDir();
-            ArtifactId id = feature.getId();
-            File featureFile = new File(folder, id.toMvnId().replaceAll(":", "-") + ".json");
-            // TODO: Do we need to support Prototypes etc?
-            try ( final Writer writer = new FileWriter(featureFile)) {
-                FeatureJSONWriter.write(writer, feature);
-            } catch (final IOException e) {
-                throw new MojoExecutionException("Unable to write feature file  :" + id.toMvnId(), e);
+        if(featureArchiveFiles != null && !featureArchiveFiles.isEmpty()) {
+            for (File file : featureArchiveFiles) {
+                handleFile(arguments, file, "-f");
             }
-            getLog().info("Feature File Location: " + featureFile);
-            handleFile(arguments, featureFile, "-f");
+        }
+        ArtifactRepository artifactRepository = this.project.getProjectBuildingRequest().getLocalRepository();
+        String localPath = artifactRepository.getBasedir();
+        if(featureArchiveClassifiers != null && !featureArchiveClassifiers.isEmpty()) {
+            for (String featureArchiveClassifier : featureArchiveClassifiers) {
+                ArtifactId id = new ArtifactId(
+                    this.project.getGroupId(), this.project.getArtifactId(),
+                    this.project.getVersion(), featureArchiveClassifier,
+                    "far"
+                );
+                String artifactPath = id.toMvnPath();
+                getLog().info("Artifact Maven Path: " + artifactPath);
+                File file = new File(localPath, artifactPath);
+                handleFile(arguments, file, "-f");
+            }
+        }
+        if(featureArchiveIds != null && !featureArchiveIds.isEmpty()) {
+            for (String featureArchive : featureArchiveIds) {
+                ArtifactId id = ArtifactId.parse(featureArchive);
+                if (id != null) {
+                    String artifactPath = id.toMvnPath();
+                    getLog().info("Artifact Maven Path: " + artifactPath);
+                    File file = new File(localPath, artifactPath);
+                    handleFile(arguments, file, "-f");
+                }
+            }
+        }
+        if(selection != null && !selection.getSelections().isEmpty()) {
+            final Collection<Feature> features = getSelectedFeatures(selection).values();
+            getLog().info("Features from Selection: " + features);
+            for (Feature feature : features) {
+                // Loop over all features found, create a temporary file, write the features there and add them to the launcher's file list
+                File folder = Files.createTempDir();
+                ArtifactId id = feature.getId();
+                File featureFile = new File(folder, id.toMvnId().replaceAll(":", "-") + ".json");
+                // TODO: Do we need to support Prototypes etc?
+                try (final Writer writer = new FileWriter(featureFile)) {
+                    FeatureJSONWriter.write(writer, feature);
+                } catch (final IOException e) {
+                    throw new MojoExecutionException("Unable to write feature file  :" + id.toMvnId(), e);
+                }
+                getLog().info("Feature File Location: " + featureFile);
+                handleFile(arguments, featureFile, "-f");
+            }
         }
         handleStringList(arguments, artifactClashOverrides, "-C");
         handleString(arguments, repositoryUrl, "-u");
