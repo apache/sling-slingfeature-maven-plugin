@@ -518,13 +518,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             if (generateApiJar) {
                 final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources,
-                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies));
+                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies), report);
                 report(ctx, apiJar, ArtifactType.APIS, apiRegion, this.useApiDependencies, report, null);
             }
 
             if (generateSourceJar) {
                 final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources,
-                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies));
+                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies), report);
                 report(ctx, sourceJar, ArtifactType.SOURCES, apiRegion, this.useApiDependencies, report, null);
             }
 
@@ -539,7 +539,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, apiRegion, links, javadocsDir);
                 if ( infos != null ) {
                     ctx.setJavadocDir(javadocsDir);
-                    final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC, this.apiJavadocResources, infos);
+                    final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC, this.apiJavadocResources, infos, report);
                     report(ctx, javadocJar, ArtifactType.JAVADOC, apiRegion, false, report, links);
                 } else {
                     getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
@@ -1483,7 +1483,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final ApiRegion apiRegion,
             final ArtifactType archiveType,
             final List<File> resources,
-            final Collection<ArtifactInfo> infos) throws MojoExecutionException {
+            final Collection<ArtifactInfo> infos,
+            final List<String> report) throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
         if ( archiveType == ArtifactType.APIS || archiveType == ArtifactType.SOURCES ) {
@@ -1537,7 +1538,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // check for license report
         if ( this.licenseReport != null ) {
-            final File out = this.createLicenseReport(ctx, apiRegion, infos);
+            final File out = this.createLicenseReport(ctx, apiRegion, infos, report);
             jarArchiver.addFile(out, this.licenseReport);
         }
 
@@ -1808,7 +1809,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return Collections.singletonMap(packages, otherPackages).entrySet().iterator().next();
     }
 
-    private File createLicenseReport(final ApisJarContext ctx, final ApiRegion region, final Collection<ArtifactInfo> infos) throws MojoExecutionException {
+    private File createLicenseReport(final ApisJarContext ctx,
+            final ApiRegion region,
+            final Collection<ArtifactInfo> infos,
+            final List<String> report) throws MojoExecutionException {
         final File out = new File(this.getTmpDir(), region.getName() + "-license-report.txt");
         if ( !out.exists() ) {
 
@@ -1838,7 +1842,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                         .map(l -> l.getName().concat(" (").concat(l.getUrl()).concat(")"))
                                         .collect(Collectors.toList())));
                     } else {
-                        getLog().warn("No license info found for " + info.getId().toMvnId());
+                        report.add("No license info found for ".concat(info.getId().toMvnId()));
                     }
                 }
                 if ( !exclude ) {

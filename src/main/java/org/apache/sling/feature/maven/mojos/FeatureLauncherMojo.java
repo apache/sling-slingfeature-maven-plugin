@@ -37,6 +37,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugins.annotations.Mojo;
+import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.io.json.FeatureJSONWriter;
+
+import com.google.common.io.Files;
+
 /**
  * Launches the given Feature File
  */
@@ -216,7 +226,7 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
     void launch(String[] arguments) throws MojoExecutionException {
         try {
-            Class clazz = Thread.currentThread().getContextClassLoader().loadClass(
+            Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(
                 "org.apache.sling.feature.launcher.impl.Main"
             );
             Method main = clazz.getMethod("main", String[].class);
