@@ -16,16 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import com.google.common.io.Files;
-import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.io.json.FeatureJSONWriter;
-
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -37,6 +27,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
