@@ -1612,10 +1612,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                                   .append(artifactType.getId())
                                                   .toString();
 
-        return ctx.getFeatureId()
-                .changeClassifier(finalClassifier)
-                .changeType(artifactType.getExtension())
-                .changeVersion(this.apiVersion != null ? this.apiVersion : ctx.getFeatureId().getVersion());
+        return new ArtifactId(this.project.getGroupId(),
+                this.project.getArtifactId(),
+                this.apiVersion != null ? this.apiVersion : this.project.getVersion(),
+                finalClassifier,
+                artifactType.getExtension());
     }
 
     /**
