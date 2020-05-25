@@ -89,6 +89,7 @@ import org.apache.sling.feature.extension.apiregions.api.ApiExport;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
+import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
@@ -338,6 +339,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter(defaultValue = "8")
     private String javadocSourceLevel;
+
+    /**
+     * specify the manifest properties values that you need to replace in the Manifest file.
+     * @since 1.3.2
+     */
+    @Parameter
+    private final Properties manifestProperties = new Properties();
 
     private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
 
@@ -1581,6 +1589,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Implementation-Vendor", project.getOrganization().getName());
             archiveConfiguration.addManifestEntry("Specification-Vendor", project.getOrganization().getName());
         }
+
+        // replace/add manifest entries with the one provided in manifestProperties configuration
+        archiveConfiguration.addManifestEntries(ProjectHelper.propertiesToMap(manifestProperties));
 
         final File target = new File(mainOutputDir, targetId.toMvnName());
         MavenArchiver archiver = new MavenArchiver();
