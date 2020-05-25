@@ -339,6 +339,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "8")
     private String javadocSourceLevel;
 
+    /**
+     * specify the manifest properties values that you need to replace in the Manifest file.
+     * @since 1.3.2
+     */
+    @Parameter
+    private final Properties manifestProperties = new Properties();
+
     private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
 
     /** Artifact Provider. */
@@ -1581,6 +1588,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Implementation-Vendor", project.getOrganization().getName());
             archiveConfiguration.addManifestEntry("Specification-Vendor", project.getOrganization().getName());
         }
+
+        // replace manifest entries with the one provided in properties configuration
+        Map<String,String> archiveConfigMap =  archiveConfiguration.getManifestEntries();
+        for (final String name: manifestProperties.stringPropertyNames()){
+            if(archiveConfigMap.containsKey(name))
+                archiveConfigMap.replace(name, manifestProperties.getProperty(name));
+        }
+        archiveConfiguration.setManifestEntries(archiveConfigMap);
 
         final File target = new File(mainOutputDir, targetId.toMvnName());
         MavenArchiver archiver = new MavenArchiver();
