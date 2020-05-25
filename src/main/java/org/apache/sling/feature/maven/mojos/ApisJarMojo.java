@@ -89,6 +89,7 @@ import org.apache.sling.feature.extension.apiregions.api.ApiExport;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
+import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
@@ -1589,13 +1590,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             archiveConfiguration.addManifestEntry("Specification-Vendor", project.getOrganization().getName());
         }
 
-        // replace manifest entries with the one provided in properties configuration
-        Map<String,String> archiveConfigMap =  archiveConfiguration.getManifestEntries();
-        for (final String name: manifestProperties.stringPropertyNames()){
-            if(archiveConfigMap.containsKey(name))
-                archiveConfigMap.replace(name, manifestProperties.getProperty(name));
-        }
-        archiveConfiguration.setManifestEntries(archiveConfigMap);
+        // replace/add manifest entries with the one provided in manifestProperties configuration
+        archiveConfiguration.addManifestEntries(ProjectHelper.propertiesToMap(manifestProperties));
 
         final File target = new File(mainOutputDir, targetId.toMvnName());
         MavenArchiver archiver = new MavenArchiver();
