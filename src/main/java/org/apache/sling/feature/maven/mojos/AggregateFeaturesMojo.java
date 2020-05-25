@@ -147,10 +147,8 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             if (aggregate.vendor != null) {
                 result.setVendor(aggregate.vendor);
             }
-            if (aggregate.attach) {
-                ProjectHelper.createTmpFeatureFile(project, result);
-            }
 
+            ProjectHelper.createTmpFeatureFile(project, result);
             ProjectHelper.setFeatureInfo(project, result);
 
             // Add feature to map of features
