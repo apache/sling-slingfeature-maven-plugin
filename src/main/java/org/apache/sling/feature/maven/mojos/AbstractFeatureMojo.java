@@ -165,6 +165,33 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
     private int jarStartOrder;
 
+    /**
+     * Enable the replacement of variables when reading a feature model. The supported
+     * variables are "project.groupId", "project.artifactId", "project.version" and
+     * "project.osgiVersion".
+     * @since 1.3.6
+     */
+    @Parameter(defaultValue = "true")
+    private boolean enableProjectVariableReplacement;
+
+    /**
+     * A comma separated list of variables which are replaced when a feature model
+     * is read. The value of these variables is fetched from the project properties.
+     * @since 1.3.6
+     */
+    @Parameter
+    private String replacePropertyVariables;
+
+    /**
+     * Enable old variable replacement in feature model based on the full maven
+     * project including system variables.
+     * If this is enabled, enableProjectVariableReplacement and
+     * replacePropertyVariables have no effect.
+     * @since 1.3.6
+     */
+    @Parameter(defaultValue = "false")
+    private boolean enableLegacyVariableReplacement;
+
     @Parameter(property = "project", readonly = true, required = true)
     protected MavenProject project;
 
@@ -239,7 +266,10 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
             for (final File file : files) {
                 getLog().debug("Reading feature file " + file);
                 try {
-                    final String json = ProjectHelper.readFeatureFile(project, file, null);
+                    final String json = ProjectHelper.readFeatureFile(project, file, null,
+                            this.enableLegacyVariableReplacement,
+                            this.enableProjectVariableReplacement,
+                            this.replacePropertyVariables != null ? this.replacePropertyVariables.split(",") : null);
 
                     try (final Reader reader = new StringReader(json)) {
                         final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());

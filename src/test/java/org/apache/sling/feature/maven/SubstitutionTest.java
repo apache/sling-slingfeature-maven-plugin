@@ -16,12 +16,12 @@
  */
 package org.apache.sling.feature.maven;
 
-import org.apache.maven.project.MavenProject;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.maven.project.MavenProject;
+import org.junit.Test;
 
 public class SubstitutionTest {
     @Test
@@ -29,7 +29,8 @@ public class SubstitutionTest {
         MavenProject proj = new MavenProject();
         Properties p = proj.getProperties();
         p.put("test", "foo");
-        assertEquals("hellofoogoodbyefoo", Substitution.replaceMavenVars(proj, "hello${test}goodbye${test}"));
+        assertEquals("hellofoogoodbyefoo", Substitution.replaceMavenVars(proj, false, false, new String[] {"test"}, "hello${test}goodbye${test}"));
+        assertEquals("hello${test}goodbye${test}", Substitution.replaceMavenVars(proj, false, false, null, "hello${test}goodbye${test}"));
     }
 
     @Test
@@ -44,7 +45,7 @@ public class SubstitutionTest {
 
             System.setProperty("test", "bar");
 
-            assertEquals("hellobargoodbyebar", Substitution.replaceMavenVars(proj, "hello${test}goodbye${test}"));
+            assertEquals("hellobargoodbyebar", Substitution.replaceMavenVars(proj, true, false, null, "hello${test}goodbye${test}"));
         } finally {
             // Restore the system properties
             System.setProperties(storedProps);

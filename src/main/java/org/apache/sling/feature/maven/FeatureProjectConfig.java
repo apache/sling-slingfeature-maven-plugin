@@ -50,6 +50,13 @@ public class FeatureProjectConfig {
 
     public static final String DEFAULT_TEST_FEATURE_DIR = "src/test/features";
 
+    public static final String CFG_ENABLE_PROJ_VARS = "enableProjectVariableReplacement";
+
+    public static final String CFG_REPLACE_PROP_VARS = "replacePropertyVariables";
+
+    public static final String CFG_LEGACY_REPLACE = "enableLegacyVariableReplacement";
+
+
     private final String featuresDirName;
 
     private final String includes;
@@ -69,6 +76,12 @@ public class FeatureProjectConfig {
     private final boolean skipAddJar;
 
     private final boolean validate;
+
+    private final boolean enableProjectVariableReplacement;
+
+    private final String[] replacePropertyVariables;
+
+    private final boolean enableLegacyVariableReplacement;
 
     public static FeatureProjectConfig getMainConfig(final FeatureProjectInfo info) {
         return new FeatureProjectConfig(info, false);
@@ -114,7 +127,14 @@ public class FeatureProjectConfig {
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
         this.jarStartOrder = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_ORDER, null);
         this.validate = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_VALIDATE_FEATURES, "true"));
-
+        this.enableProjectVariableReplacement = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_ENABLE_PROJ_VARS, "true"));
+        String vars = ProjectHelper.getConfigValue(info.plugin, CFG_REPLACE_PROP_VARS, null);
+        if ( vars == null ) {
+            this.replacePropertyVariables = null;
+        } else {
+            this.replacePropertyVariables = vars.split(",");
+        }
+        this.enableLegacyVariableReplacement = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_LEGACY_REPLACE, "false"));
     }
 
     public String getName() {
@@ -155,6 +175,18 @@ public class FeatureProjectConfig {
 
     public boolean isValidate() {
         return this.validate;
+    }
+
+    public boolean isEnableProjectVariableReplacement() {
+        return enableProjectVariableReplacement;
+    }
+
+    public String[] getReplacePropertyVariables() {
+        return replacePropertyVariables;
+    }
+
+    public boolean isEnableLegacyVariableReplacement() {
+        return enableLegacyVariableReplacement;
     }
 }
 

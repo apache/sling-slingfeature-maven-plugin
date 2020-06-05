@@ -57,6 +57,7 @@
               <goal>aggregate-features</goal>
             </goals>
             <configuration>
+              <enableLegacyVariableReplacement>true</enableLegacyVariableReplacement>
               <aggregates>
 		<aggregate>
 	          <classifier>interpolator-test</classifier>

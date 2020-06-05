@@ -531,8 +531,12 @@ public abstract class ProjectHelper {
      * @param file The json file
      * @return The read and minified JSON
      */
-    public static String readFeatureFile(final MavenProject project, final File file,
-            final String suggestedClassifier) {
+    public static String readFeatureFile(final MavenProject project,
+            final File file,
+            final String suggestedClassifier,
+            final boolean legacyReplace,
+            final boolean enableProjectVars,
+            final String[] additionalVars) {
         final ArtifactId fileId = new ArtifactId(project.getGroupId(),
                 project.getArtifactId(),
                 project.getVersion(),
@@ -541,7 +545,7 @@ public abstract class ProjectHelper {
 
         // replace variables
         try ( final Reader reader = new FileReader(file) ) {
-            return Substitution.replaceMavenVars(project, JSONFeatures.read(reader, fileId, file.getAbsolutePath()));
+            return Substitution.replaceMavenVars(project, legacyReplace, enableProjectVars, additionalVars, JSONFeatures.read(reader, fileId, file.getAbsolutePath()));
         } catch (final IOException e) {
             throw new RuntimeException("Unable to read feature file " + file.getAbsolutePath(), e);
         }

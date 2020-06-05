@@ -298,7 +298,11 @@ public class Preprocessor {
                     suggestedClassifier = null;
                 }
 
-                final String readJson = ProjectHelper.readFeatureFile(info.project, file, suggestedClassifier);
+                final String readJson = ProjectHelper.readFeatureFile(info.project, file,
+                        suggestedClassifier,
+                        config.isEnableLegacyVariableReplacement(),
+                        config.isEnableProjectVariableReplacement(),
+                        config.getReplacePropertyVariables());
 
                 final String json = preprocessFeature(info.project, config.isValidate(),
                         file, readJson);

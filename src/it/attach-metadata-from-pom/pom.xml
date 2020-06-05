@@ -51,6 +51,7 @@
               <goal>aggregate-features</goal>
             </goals>
             <configuration>
+              <replacePropertyVariables>interpolated_variable,osgi.framework.version,sling.framework.install.incremental,sling.framework.install.startlevel,sling.ignoreSystemProperties</replacePropertyVariables>
               <aggregates>
 		<aggregate>
 	          <classifier>metadata-test</classifier>

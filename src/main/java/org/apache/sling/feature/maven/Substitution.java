@@ -18,6 +18,7 @@ package org.apache.sling.feature.maven;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Properties;
 
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.project.MavenProject;
@@ -28,26 +29,53 @@ import org.codehaus.plexus.interpolation.PrefixedValueSourceWrapper;
 import org.codehaus.plexus.interpolation.PropertiesBasedValueSource;
 import org.codehaus.plexus.interpolation.RecursionInterceptor;
 import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
+import org.codehaus.plexus.interpolation.SimpleRecursionInterceptor;
 
 import aQute.bnd.version.MavenVersion;
 
 public class Substitution {
-    public static String replaceMavenVars(MavenProject project, String s) {
+
+    public static String replaceMavenVars(MavenProject project,
+            boolean legacyReplace,
+            boolean replaceProjectProps,
+            String[] additionalProperties, String s) {
         RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
-        project.getProperties().setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
-        interpolator.addValueSource(new PropertiesBasedValueSource(System.getProperties()));
-        interpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
+        final RecursionInterceptor recursionInterceptor;
+        if ( legacyReplace ) {
+            project.getProperties().setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
+            interpolator.addValueSource(new PropertiesBasedValueSource(System.getProperties()));
+            interpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
 
-        List<String> synonymPrefixes = Collections.singletonList("project.");
+            List<String> synonymPrefixes = Collections.singletonList("project.");
 
-        PrefixedValueSourceWrapper modelWrapper = new PrefixedValueSourceWrapper(
-                new ObjectBasedValueSource(project),
-                synonymPrefixes,
-                true);
-        interpolator.addValueSource( modelWrapper );
+            PrefixedValueSourceWrapper modelWrapper = new PrefixedValueSourceWrapper(
+                    new ObjectBasedValueSource(project),
+                    synonymPrefixes,
+                    true);
+            interpolator.addValueSource( modelWrapper );
 
-        RecursionInterceptor recursionInterceptor = new PrefixAwareRecursionInterceptor(synonymPrefixes, true);
+            recursionInterceptor = new PrefixAwareRecursionInterceptor(synonymPrefixes, true);
 
+        } else {
+            final Properties props = new Properties();
+            if ( replaceProjectProps ) {
+                props.setProperty("project.groupId", project.getGroupId());
+                props.setProperty("project.artifactId", project.getArtifactId());
+                props.setProperty("project.version", project.getVersion());
+                props.setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
+            }
+            if ( additionalProperties != null ) {
+                for(String p : additionalProperties) {
+                    p = p.trim();
+                    if ( project.getProperties().containsKey(p)) {
+                        props.setProperty(p, project.getProperties().getProperty(p));
+                    }
+                }
+            }
+            interpolator.addValueSource(new PropertiesBasedValueSource(props));
+
+            recursionInterceptor = new SimpleRecursionInterceptor();
+        }
         try {
             return interpolator.interpolate(s, recursionInterceptor);
         } catch (InterpolationException e) {
