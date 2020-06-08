@@ -71,6 +71,8 @@ public class ApisJarContext {
 
         private List<License> licenses;
 
+        private final Set<String> sources = new HashSet<>();
+
         public ArtifactInfo(final Artifact artifact) {
             this.artifact = artifact;
         }
@@ -188,6 +190,22 @@ public class ApisJarContext {
                 }
             }
             return dependencies;
+        }
+
+        public void addSourceInfo(final ArtifactId id) {
+            if ( id != null ) {
+                this.sources.add(id.toMvnId());
+            }
+        }
+
+        public void addSourceInfo(final String connection) {
+            if ( connection != null ) {
+                this.sources.add(connection);
+            }
+        }
+
+        public Set<String> getSources() {
+            return this.sources;
         }
     }
 

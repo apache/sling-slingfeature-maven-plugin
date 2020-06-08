@@ -322,6 +322,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "false")
     private boolean failOnError;
 
+    /**
+     * Fail the build if sources are mising for javadoc generation
+     * @since 1.3.6
+     */
+    @Parameter(defaultValue = "false")
+    private boolean failOnMissingSourcesForJavadoc;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -516,6 +523,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             onArtifact(ctx, artifact);
         }
 
+        if ( this.generateSourceJar || this.generateJavadocJar ) {
+            getLog().info("--------------------------------------------------------");
+            getLog().info("Used sources:");
+            for(final ArtifactInfo info : ctx.getArtifactInfos()) {
+                if ( info.getSources().isEmpty()) {
+                    getLog().info("- ".concat(info.getId().toMvnId()).concat(" : NO SOURCES FOUND"));
+                } else {
+                    getLog().info("- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getSources().toString()));
+                }
+            }
+            getLog().info("--------------------------------------------------------");
+        }
+
         boolean hasErrors = false;
 
         // recollect and package stuff per region
@@ -603,7 +623,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if ( links != null ) {
             apiPackages.addAll(links.getLinkedPackages());
         }
-        if ( artifactType == ArtifactType.JAVADOC ) {
+        if ( artifactType == ArtifactType.JAVADOC && !failOnMissingSourcesForJavadoc) {
             otherPackages.addAll(ctx.getPackagesWithoutSources());
         }
         final List<ApiExport> missing = new ArrayList<>();
@@ -891,6 +911,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if ( this.generateSourceJar || this.generateJavadocJar ) {
             if ( !skipSourceDeflate ) {
                 this.downloadSources(ctx, info, binArtifact);
+            } else {
+                info.addSourceInfo("USE CACHE FROM PREVIOUS BUILD");
             }
         }
 
@@ -1236,21 +1258,22 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             throw new MojoExecutionException("Both " + ApisUtil.SCM_IDS + " and " + ApisUtil.SCM_LOCATION + " are defined for " + artifactId);
         }
 
-        boolean fallbackToScmCheckout = false;
-
         if ( scmIds != null ) {
             for(final ArtifactId sourcesArtifactId : scmIds) {
                 downloadSourceAndDeflate(ctx, info, sourcesArtifactId, false);
+                info.addSourceInfo(sourcesArtifactId);
             }
         } else if ( scmLocation != null ) {
-            checkoutSourcesFromSCM(ctx, info, artifact);
+            final String connection = checkoutSourcesFromSCM(ctx, info, artifact);
+            info.addSourceInfo(connection);
         } else {
             final ArtifactId sourcesArtifactId = artifactId.changeClassifier("sources").changeType("jar");
-            fallbackToScmCheckout = downloadSourceAndDeflate(ctx, info, sourcesArtifactId, true);
-        }
-
-        if ( fallbackToScmCheckout ) {
-            checkoutSourcesFromSCM(ctx, info, artifact);
+            if ( downloadSourceAndDeflate(ctx, info, sourcesArtifactId, true) ) {
+                final String connection =  checkoutSourcesFromSCM(ctx, info, artifact);
+                info.addSourceInfo(connection);
+            } else {
+                info.addSourceInfo(sourcesArtifactId);
+            }
         }
     }
 
@@ -1284,7 +1307,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return model;
     }
 
-    private void checkoutSourcesFromSCM(final ApisJarContext ctx,
+    private String checkoutSourcesFromSCM(final ApisJarContext ctx,
             final ArtifactInfo info,
             final Artifact sourceArtifact)
     throws MojoExecutionException {
@@ -1312,7 +1335,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     + sourceArtifact.getId().toMvnId()
                           + " bundle neither in "
                     + pomModel.getId() + " POM file.");
-            return;
+            return null;
         }
 
         try {
@@ -1347,7 +1370,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId()
                             + " : An error occurred while checking out sources from " + connection + ": "
                             + result.getProviderMessage());
-                    return;
+                    return null;
                 }
             }
 
@@ -1376,7 +1399,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId() + " : SCM checkout for "
                             + sourceArtifact.getId().toMvnId()
                             + " does not contain any source.");
-                    return;
+                    return null;
                 }
             }
 
@@ -1401,6 +1424,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
 
+            return tag == null ? connection : connection.concat("@").concat(tag);
         } catch (ScmRepositoryException se) {
             throw new MojoExecutionException("An error occurred while reading SCM from "
                                              + connection
@@ -1411,6 +1435,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     + " : bundle points to an SCM connection "
                            + connection
                            + " which does not specify a valid or supported SCM provider", nsspe);
+            return null;
         }
     }
 
