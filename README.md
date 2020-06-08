@@ -35,6 +35,35 @@ In the following example the qualifier `base` is specified for the feature file:
 If you omit the ID in your feature file, the maven plugin will generate an ID for you based on the file name of the feature file. The file name becomes the qualifier of the ID.
 If your feature is named `feature.json` then this becomes the main artifact of the project without a qualifier.
 
+## Replacement of placeholders
+
+### Default placeholders
+
+This maven plugin replaces some placeholders when processing feature files, placeholders use the common `${name}` syntax. The following placeholders are replaced by default:
+* project.groupId - The group id of the current maven project
+* project.artifactId - The artifact id of the current maven project
+* project.version - The version of the current maven project
+* project.osgiVersion - The version converted to an proper OSGi version.
+
+The replacement of these placeholders can be disabled by setting the configuration `enableProjectVariableReplacement` to `true`.
+
+### Additional placeholders
+
+The plugin can be configured to replace placeholders in the feature file based on maven project properties. To enable this, the configuration `replacePropertyVariables` can be set with a comma separated list of property names like:
+
+```
+    <replacePropertyVariables>oak.version,jackrabbit.version</replacePropertyVariables>
+```
+
+The value needs to be set as a property on the maven project to be replaced.
+
+### Legacy Replacement
+
+Up to version 1.3.4 of the maven plugin, all occurences of placeholders where tried to be replaced by the maven plugin. However, this had two problems: 
+* if a variable name in the feature model clashes with an (randomly) set maven project property, the usage of the variable got replaced with the value of the property.
+* Placeholders got replaced not only based on project properties but also on other inputs like system properties etc. making the build not reproducible.
+
+For versions higher than 1.3.4, the `enableLegacyVariableReplacement` configuration can be set to `true` to enable this old behaviour. But it is discouraged to do so and rather use `replacePropertyVariables` with a clearly defined set of placeholders.
 
 # Global Configuration
 
