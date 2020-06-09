@@ -620,11 +620,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
-        if ( links != null ) {
-            apiPackages.addAll(links.getLinkedPackages());
-        }
+        // make sure no reports for packages not containing java classes
+        otherPackages.addAll(ctx.getPackagesWithoutJavaClasses());
+        // ignore packages without sources for javadoc?
         if ( artifactType == ArtifactType.JAVADOC && !failOnMissingSourcesForJavadoc) {
             otherPackages.addAll(ctx.getPackagesWithoutSources());
+        }
+        // add packages found in links
+        if ( links != null ) {
+            apiPackages.addAll(links.getLinkedPackages());
         }
         final List<ApiExport> missing = new ArrayList<>();
 
@@ -634,12 +638,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 missing.add(exp);
             }
         }
+        // correct remaining packages
         if ( links != null ) {
             apiPackages.removeAll(links.getLinkedPackages());
         }
         if ( artifactType == ArtifactType.JAVADOC ) {
             otherPackages.removeAll(ctx.getPackagesWithoutSources());
         }
+        otherPackages.removeAll(ctx.getPackagesWithoutJavaClasses());
+
         apiPackages.addAll(otherPackages);
         if (missing.isEmpty() && apiPackages.isEmpty()) {
             getLog().info("Verified " + artifactType.getId() + " jar for region " + apiRegion.getName());
