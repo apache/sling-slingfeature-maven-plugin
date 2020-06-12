@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 
 public class JavadocLinks {
@@ -33,7 +34,8 @@ public class JavadocLinks {
     private final Set<String> docLinks = new HashSet<>();
 
     public void calculateLinks(final String[] globalJavaDocLinks,
-            final Collection<ArtifactInfo> infos) throws MojoExecutionException {
+            final Collection<ArtifactInfo> infos,
+            final Artifact framework) throws MojoExecutionException {
         final Map<String, Set<String>> linkedPackagesMap = new HashMap<>();
         this.docLinks.clear();
         this.linkedGlobalPackages.clear();
@@ -45,6 +47,15 @@ public class JavadocLinks {
         }
         for(final ArtifactInfo info : infos) {
             final List<String> links = ApisUtil.getJavadocLinks(info.getArtifact());
+            if ( links != null ) {
+                for(final String v : links) {
+                    ApisUtil.getPackageList(v, linkedGlobalPackages, linkedPackagesMap);
+                    docLinks.add(v);
+                }
+            }
+        }
+        if ( framework != null ) {
+            final List<String> links = ApisUtil.getJavadocLinks(framework);
             if ( links != null ) {
                 for(final String v : links) {
                     ApisUtil.getPackageList(v, linkedGlobalPackages, linkedPackagesMap);

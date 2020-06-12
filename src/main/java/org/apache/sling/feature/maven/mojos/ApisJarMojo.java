@@ -81,6 +81,7 @@ import org.apache.maven.shared.utils.io.FileUtils;
 import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.ExecutionEnvironmentExtension;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
@@ -579,8 +580,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             if (generateJavadocJar) {
                 final File javadocsDir = new File(regionDir, ArtifactType.JAVADOC.getId());
+                final ExecutionEnvironmentExtension ext = ExecutionEnvironmentExtension.getExecutionEnvironmentExtension(feature);
                 final JavadocLinks links = new JavadocLinks();
-                links.calculateLinks(this.javadocLinks, ctx.getArtifactInfos(apiRegion, false));
+                links.calculateLinks(this.javadocLinks, ctx.getArtifactInfos(apiRegion, false), ext != null ? ext.getFramework() : null);
+
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, apiRegion, links, javadocsDir);
                 if ( infos != null ) {
                     ctx.setJavadocDir(javadocsDir);
