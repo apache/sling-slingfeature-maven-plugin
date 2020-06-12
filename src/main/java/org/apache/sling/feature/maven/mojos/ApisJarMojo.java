@@ -254,6 +254,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private boolean generateJavadocJar;
 
     /**
+     * Source level for javadoc generation
+     */
+    @Parameter(defaultValue = "8")
+    private String javadocSourceLevel;
+
+    /**
      * Optional version to be put into the manifest of the created jars
      * @since 1.2.0
      */
@@ -323,11 +329,32 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private boolean failOnError;
 
     /**
+     * specify the manifest properties values that you need to replace in the Manifest file.
+     * @since 1.3.2
+     */
+    @Parameter
+    private final Properties manifestProperties = new Properties();
+
+    /**
      * Fail the build if sources are mising for javadoc generation
      * @since 1.3.6
      */
     @Parameter(defaultValue = "false")
     private boolean failOnMissingSourcesForJavadoc;
+
+    /**
+     * Whether the index should be generated
+     * @since 1.3.6
+     */
+    @Parameter(defaultValue = "true")
+    private boolean javadocIndex;
+
+    /**
+     * Whether the tree should be generated
+     * @since 1.3.6
+     */
+    @Parameter(defaultValue = "true")
+    private boolean javadocTree;
 
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
@@ -343,16 +370,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     @Component
     private RepositorySystem repositorySystem;
-
-    @Parameter(defaultValue = "8")
-    private String javadocSourceLevel;
-
-    /**
-     * specify the manifest properties values that you need to replace in the Manifest file.
-     * @since 1.3.2
-     */
-    @Parameter
-    private final Properties manifestProperties = new Properties();
 
     private final Pattern pomPropertiesPattern = Pattern.compile("META-INF/maven/[^/]+/[^/]+/pom.properties");
 
@@ -1792,6 +1809,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         javadocExecutor.addArgument("--allow-script-in-comments");
+
+        if ( !this.javadocIndex ) {
+            javadocExecutor.addArgument("--noindex");
+        }
+        if ( !this.javadocTree ) {
+            javadocExecutor.addArgument("--notree");
+        }
 
         // list packages
         javadocExecutor.addArguments(javadocPackages);
