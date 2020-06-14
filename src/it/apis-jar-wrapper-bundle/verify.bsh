@@ -29,7 +29,7 @@ import org.codehaus.plexus.util.*;
         File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-apis.jar");
         if (!baseApiJar.exists()) {
             System.out.println("FAILED!");
-            System.out.println("File '" + file + "' not found");
+            System.out.println("File '" + baseApiJar + "' not found");
             return false;
         }
 
@@ -41,7 +41,7 @@ import org.codehaus.plexus.util.*;
 
             if (exportPackageHeader.indexOf("com.google.gson.stream;version=\"2.8.4\"") < 0) {
                 System.out.println("FAILED!");
-                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'com.google.gson.stream;version=\"2.8.4\"' in bundle " + file);
+                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'com.google.gson.stream;version=\"2.8.4\"' in bundle " + baseApiJar);
                 return false;
             }
 
@@ -54,7 +54,7 @@ import org.codehaus.plexus.util.*;
             }) {
                 if (jarFile.getJarEntry(expectedEntry) == null) {
                     System.out.println("FAILED!");
-                    System.out.println("Entry '" + expectedEntry + "' does not exist in bundle " + file);
+                    System.out.println("Entry '" + expectedEntry + "' does not exist in bundle " + baseApiJar);
                     return false;
                 }
             }

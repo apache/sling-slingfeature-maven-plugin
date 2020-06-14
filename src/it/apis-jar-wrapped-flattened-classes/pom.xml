@@ -42,8 +42,7 @@
             <filesInclude>**/*.json</filesInclude>
           </selection>
           <includeResources>
-            <includeResource>*.cnd</includeResource>
-            <includeResource>*.tld</includeResource>
+            <includeResource>**/*.cnd</includeResource>
           </includeResources>
         </configuration>
       </plugin>
