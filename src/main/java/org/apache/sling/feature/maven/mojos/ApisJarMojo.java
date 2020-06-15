@@ -1214,6 +1214,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         for (final String resourceName : directoryScanner.getIncludedFiles()) {
             final File resource = new File(info.getBinDirectory(), resourceName);
+
+            String includedName = resourceName.replace(File.separatorChar, '/');
             if ( !info.getIncludedResources().contains(resource) ) {
                 final String prefix = artifactId.toMvnName().concat("-");
 
@@ -1232,10 +1234,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         throw new MojoExecutionException("Impossible to rename resource " + resource + " to " + renamed
                                 + ", please check the current user has enough rights on the File System");
                     }
+                    final int lastSlash = includedName.lastIndexOf('/');
+                    if ( lastSlash == -1 ) {
+                        includedName = renamed.getName();
+                    } else {
+                        includedName = includedName.substring(0, lastSlash + 1).concat(renamed.getName());
+                    }
                 }
             }
-            if ( resourceName.endsWith(ArtifactType.CND.getContentExtension())) {
-                info.getNodeTypes().add(resourceName);
+            if ( includedName.endsWith(ArtifactType.CND.getContentExtension())) {
+                info.getNodeTypes().add(includedName);
             }
         }
 
