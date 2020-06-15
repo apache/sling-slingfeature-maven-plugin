@@ -26,7 +26,7 @@ import org.codehaus.plexus.util.*;
 
         // base
 
-        File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-apis.jar");
+        File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-global-apis.jar");
         if (!baseApiJar.exists()) {
             System.out.println("FAILED!");
             System.out.println("File '" + baseApiJar + "' not found");
@@ -34,36 +34,20 @@ import org.codehaus.plexus.util.*;
         }
 
         JarFile jarFile = null;
-        try {
-            jarFile = new JarFile(baseApiJar);
-            Manifest manifest= jarFile.getManifest();
-            String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
+        // cannot use try..finally due to https://github.com/beanshell/beanshell/issues/367
+        jarFile = new JarFile(baseApiJar);
+        Manifest manifest= jarFile.getManifest();
+        String nodeTypes = manifest.getMainAttributes().getValue("Sling-Nodetypes");
 
-            if (exportPackageHeader.indexOf("com.google.gson.stream;version=\"2.8.4\"") < 0) {
+        for (String expectedEntry : nodeTypes.split(",")) {
+            if (jarFile.getJarEntry(expectedEntry) == null) {
                 System.out.println("FAILED!");
-                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'com.google.gson.stream;version=\"2.8.4\"' in bundle " + baseApiJar);
+                System.out.println("Entry '" + expectedEntry + "' does not exist in bundle '" + baseApiJar + "' but it is referenced from Sling-Nodetypes");
+                jarFile.close();
                 return false;
             }
-
-            for (String expectedEntry : new String[] {
-                "com/google/gson/stream/JsonReader.class",
-                "com/google/gson/stream/JsonScope.class",
-                "com/google/gson/stream/JsonToken.class",
-                "com/google/gson/stream/JsonWriter.class",
-                "com/google/gson/stream/MalformedJsonException.class"
-            }) {
-                if (jarFile.getJarEntry(expectedEntry) == null) {
-                    System.out.println("FAILED!");
-                    System.out.println("Entry '" + expectedEntry + "' does not exist in bundle " + baseApiJar);
-                    return false;
-                }
-            }
-        } finally {
-            if (jarFile != null) {
-                jarFile.close();
-            }
         }
-
+        jarFile.close();
         return true;
     }
 
@@ -74,4 +58,3 @@ import org.codehaus.plexus.util.*;
         return false;
     }
 
-    return true;

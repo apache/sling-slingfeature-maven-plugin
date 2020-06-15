@@ -29,7 +29,7 @@ import org.codehaus.plexus.util.*;
         File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-apis.jar");
         if (!baseApiJar.exists()) {
             System.out.println("FAILED!");
-            System.out.println("File '" + file + "' not found");
+            System.out.println("File '" + baseApiJar + "' not found");
             return false;
         }
 
@@ -42,7 +42,7 @@ import org.codehaus.plexus.util.*;
 
             if (exportPackageHeader.indexOf("org.apache.lucene.analysis.standard") < 0) {
                 System.out.println("FAILED!");
-                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'org.apache.lucene.analysis.standard' in bundle " + file);
+                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'org.apache.lucene.analysis.standard' in bundle " + baseApiJar);
                 return false;
             }
 

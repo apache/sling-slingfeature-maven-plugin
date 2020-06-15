@@ -42,8 +42,8 @@
             <filesInclude>**/*.json</filesInclude>
           </selection>
           <includeResources>
-            <includeResource>*.cnd</includeResource>
-            <includeResource>*.tld</includeResource>
+            <includeResource>**/*.cnd</includeResource>
+            <includeResource>**/*.tld</includeResource>
           </includeResources>
           <javadocLinks>
             <javadocLink>https://osgi.org/javadoc/r6/core/</javadocLink>
