@@ -1,0 +1,9 @@
+github:
+  description: "Apache Sling OSGi Feature Maven Plugin"
+  homepage: "https://sling.apache.org/"
+  labels:
+    - java
+    - sling
+    - maven
+    - osgi
+    - osgi-feature-model
