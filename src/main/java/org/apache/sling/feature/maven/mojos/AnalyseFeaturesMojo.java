@@ -99,19 +99,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
         getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
 
-        FeatureProvider featureProvider = new FeatureProvider() {
-            @Override
-            public Feature provide(ArtifactId id) {
-                Map<String, Feature> fm = ProjectHelper.getAssembledFeatures(project);
-
-                for (Feature f : fm.values()) {
-                    if (id.equals(f.getId())) {
-                        return f;
-                    }
-                }
-                return null;
-            }
-        };
+        FeatureProvider featureProvider = new BaseFeatureProvider();
 
         boolean hasErrors = false;
         for (final Scan an : list) {
