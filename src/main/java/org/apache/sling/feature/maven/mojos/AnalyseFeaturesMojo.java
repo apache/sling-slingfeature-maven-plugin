@@ -41,6 +41,7 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.analyser.Analyser;
 import org.apache.sling.feature.analyser.AnalyserResult;
 import org.apache.sling.feature.builder.ArtifactProvider;
+import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.scanner.Scanner;
 
@@ -98,6 +99,8 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
         getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
 
+        FeatureProvider featureProvider = new BaseFeatureProvider();
+
         boolean hasErrors = false;
         for (final Scan an : list) {
             try {
@@ -145,7 +148,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                         if (fwk == null) {
                             fwk = this.framework;
                         }
-                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk));
+                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
                         for (final String msg : result.getWarnings()) {
                             getLog().warn(msg);
                         }
