@@ -59,11 +59,26 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     private static final String ANALYSER_CONFIG_WILDCARD = "all";
 
+    /**
+     * The scans for the analyser
+     */
     @Parameter
     private List<Scan> scans;
 
+    /**
+     * The framework to use for analysing the feature models if not
+     * contained in an execution-environment extension.
+     */
     @Parameter
     private Dependency framework;
+
+    /**
+     * By default the warnings from the analysers are logged. Setting this to
+     * false disables logging them.
+     * @since 1.3.8
+     */
+    @Parameter(defaultValue = "true")
+    private boolean logWarnings;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -149,8 +164,10 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                             fwk = this.framework;
                         }
                         final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
-                        for (final String msg : result.getWarnings()) {
-                            getLog().warn(msg);
+                        if ( logWarnings ) {
+                            for (final String msg : result.getWarnings()) {
+                                getLog().warn(msg);
+                            }
                         }
                         for (final String msg : result.getErrors()) {
                             getLog().error(msg);
