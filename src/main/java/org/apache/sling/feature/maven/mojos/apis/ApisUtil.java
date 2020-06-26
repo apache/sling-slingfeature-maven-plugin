@@ -54,6 +54,9 @@ public class ApisUtil {
     /** Links for javadocs. */
     public static final String JAVADOC_LINKS = "javadoc-links";
 
+    /** Ignore packages for api generation */
+    public static final String IGNORE_PACKAGES = "apis-ignore";
+
     public static List<ArtifactId> getSourceIds(final Artifact artifact) throws MojoExecutionException {
         final String val = artifact.getMetadata().get(SCM_IDS);
         if ( val != null ) {
@@ -127,4 +130,16 @@ public class ApisUtil {
         }
         result.stream().forEach(v -> linkedPackages.add(v));
     }
+
+    public static Set<String> getIgnoredPackages(final Artifact bundle) {
+        final Set<String> result = new HashSet<>();
+        final String ignore = bundle.getMetadata().get(ApisUtil.IGNORE_PACKAGES);
+        if (ignore != null) {
+            for(final String p : ignore.split(",")) {
+                result.add(p.trim());
+            }
+        }
+        return result;
+    }
+
 }

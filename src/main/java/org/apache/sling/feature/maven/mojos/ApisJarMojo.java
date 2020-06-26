@@ -762,11 +762,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final Clause[] exportedPackageClauses = this.getExportedPackages(manifest);
         if (exportedPackageClauses.length > 0) {
 
-            // calculate the exported versioned packages in the manifest file for each
-            // region
-            // and calculate the exported versioned packages in the manifest file for each
-            // region
-            final Set<String> usedExportedPackages = computeUsedExportPackages(ctx.getApiRegions(), exportedPackageClauses, artifact.getId());
+            // calculate the exported packages in the manifest file for all regions
+            final Set<String> usedExportedPackages = computeUsedExportPackages(ctx.getApiRegions(), exportedPackageClauses, artifact);
 
             if ( !usedExportedPackages.isEmpty()) {
                 final ArtifactInfo info = ctx.addArtifactInfo(artifact);
@@ -774,7 +771,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 // calculate per region packages
                 for(final ApiRegion region : ctx.getApiRegions().listRegions()) {
-                    final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region, exportedPackageClauses, artifact.getId());
+                    final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region, exportedPackageClauses, artifact);
 
                     // check whether packages are included in api jars - or added as a dependency
                     boolean useAsDependency = this.useApiDependencies ? calculateOmitDependenciesFlag(exportedPackageClauses, usedExportedPackagesPerRegion) : false;
@@ -1482,23 +1479,28 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Compute exports based on all api regions
+     * Compute exports based on a single region
      *
      * @return List of packages exported by this bundle and used in the region
      */
     private Set<Clause> computeUsedExportPackages(final ApiRegion apiRegion,
             final Clause[] exportedPackages,
-            final ArtifactId bundle)
+            final Artifact bundle)
             throws MojoExecutionException {
+
         final Set<Clause> result = new HashSet<>();
+
+        final Set<String> ignoredPackages = ApisUtil.getIgnoredPackages(bundle);
 
         // filter for each region
         for (final Clause exportedPackage : exportedPackages) {
             final String packageName = exportedPackage.getName();
 
-            final ApiExport exp = apiRegion.getExportByName(packageName);
-            if (exp != null) {
-                result.add(exportedPackage);
+            if ( !ignoredPackages.contains(packageName)) {
+                final ApiExport exp = apiRegion.getExportByName(packageName);
+                if (exp != null) {
+                    result.add(exportedPackage);
+                }
             }
         }
 
@@ -1506,13 +1508,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Compute exports based on a single api region
+     * Compute exports based on all regions
      *
-     * @return List of packages exported by this bundle and used in the region
+     * @return List of packages exported by this bundle and used in any region
      */
     private Set<String> computeUsedExportPackages(final ApiRegions apiRegions,
             final Clause[] exportedPackages,
-            final ArtifactId bundle)
+            final Artifact bundle)
             throws MojoExecutionException {
         final Set<String> result = new HashSet<>();
 
@@ -1527,6 +1529,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
+
+        // check ignored packages configuration
+        result.removeAll(ApisUtil.getIgnoredPackages(bundle));
 
         return result;
     }
