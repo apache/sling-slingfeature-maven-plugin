@@ -1827,10 +1827,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         javadocExecutor.addArgument("--allow-script-in-comments");
 
         if ( !this.javadocIndex ) {
-            javadocExecutor.addArgument("--noindex");
+            javadocExecutor.addArgument("-noindex");
         }
         if ( !this.javadocTree ) {
-            javadocExecutor.addArgument("--notree");
+            javadocExecutor.addArgument("-notree");
         }
 
         // list packages
