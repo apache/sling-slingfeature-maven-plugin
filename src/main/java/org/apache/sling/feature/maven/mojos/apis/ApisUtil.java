@@ -51,6 +51,10 @@ public class ApisUtil {
     /** Alternative IDS to a source artifact. */
     public static final String SCM_IDS = "source-ids";
 
+    /** Alternative classifier for the source artifact. */
+    public static final String SCM_CLASSIFIER = "source-classifier";
+
+
     /** Links for javadocs. */
     public static final String JAVADOC_LINKS = "javadoc-links";
 
@@ -140,6 +144,27 @@ public class ApisUtil {
             }
         }
         return result;
+    }
+
+    /**
+     * Validate that only one source metadata is set
+     * @param artifact The artifact to check
+     * @throws MojoExecutionException If metadata information is invalid
+     */
+    public static void validateSourceInfo(final Artifact artifact) throws MojoExecutionException {
+        int count = 0;
+        if ( artifact.getMetadata().get(ApisUtil.SCM_LOCATION) != null ) {
+            count++;
+        }
+        if ( artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER) != null ) {
+            count++;
+        }
+        if ( artifact.getMetadata().get(ApisUtil.SCM_IDS) != null ) {
+            count++;
+        }
+        if ( count > 1 ) {
+            throw new MojoExecutionException("Only one source configuration out of " + ApisUtil.SCM_CLASSIFIER + ", " + ApisUtil.SCM_IDS + " or " + ApisUtil.SCM_LOCATION + " is allowed for " + artifact.getId().toMvnId());
+        }
     }
 
 }

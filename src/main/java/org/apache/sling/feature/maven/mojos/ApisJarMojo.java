@@ -1281,15 +1281,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void downloadSources(final ApisJarContext ctx, final ArtifactInfo info, final Artifact artifact) throws MojoExecutionException {
-        ArtifactId artifactId = artifact.getId();
-        getLog().debug("Downloading sources for " + artifactId.toMvnId() + "...");
+        getLog().debug("Downloading sources for " + artifact.getId().toMvnId() + "...");
 
-        List<ArtifactId> scmIds = ApisUtil.getSourceIds(artifact);
-        String scmLocation = artifact.getMetadata().get(ApisUtil.SCM_LOCATION);
-        if ( scmIds != null && scmLocation != null) {
-            throw new MojoExecutionException("Both " + ApisUtil.SCM_IDS + " and " + ApisUtil.SCM_LOCATION + " are defined for " + artifactId);
-        }
+        ApisUtil.validateSourceInfo(artifact);
 
+        final List<ArtifactId> scmIds = ApisUtil.getSourceIds(artifact);
+        final String scmLocation = artifact.getMetadata().get(ApisUtil.SCM_LOCATION);
         if ( scmIds != null ) {
             for(final ArtifactId sourcesArtifactId : scmIds) {
                 downloadSourceAndDeflate(ctx, info, sourcesArtifactId, false);
@@ -1299,8 +1296,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final String connection = checkoutSourcesFromSCM(ctx, info, artifact);
             info.addSourceInfo(connection);
         } else {
-            final ArtifactId sourcesArtifactId = artifactId.changeClassifier("sources").changeType("jar");
-            if ( downloadSourceAndDeflate(ctx, info, sourcesArtifactId, true) ) {
+            String sourceClassifier = artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER);
+            if ( sourceClassifier == null ) {
+                sourceClassifier = "sources"; // default
+            }
+            final ArtifactId sourcesArtifactId = artifact.getId().changeClassifier(sourceClassifier).changeType("jar");
+            if ( downloadSourceAndDeflate(ctx, info, sourcesArtifactId, artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER) == null) ) {
                 final String connection =  checkoutSourcesFromSCM(ctx, info, artifact);
                 info.addSourceInfo(connection);
             } else {
