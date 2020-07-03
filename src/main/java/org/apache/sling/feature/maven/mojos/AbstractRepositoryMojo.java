@@ -30,6 +30,7 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.ExecutionEnvironmentExtension;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
@@ -83,6 +84,11 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
                     copyArtifactToRepository(artifact.getId(), artifactDir);
                 }
             }
+        }
+
+        final ExecutionEnvironmentExtension eee = ExecutionEnvironmentExtension.getExecutionEnvironmentExtension(f);
+        if ( eee != null && eee.getFramework() != null ) {
+            copyArtifactToRepository(eee.getFramework().getId(), artifactDir);
         }
 
         final File featureFile = getRepositoryFile(artifactDir, f.getId());
