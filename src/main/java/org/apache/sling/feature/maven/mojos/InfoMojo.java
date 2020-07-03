@@ -296,7 +296,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
     private Feature readFeature(final File file) throws MojoExecutionException {
         try (final Reader reader = new FileReader(file)) {
-            final Feature f = FeatureJSONReader.read(reader, this.featureFile.getAbsolutePath());
+            final Feature f = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
             return f;
 
