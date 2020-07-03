@@ -57,7 +57,11 @@ public class ExportPackagesReporter implements Reporter {
 
         for (final BundleDescriptor bd : fd.getBundleDescriptors()) {
             for (PackageInfo p : bd.getExportedPackages()) {
-                packages.add(p.getName());
+                String version = p.getVersion();
+                if ( version == null ) {
+                    version = "----";
+                }
+                packages.add(p.getName().concat("     ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
             }
         }
 
