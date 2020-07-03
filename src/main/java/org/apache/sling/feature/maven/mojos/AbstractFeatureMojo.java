@@ -163,7 +163,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * The start level for the attached jar/bundle.
      */
     @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
-    private int jarStartOrder;
+    protected String jarStartOrder;
 
     /**
      * Enable the replacement of variables when reading a feature model. The supported

@@ -159,6 +159,11 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
         final Artifact art = new Artifact(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
                 this.project.getVersion(), includeClassifier, includeType != null ? includeType : this.project.getArtifact().getType()));
+
+        if(jarStartOrder != null) {
+            art.setStartOrder(Integer.parseInt(jarStartOrder));
+        }
+
         if (metadata != null && metadata.size() > 0) {
             art.getMetadata().putAll(metadata);
         }
