@@ -153,7 +153,7 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
                 handleFile(arguments, file, "-f");
             }
         }
-        ArtifactRepository artifactRepository = this.project.getProjectBuildingRequest().getLocalRepository();
+        ArtifactRepository artifactRepository = this.mavenSession.getProjectBuildingRequest().getLocalRepository();
         String localPath = artifactRepository.getBasedir();
         if(featureArchiveClassifiers != null && !featureArchiveClassifiers.isEmpty()) {
             for (String featureArchiveClassifier : featureArchiveClassifiers) {
