@@ -65,12 +65,8 @@ public final class JavadocExecutor {
         return addArgument(StringUtils.quoteAndEscape(value, QUOTE_CHAR));
     }
 
-    public <T> JavadocExecutor addArgument(String[] value, String valueSeparator) {
-        return addArgument(StringUtils.join(value, valueSeparator));
-    }
-
     public JavadocExecutor addArgument(Collection<String> value, String valueSeparator) {
-        return addArgument(StringUtils.join(value.iterator(), valueSeparator));
+        return addArgument(String.join(valueSeparator, value));
     }
 
     public JavadocExecutor addArguments(Collection<String> value) {

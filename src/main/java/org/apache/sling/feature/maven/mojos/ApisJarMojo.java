@@ -43,17 +43,11 @@ import java.util.stream.Collectors;
 
 import javax.json.JsonArray;
 
-import org.apache.commons.lang3.JavaVersion;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
-import org.apache.maven.artifact.resolver.ArtifactResolutionResult;
-import org.apache.maven.artifact.resolver.filter.ArtifactFilter;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
@@ -821,7 +815,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
 
                 if ( generateJavadocJar ) {
-                    buildJavadocClasspath(artifact.getId()).forEach( ctx::addJavadocClasspath );
+                    ApisUtil.buildJavadocClasspath(getLog(), repositorySystem, mavenSession, artifact.getId()).forEach( ctx::addJavadocClasspath );
                 }
             }
 
@@ -1073,91 +1067,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             }
         }
         return null;
-    }
-
-    private Set<String> buildJavadocClasspath(ArtifactId artifactId)
-            throws MojoExecutionException {
-        final Set<String> javadocClasspath = new HashSet<>();
-        getLog().debug("Retrieving " + artifactId + " and related dependencies...");
-
-        org.apache.maven.artifact.Artifact toBeResolvedArtifact = repositorySystem.createArtifactWithClassifier(artifactId.getGroupId(),
-                                                                                                                artifactId.getArtifactId(),
-                                                                                                                artifactId.getVersion(),
-                                                                                                                artifactId.getType(),
-                                                                                                                artifactId.getClassifier());
-        ArtifactResolutionRequest request = new ArtifactResolutionRequest()
-                                            .setArtifact(toBeResolvedArtifact)
-                                            .setServers(mavenSession.getRequest().getServers())
-                                            .setMirrors(mavenSession.getRequest().getMirrors())
-                                            .setProxies(mavenSession.getRequest().getProxies())
-                                            .setLocalRepository(mavenSession.getLocalRepository())
-                                            .setRemoteRepositories(mavenSession.getRequest().getRemoteRepositories())
-                                            .setForceUpdate(false)
-                                            .setResolveRoot(true)
-                                            .setResolveTransitively(true)
-                                            .setCollectionFilter(new ArtifactFilter() {
-                                                    // artifact filter
-                                                    @Override
-                                                    public boolean include(org.apache.maven.artifact.Artifact artifact) {
-                                                        if (org.apache.maven.artifact.Artifact.SCOPE_TEST.equals(artifact.getScope())) {
-                                                            return false;
-                                                        }
-                                                        return true;
-                                                    }});
-
-        ArtifactResolutionResult result = repositorySystem.resolve(request);
-
-        if (!result.isSuccess()) {
-            if (result.hasCircularDependencyExceptions()) {
-                getLog().warn("Cyclic dependency errors detected:");
-                reportWarningMessages(result.getCircularDependencyExceptions());
-            }
-
-            if (result.hasErrorArtifactExceptions()) {
-                getLog().warn("Resolution errors detected:");
-                reportWarningMessages(result.getErrorArtifactExceptions());
-            }
-
-            if (result.hasMetadataResolutionExceptions()) {
-                getLog().warn("Metadata resolution errors detected:");
-                reportWarningMessages(result.getMetadataResolutionExceptions());
-            }
-
-            if (result.hasMissingArtifacts()) {
-                getLog().warn("Missing artifacts detected:");
-                for (org.apache.maven.artifact.Artifact missingArtifact : result.getMissingArtifacts()) {
-                    getLog().warn(" - " + missingArtifact.getId());
-                }
-            }
-
-            if (result.hasExceptions()) {
-                getLog().warn("Generic errors detected:");
-                for (Exception exception : result.getExceptions()) {
-                    getLog().warn(" - " + exception.getMessage());
-                }
-            }
-        }
-
-        for (org.apache.maven.artifact.Artifact resolvedArtifact : result.getArtifacts()) {
-            if (resolvedArtifact.getFile() != null) {
-                getLog().debug("Adding to javadoc classpath " + resolvedArtifact);
-                javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
-            } else {
-                getLog().debug("Ignoring for javadoc classpath " + resolvedArtifact);
-            }
-        }
-
-        return javadocClasspath;
-    }
-
-    private <E extends ArtifactResolutionException> void reportWarningMessages(Collection<E> exceptions) {
-        for (E exception : exceptions) {
-            getLog().warn(" - "
-                          + exception.getMessage()
-                          + " ("
-                          + exception.getArtifact().getId()
-                          + ")");
-        }
     }
 
     private URL retrieve(final ArtifactProvider artifactProvider, final ArtifactId artifactId) {
@@ -1814,16 +1723,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             javadocExecutor.addArguments("-link", links.getJavadocLinks());
         }
 
-        if (!ctx.getJavadocClasspath().isEmpty()) {
+        // classpath
+        final Set<String> classpath = ApisUtil.getJavadocClassPath(getLog(), repositorySystem, mavenSession, ctx, region);
+        if (!classpath.isEmpty()) {
             javadocExecutor.addArgument("-classpath", false)
-                           .addArgument(ctx.getJavadocClasspath(), File.pathSeparator);
+                           .addArgument(classpath, File.pathSeparator);
         }
 
-        // turn off doclint when running Java8
-        // http://blog.joda.org/2014/02/turning-off-doclint-in-jdk-8-javadoc.html
-        if (SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_1_8)) {
-            javadocExecutor.addArgument("-Xdoclint:none");
-        }
+        // turn off doclint
+        javadocExecutor.addArgument("-Xdoclint:none");
 
         javadocExecutor.addArgument("--allow-script-in-comments");
 
@@ -1837,7 +1745,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // list packages
         javadocExecutor.addArguments(javadocPackages);
 
-        // .addArgument("-J-Xmx2048m")
         javadocExecutor.execute(javadocDir, getLog(), this.ignoreJavadocErrors);
 
         return usedInfos;
