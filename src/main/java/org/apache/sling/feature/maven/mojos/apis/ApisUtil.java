@@ -23,11 +23,15 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
+import java.util.TreeMap;
 
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
@@ -41,6 +45,7 @@ import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
+import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 
 /**
  * Context for creating the api jars
@@ -184,11 +189,18 @@ public class ApisUtil {
      * Build the classpath for javadoc
      * @throws MojoExecutionException
      */
-    public static Set<String> getJavadocClassPath(final Log log, final RepositorySystem repositorySystem,
+    public static Collection<String> getJavadocClassPath(final Log log,
+            final RepositorySystem repositorySystem,
             final MavenSession mavenSession,
-            final ApisJarContext ctx, final ApiRegion region) throws MojoExecutionException {
-        // classpath
-        final Set<String> classpath = new TreeSet<>(ctx.getJavadocClasspath());
+            final ApisJarContext ctx,
+            final ApiRegion region,
+            final List<String> javadocClasspathRemovals,
+            final List<String> javadocClasspathHighestVersions,
+            final List<String> javadocClasspathTops) throws MojoExecutionException {
+        // classpath - reverse order to have highest versions first
+        final Map<ArtifactId, String> classpathMapping = new TreeMap<>(Comparator.reverseOrder());
+        classpathMapping.putAll(ctx.getJavadocClasspath());
+
         for(final ArtifactInfo info : ctx.getArtifactInfos(region, false)) {
             final String ids = info.getArtifact().getMetadata().get(ApisUtil.JAVADOC_CLASSPATH);
             if ( ids != null ) {
@@ -196,21 +208,91 @@ public class ApisUtil {
                     try {
                         final ArtifactId cpId = ArtifactId.parse(s.trim());
 
-                        classpath.addAll(buildJavadocClasspath(log, repositorySystem, mavenSession, cpId));
+                        classpathMapping.putAll(buildJavadocClasspath(log, repositorySystem, mavenSession, cpId));
                     } catch ( final IllegalArgumentException iae) {
                         throw new MojoExecutionException("Invalid javadoc classpath artifact id " + s);
                     }
                 }
             }
         }
+
+        // filter classpath using rules
+        // remove
+        if ( javadocClasspathRemovals != null && !javadocClasspathRemovals.isEmpty()) {
+            log.debug("Using javadoc classpath removal: ".concat(javadocClasspathRemovals.toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathRemovals, null, null, false);
+            final Iterator<ArtifactId> iter = classpathMapping.keySet().iterator();
+            while ( iter.hasNext() ) {
+                final ArtifactId id = iter.next();
+                if ( matcher.matches(id) != null ) {
+                    log.debug("Removing from javadoc classpath: " + id.toMvnId());
+                    iter.remove();
+                }
+            }
+        }
+
+        // highest
+        if ( javadocClasspathHighestVersions != null && !javadocClasspathHighestVersions.isEmpty() ) {
+            log.debug("Using javadoc classpath highest versions: ".concat(javadocClasspathHighestVersions.toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathHighestVersions, null, null, false);
+            final Map<ArtifactId, List<ArtifactId>> highest = new HashMap<>();
+            for(final Map.Entry<ArtifactId, String> entry : classpathMapping.entrySet()) {
+                if ( matcher.matches(entry.getKey()) != null ) {
+                    final ArtifactId key = entry.getKey().changeVersion("0");
+                    highest.computeIfAbsent(key, k -> new ArrayList<>()).add(entry.getKey());
+                }
+            }
+
+            for(final List<ArtifactId> versions : highest.values()) {
+                Collections.sort(versions, Comparator.reverseOrder());
+                for(int i=1; i<versions.size();i++) {
+                    final ArtifactId id = versions.get(i);
+                    classpathMapping.remove(id);
+                    log.debug("Removing from javadoc classpath: " + id.toMvnId());
+                }
+            }
+        }
+
+        // top
+        final List<String> classpath;
+        if ( javadocClasspathTops != null && !javadocClasspathTops.isEmpty()) {
+            log.debug("Using javadoc classpath tops: ".concat(javadocClasspathTops.toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathTops, null, null, false);
+            final List<String> tops = new ArrayList<>();
+
+            final Iterator<Map.Entry<ArtifactId, String>> iter = classpathMapping.entrySet().iterator();
+            while ( iter.hasNext() ) {
+                final Map.Entry<ArtifactId, String> entry = iter.next();
+                if ( matcher.matches(entry.getKey())  != null ) {
+                    tops.add(0, entry.getValue());
+                    iter.remove();
+                }
+            }
+            classpath = new ArrayList<>(classpathMapping.values());
+            for(final String path : tops) {
+                classpath.add(0, path);
+            }
+        } else {
+            classpath = new ArrayList<>(classpathMapping.values());
+        }
+
+//        if ( log.isDebugEnabled() ) {
+            log.info("------------------------------------------------------------------");
+            log.info("Javadoc classpath: ");
+            for(final String cp : classpath) {
+                log.info("- " + cp);
+            }
+            log.info("------------------------------------------------------------------");
+ //       }
+
         return classpath;
     }
 
-    public static Set<String> buildJavadocClasspath(final Log log, final RepositorySystem repositorySystem,
+    public static Map<ArtifactId, String> buildJavadocClasspath(final Log log, final RepositorySystem repositorySystem,
             final MavenSession mavenSession,
             final ArtifactId artifactId)
             throws MojoExecutionException {
-        final Set<String> javadocClasspath = new HashSet<>();
+        final Map<ArtifactId, String> javadocClasspath = new HashMap<>();
         log.debug("Retrieving " + artifactId + " and related dependencies...");
 
         org.apache.maven.artifact.Artifact toBeResolvedArtifact = repositorySystem.createArtifactWithClassifier(artifactId.getGroupId(),
@@ -275,7 +357,8 @@ public class ApisUtil {
         for (org.apache.maven.artifact.Artifact resolvedArtifact : result.getArtifacts()) {
             if (resolvedArtifact.getFile() != null) {
                 log.debug("Adding to javadoc classpath " + resolvedArtifact);
-                javadocClasspath.add(resolvedArtifact.getFile().getAbsolutePath());
+                javadocClasspath.put(new ArtifactId(resolvedArtifact.getGroupId(), resolvedArtifact.getArtifactId(), resolvedArtifact.getVersion(), resolvedArtifact.getClassifier(), resolvedArtifact.getType()),
+                        resolvedArtifact.getFile().getAbsolutePath());
             } else {
                 log.debug("Ignoring for javadoc classpath " + resolvedArtifact);
             }

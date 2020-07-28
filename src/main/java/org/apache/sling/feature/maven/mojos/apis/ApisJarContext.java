@@ -209,7 +209,7 @@ public class ApisJarContext {
         }
     }
 
-    private final Set<String> javadocClasspath = new HashSet<>();
+    private final Map<ArtifactId, String> javadocClasspath = new HashMap<>();
 
     private final Set<String> packagesWithoutJavaClasses = new HashSet<>();
 
@@ -266,11 +266,11 @@ public class ApisJarContext {
         return checkedOutSourcesDir;
     }
 
-    public boolean addJavadocClasspath(final String classpathItem) {
-        return javadocClasspath.add(classpathItem);
+    public void addJavadocClasspath(final ArtifactId artifactId, final String classpath) {
+        javadocClasspath.put(artifactId, classpath);
     }
 
-    public Set<String> getJavadocClasspath() {
+    public Map<ArtifactId, String> getJavadocClasspath() {
         return javadocClasspath;
     }
 

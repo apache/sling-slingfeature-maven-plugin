@@ -351,6 +351,34 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "true")
     private boolean javadocTree;
 
+    /**
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". Any matching artifact is removed from the
+     * classpath. Removals are processed first.
+     * @since 1.3.14
+     */
+    @Parameter
+    private List<String> javadocClasspathRemovals;
+
+    /**
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". From the matching artifacts, only
+     * the highest version is kept per artifact. This rule is applied after the removals.
+     * @since 1.3.14
+     */
+    @Parameter
+    private List<String> javadocClasspathHighestVersions;
+
+    /**
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
+     * "groupId:artifactId:type:classifier:version". Any matching artifact is put at the top of
+     * the classpath. This rule is applied last.
+     * @since 1.3.14
+     */
+    @Parameter
+    private List<String> javadocClasspathTops;
+
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -1724,7 +1752,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         // classpath
-        final Set<String> classpath = ApisUtil.getJavadocClassPath(getLog(), repositorySystem, mavenSession, ctx, region);
+        final Collection<String> classpath = ApisUtil.getJavadocClassPath(getLog(), repositorySystem, mavenSession,
+                ctx, region, this.javadocClasspathRemovals, this.javadocClasspathHighestVersions, this.javadocClasspathTops);
         if (!classpath.isEmpty()) {
             javadocExecutor.addArgument("-classpath", false)
                            .addArgument(classpath, File.pathSeparator);
