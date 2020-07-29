@@ -33,17 +33,15 @@ public class JavadocLinks {
 
     private final Set<String> docLinks = new HashSet<>();
 
-    public void calculateLinks(final String[] globalJavaDocLinks,
+    public void calculateLinks(final List<String> globalJavaDocLinks,
             final Collection<ArtifactInfo> infos,
             final Artifact framework) throws MojoExecutionException {
         final Map<String, Set<String>> linkedPackagesMap = new HashMap<>();
         this.docLinks.clear();
         this.linkedGlobalPackages.clear();
-        if ( globalJavaDocLinks != null ) {
-            for(final String val : globalJavaDocLinks) {
-                docLinks.add(val);
-                ApisUtil.getPackageList(val, linkedGlobalPackages, linkedPackagesMap);
-            }
+        for(final String val : globalJavaDocLinks) {
+            docLinks.add(val);
+            ApisUtil.getPackageList(val, linkedGlobalPackages, linkedPackagesMap);
         }
         for(final ArtifactInfo info : infos) {
             final List<String> links = ApisUtil.getJavadocLinks(info.getArtifact());

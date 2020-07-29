@@ -36,9 +36,9 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
-import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 
 /**
  * Context for creating the api jars
@@ -209,6 +209,8 @@ public class ApisJarContext {
         }
     }
 
+    private final ApisConfiguration config;
+
     private final Map<ArtifactId, String> javadocClasspath = new HashMap<>();
 
     private final Set<String> packagesWithoutJavaClasses = new HashSet<>();
@@ -231,19 +233,22 @@ public class ApisJarContext {
 
     private final Map<ArtifactId, Model> modelCache = new HashMap<>();
 
-    private IncludeExcludeMatcher licenseDefaultMatcher;
-
     /** The set of dependency repositories (URLs) */
     private Set<String> dependencyRepositories = new HashSet<>();
 
-    public ApisJarContext(final File mainDir, final ArtifactId featureId, final ApiRegions regions) {
-        this.featureId = featureId;
+    public ApisJarContext(final File mainDir, final Feature feature, final ApiRegions regions) throws MojoExecutionException {
+        this.config = new ApisConfiguration(feature);
+        this.featureId = feature.getId();
 
         // deflated and source dirs can be shared
         this.deflatedBinDir = new File(mainDir, "deflated-bin");
         this.deflatedSourcesDir = new File(mainDir, "deflated-sources");
         this.checkedOutSourcesDir = new File(mainDir, "checkouts");
         this.apiRegions = regions;
+    }
+
+    public ApisConfiguration getConfig() {
+        return this.config;
     }
 
     public ArtifactId getFeatureId() {
@@ -315,15 +320,6 @@ public class ApisJarContext {
             }
         }
         return result.values();
-    }
-
-
-    public void setLicenseDefaults(final List<String> licenseDefaults) throws MojoExecutionException {
-        this.licenseDefaultMatcher = new IncludeExcludeMatcher(licenseDefaults, null, "=", true);
-    }
-
-    public String getLicenseDefault(final ArtifactId id) {
-        return this.licenseDefaultMatcher.matches(id);
     }
 
     /**

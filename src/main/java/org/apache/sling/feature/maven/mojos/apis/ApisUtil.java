@@ -193,10 +193,7 @@ public class ApisUtil {
             final RepositorySystem repositorySystem,
             final MavenSession mavenSession,
             final ApisJarContext ctx,
-            final ApiRegion region,
-            final List<String> javadocClasspathRemovals,
-            final List<String> javadocClasspathHighestVersions,
-            final List<String> javadocClasspathTops) throws MojoExecutionException {
+            final ApiRegion region) throws MojoExecutionException {
         // classpath - reverse order to have highest versions first
         final Map<ArtifactId, String> classpathMapping = new TreeMap<>(Comparator.reverseOrder());
         classpathMapping.putAll(ctx.getJavadocClasspath());
@@ -218,9 +215,9 @@ public class ApisUtil {
 
         // filter classpath using rules
         // remove
-        if ( javadocClasspathRemovals != null && !javadocClasspathRemovals.isEmpty()) {
-            log.debug("Using javadoc classpath removal: ".concat(javadocClasspathRemovals.toString()));
-            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathRemovals, null, null, false);
+        if ( !ctx.getConfig().getJavadocClasspathRemovals().isEmpty()) {
+            log.debug("Using javadoc classpath removal: ".concat(ctx.getConfig().getJavadocClasspathRemovals().toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(ctx.getConfig().getJavadocClasspathRemovals(), null, null, false);
             final Iterator<ArtifactId> iter = classpathMapping.keySet().iterator();
             while ( iter.hasNext() ) {
                 final ArtifactId id = iter.next();
@@ -232,9 +229,9 @@ public class ApisUtil {
         }
 
         // highest
-        if ( javadocClasspathHighestVersions != null && !javadocClasspathHighestVersions.isEmpty() ) {
-            log.debug("Using javadoc classpath highest versions: ".concat(javadocClasspathHighestVersions.toString()));
-            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathHighestVersions, null, null, false);
+        if ( !ctx.getConfig().getJavadocClasspathHighestVersions() .isEmpty() ) {
+            log.debug("Using javadoc classpath highest versions: ".concat(ctx.getConfig().getJavadocClasspathHighestVersions() .toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(ctx.getConfig().getJavadocClasspathHighestVersions() , null, null, false);
             final Map<ArtifactId, List<ArtifactId>> highest = new HashMap<>();
             for(final Map.Entry<ArtifactId, String> entry : classpathMapping.entrySet()) {
                 if ( matcher.matches(entry.getKey()) != null ) {
@@ -255,9 +252,9 @@ public class ApisUtil {
 
         // top
         final List<String> classpath;
-        if ( javadocClasspathTops != null && !javadocClasspathTops.isEmpty()) {
-            log.debug("Using javadoc classpath tops: ".concat(javadocClasspathTops.toString()));
-            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(javadocClasspathTops, null, null, false);
+        if ( !ctx.getConfig().getJavadocClasspathTops().isEmpty()) {
+            log.debug("Using javadoc classpath tops: ".concat(ctx.getConfig().getJavadocClasspathTops().toString()));
+            final IncludeExcludeMatcher matcher = new IncludeExcludeMatcher(ctx.getConfig().getJavadocClasspathTops(), null, null, false);
             final List<String> tops = new ArrayList<>();
 
             final Iterator<Map.Entry<ArtifactId, String>> iter = classpathMapping.entrySet().iterator();

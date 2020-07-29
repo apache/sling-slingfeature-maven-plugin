@@ -84,7 +84,6 @@ import org.apache.sling.feature.extension.apiregions.api.ApiExport;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.apache.sling.feature.io.IOUtils;
-import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
@@ -419,32 +418,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Apply region name mapping if configured
-     *
-     * @param regionName The region name
-     * @return The mapped name or the original name
-     */
-    private String mapApiRegionName(final String regionName) {
-        if (this.apiRegionNameMappings != null && this.apiRegionNameMappings.containsKey(regionName)) {
-            return this.apiRegionNameMappings.get(regionName);
-        }
-        return regionName;
-    }
-
-    /**
-     * Apply classifier mapping if configured
-     *
-     * @param classifier The classifier
-     * @return The mapped classifier or the original classifier
-     */
-    private String mapApiClassifier(final String classifier) {
-        if (this.apiClassifierMappings != null && this.apiClassifierMappings.containsKey(classifier)) {
-            return this.apiClassifierMappings.get(classifier);
-        }
-        return classifier;
-    }
-
-    /**
      * Check if the region is included
      *
      * @param name The region name
@@ -554,8 +527,24 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // create an output directory per feature
         final File featureDir = new File(mainOutputDir, feature.getId().getArtifactId());
-        final ApisJarContext ctx = new ApisJarContext(this.mainOutputDir, feature.getId(), regions);
-        ctx.setLicenseDefaults(licenseDefaults);
+        final ApisJarContext ctx = new ApisJarContext(this.mainOutputDir, feature, regions);
+        ctx.getConfig().setLicenseDefaults(this.licenseDefaults);
+        ctx.getConfig().setLicenseReport(this.licenseReport);
+        ctx.getConfig().setLicenseReportHeader(this.licenseReportHeader);
+        ctx.getConfig().setLicenseReportFooter(this.licenseReportFooter);
+        ctx.getConfig().setJavadocLinks(this.javadocLinks);
+        ctx.getConfig().setJavadocClasspathRemovals(this.javadocClasspathRemovals);
+        ctx.getConfig().setJavadocClasspathHighestVersions(this.javadocClasspathHighestVersions);
+        ctx.getConfig().setJavadocClasspathTops(this.javadocClasspathTops);
+        ctx.getConfig().setApiVersion(this.apiVersion);
+        ctx.getConfig().setJavadocSourceLevel(this.javadocSourceLevel);
+        ctx.getConfig().setBundleResourceFolders(this.resourceFolders);
+        ctx.getConfig().setBundleResources(this.includeResources);
+        ctx.getConfig().setClassifierMappings(apiClassifierMappings);
+        ctx.getConfig().setRegionMappings(apiRegionNameMappings);
+        ctx.getConfig().setManifestEntries(manifestProperties);
+        ctx.getConfig().logConfiguration(getLog());
+
         ctx.setDependencyRepositories(this.apiRepositoryUrls);
 
         // for each bundle included in the feature file and record directories
@@ -604,7 +593,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 final File javadocsDir = new File(regionDir, ArtifactType.JAVADOC.getId());
                 final ExecutionEnvironmentExtension ext = ExecutionEnvironmentExtension.getExecutionEnvironmentExtension(feature);
                 final JavadocLinks links = new JavadocLinks();
-                links.calculateLinks(this.javadocLinks, ctx.getArtifactInfos(apiRegion, false), ext != null ? ext.getFramework() : null);
+                links.calculateLinks(ctx.getConfig().getJavadocLinks(), ctx.getArtifactInfos(apiRegion, false), ext != null ? ext.getFramework() : null);
 
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, apiRegion, links, javadocsDir);
                 if ( infos != null ) {
@@ -650,7 +639,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final List<String> report,
             final JavadocLinks links)
     throws MojoExecutionException {
-        final Map.Entry<Set<String>, Set<String>> packageResult = getPackages(jarFile, artifactType.getContentExtension());
+        final Map.Entry<Set<String>, Set<String>> packageResult = getPackages(ctx, jarFile, artifactType.getContentExtension());
         final Set<String> apiPackages = packageResult.getKey();
         final Set<String> otherPackages = packageResult.getValue();
         if ( omitDependencyArtifacts ) {
@@ -966,16 +955,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private List<String> getIncludeResourcePatterns(final ApisJarContext ctx, final ArtifactId id) {
         final List<String> pattern = new ArrayList<>();
-        if ( includeResources != null ) {
-            for(final String folder : this.resourceFolders.split(",")) {
-                for(final String inc : this.includeResources) {
-                    pattern.add(folder.trim().concat("/").concat(inc));
-                }
+        for(final String folder : ctx.getConfig().getBundleResourceFolders()) {
+            for(final String inc : ctx.getConfig().getBundleResources()) {
+                pattern.add(folder.concat("/").concat(inc));
             }
         }
+
         // add NOTICE and LICENSE for license report
-        if ( this.licenseReport != null ) {
-            final String licenseDefault = ctx.getLicenseDefault(id);
+        if ( ctx.getConfig().getLicenseReport() != null ) {
+            final String licenseDefault = ctx.getConfig().getLicenseDefault(id);
             if ( licenseDefault == null || !licenseDefault.isEmpty() ) {
                 pattern.add("META-INF/NOTICE");
                 pattern.add("META-INF/LICENSE");
@@ -1548,9 +1536,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         // check for license report
-        if ( this.licenseReport != null ) {
+        if ( ctx.getConfig().getLicenseReport() != null ) {
             final File out = this.createLicenseReport(ctx, apiRegion, infos, report);
-            jarArchiver.addFile(out, this.licenseReport);
+            jarArchiver.addFile(out, ctx.getConfig().getLicenseReport());
         }
 
         final ArtifactId targetId = this.buildArtifactId(ctx, apiRegion, archiveType);
@@ -1594,7 +1582,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         // replace/add manifest entries with the one provided in manifestProperties configuration
-        archiveConfiguration.addManifestEntries(ProjectHelper.propertiesToMap(manifestProperties));
+        archiveConfiguration.addManifestEntries(ctx.getConfig().getManifestEntries());
 
         final File target = new File(mainOutputDir, targetId.toMvnName());
         MavenArchiver archiver = new MavenArchiver();
@@ -1618,17 +1606,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private ArtifactId buildArtifactId(final ApisJarContext ctx, final ApiRegion apiRegion, final ArtifactType artifactType) {
         final StringBuilder classifierBuilder = new StringBuilder();
         if (ctx.getFeatureId().getClassifier() != null) {
-            classifierBuilder.append(mapApiClassifier(ctx.getFeatureId().getClassifier()))
+            classifierBuilder.append(ctx.getConfig().mapApiClassifier(ctx.getFeatureId().getClassifier()))
                              .append('-');
         }
-        final String finalClassifier = classifierBuilder.append(mapApiRegionName(apiRegion.getName()))
+        final String finalClassifier = classifierBuilder.append(ctx.getConfig().mapApiRegionName(apiRegion.getName()))
                                                   .append('-')
                                                   .append(artifactType.getId())
                                                   .toString();
 
         return new ArtifactId(this.project.getGroupId(),
                 this.project.getArtifactId(),
-                this.apiVersion != null ? this.apiVersion : this.project.getVersion(),
+                ctx.getConfig().getApiVersion() != null ? ctx.getConfig().getApiVersion() : this.project.getVersion(),
                 finalClassifier,
                 artifactType.getExtension());
     }
@@ -1723,9 +1711,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                           .addArgument(String.join(File.pathSeparator, sourceDirectories));
 
         javadocExecutor.addArgument("-source", false)
-                       .addArgument(javadocSourceLevel);
+                       .addArgument(ctx.getConfig().getJavadocSourceLevel());
 
-        final String versionSuffix = this.apiVersion != null ? this.apiVersion : ctx.getFeatureId().getVersion();
+        final String versionSuffix = ctx.getConfig().getApiVersion() != null ? ctx.getConfig().getApiVersion() : ctx.getFeatureId().getVersion();
 
         if (!StringUtils.isBlank(project.getName())) {
             javadocExecutor.addArgument("-doctitle", false)
@@ -1753,7 +1741,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // classpath
         final Collection<String> classpath = ApisUtil.getJavadocClassPath(getLog(), repositorySystem, mavenSession,
-                ctx, region, this.javadocClasspathRemovals, this.javadocClasspathHighestVersions, this.javadocClasspathTops);
+                ctx, region);
         if (!classpath.isEmpty()) {
             javadocExecutor.addArgument("-classpath", false)
                            .addArgument(classpath, File.pathSeparator);
@@ -1786,12 +1774,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * @return A tuple of packages containing files with the extension and packages with files not having the extension
      * @throws MojoExecutionException
      */
-    private Map.Entry<Set<String>, Set<String>> getPackages(final File file, final String extension) throws MojoExecutionException {
+    private Map.Entry<Set<String>, Set<String>> getPackages(final ApisJarContext ctx, final File file, final String extension) throws MojoExecutionException {
         final Set<String> packages = new TreeSet<>();
         final Set<String> otherPackages = new TreeSet<>();
 
         final Set<String> excludes = new HashSet<>();
-        for(final String v : resourceFolders.split(",")) {
+        for(final String v : ctx.getConfig().getBundleResourceFolders()) {
             excludes.add(v.concat("/"));
         }
 
@@ -1838,10 +1826,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if ( !out.exists() ) {
 
             final List<String> output = new ArrayList<>();
-            output.add(licenseReportHeader);
+
+            output.add(ctx.getConfig().getLicenseReportHeader());
             output.add("");
             for(final ArtifactInfo info : infos) {
-                final String licenseDefault = ctx.getLicenseDefault(info.getId());
+                final String licenseDefault = ctx.getConfig().getLicenseDefault(info.getId());
 
                 final StringBuilder sb = new StringBuilder(info.getId().toMvnId());
                 boolean exclude = false;
@@ -1870,9 +1859,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     output.add(sb.toString());
                 }
             }
-            if ( this.licenseReportFooter != null ) {
+            if ( ctx.getConfig().getLicenseReportFooter() != null ) {
                 output.add("");
-                output.add(this.licenseReportFooter);
+                output.add(ctx.getConfig().getLicenseReportFooter());
             }
             try {
                 Files.write(out.toPath(), output);
