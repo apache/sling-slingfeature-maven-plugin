@@ -276,14 +276,14 @@ public class ApisUtil {
             classpath = new ArrayList<>(classpathMapping.values());
         }
 
-//        if ( log.isDebugEnabled() ) {
-            log.info("------------------------------------------------------------------");
-            log.info("Javadoc classpath: ");
+        if ( log.isDebugEnabled() ) {
+            log.debug("------------------------------------------------------------------");
+            log.debug("Javadoc classpath: ");
             for(final String cp : classpath) {
-                log.info("- " + cp);
+                log.debug("- " + cp);
             }
-            log.info("------------------------------------------------------------------");
- //       }
+            log.debug("------------------------------------------------------------------");
+        }
 
         return classpath;
     }
