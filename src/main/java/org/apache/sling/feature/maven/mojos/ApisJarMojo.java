@@ -48,6 +48,7 @@ import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Scm;
@@ -60,6 +61,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.maven.scm.ScmException;
 import org.apache.maven.scm.ScmFileSet;
@@ -87,8 +89,14 @@ import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.ApisUtil;
+import org.apache.sling.feature.maven.mojos.apis.ArtifactType;
+import org.apache.sling.feature.maven.mojos.apis.DirectorySource;
+import org.apache.sling.feature.maven.mojos.apis.FileSource;
 import org.apache.sling.feature.maven.mojos.apis.JavadocExecutor;
 import org.apache.sling.feature.maven.mojos.apis.JavadocLinks;
+import org.apache.sling.feature.maven.mojos.apis.spi.Processor;
+import org.apache.sling.feature.maven.mojos.apis.spi.ProcessorContext;
+import org.apache.sling.feature.maven.mojos.apis.spi.Source;
 import org.codehaus.plexus.archiver.UnArchiver;
 import org.codehaus.plexus.archiver.jar.JarArchiver;
 import org.codehaus.plexus.archiver.manager.ArchiverManager;
@@ -108,44 +116,7 @@ import org.osgi.framework.Constants;
 )
 public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
-    public enum ArtifactType {
-        APIS("apis", "class", "jar"),
-        SOURCES("sources", "java", "jar"),
-        JAVADOC("javadoc", "html", "jar"),
-        DEPENDENCIES("apideps", "txt", "ref"),
-        CND("cnd", "cnd", "jar"),
-        REPORT("report", "txt", "txt");
-
-        private final String id;
-
-        private final String type;
-
-        private final String extension;
-
-        ArtifactType(final String id, final String type, final String extension) {
-            this.id = id;
-            this.type = type;
-            this.extension = extension;
-        }
-
-        public String getId() {
-            return this.id;
-        }
-
-        public String getContentType() {
-            return this.type;
-        }
-
-        public String getContentExtension() {
-            return ".".concat(this.type);
-        }
-
-        public String getExtension() {
-            return this.extension;
-        }
-    }
-
-    /**
+   /**
      * Select the features for api generation.
      * Separate api jars will be generated for each feature.
      */
@@ -1486,7 +1457,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final List<String> report) throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
+        final List<Processor> processors;
+        final List<Source> sources;
+
         if ( archiveType == ArtifactType.APIS || archiveType == ArtifactType.SOURCES ) {
+            processors = ApisUtil.getProcessors();
+            sources = processors.isEmpty() ? null : new ArrayList<>();
             // api or source
             for(final ArtifactInfo info : infos) {
                 final File dir = archiveType == ArtifactType.APIS ? info.getBinDirectory() : info.getSourceDirectory();
@@ -1498,9 +1474,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     fileSet.setIncludingEmptyDirectories(false);
                     fileSet.setIncludes(usedExportedPackageIncludes);
                     jarArchiver.addFileSet(fileSet);
+                    if ( sources != null ) {
+                        sources.add(new DirectorySource(fileSet));
+                    }
                 }
             }
         } else {
+            processors = Collections.emptyList();
+            sources = null;
             // javadoc
             final DefaultFileSet fileSet = new DefaultFileSet(ctx.getJavadocDir());
             jarArchiver.addFileSet(fileSet);
@@ -1513,6 +1494,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 final String name = resource.getAbsolutePath().substring(prefixLength);
                 jarArchiver.addFile(resource, name);
                 getLog().debug("Adding resource " + name);
+                if ( sources != null ) {
+                    sources.add(new FileSource(info.getBinDirectory(), resource));
+                }
             }
         }
 
@@ -1529,9 +1513,49 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     for (String includedFile : ds.getIncludedFiles()) {
                         jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
                     }
+                    if ( sources != null ) {
+                        final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
+                        fileSet.setIncludingEmptyDirectories(false);
+                        fileSet.setIncludes(new String[] {"**/*.*"});
+                        sources.add(new DirectorySource(fileSet));
+                    }
                 } else {
                     jarArchiver.addFile(rsrc, rsrc.getName());
+                    if ( sources != null ) {
+                        sources.add(new FileSource(rsrc.getParentFile(), rsrc));
+                    }
                 }
+            }
+        }
+
+        // run processors
+        for(final Processor p : processors) {
+            final ProcessorContext pc = new ProcessorContext() {
+
+                @Override
+                public MavenSession getSession() {
+                    return mavenSession;
+                }
+
+                @Override
+                public MavenProject getProject() {
+                    return project;
+                }
+
+                @Override
+                public Feature getFeature() {
+                    return ctx.getFeature();
+                }
+
+                @Override
+                public ApiRegion getApiRegion() {
+                    return apiRegion;
+                }
+            };
+            if ( archiveType == ArtifactType.APIS ) {
+                p.processBinaries(pc, sources);
+            } else {
+                p.processSources(pc, sources);
             }
         }
 

@@ -227,7 +227,7 @@ public class ApisJarContext {
 
     private final List<ArtifactInfo> infos = new ArrayList<>();
 
-    private final ArtifactId featureId;
+    private final Feature feature;
 
     private final ApiRegions apiRegions;
 
@@ -238,7 +238,7 @@ public class ApisJarContext {
 
     public ApisJarContext(final File mainDir, final Feature feature, final ApiRegions regions) throws MojoExecutionException {
         this.config = new ApisConfiguration(feature);
-        this.featureId = feature.getId();
+        this.feature = feature;
 
         // deflated and source dirs can be shared
         this.deflatedBinDir = new File(mainDir, "deflated-bin");
@@ -252,7 +252,11 @@ public class ApisJarContext {
     }
 
     public ArtifactId getFeatureId() {
-        return featureId;
+        return feature.getId();
+    }
+
+    public Feature getFeature() {
+        return this.feature;
     }
 
     public ApiRegions getApiRegions() {

@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -45,6 +46,7 @@ import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
+import org.apache.sling.feature.maven.mojos.apis.spi.Processor;
 import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 
 /**
@@ -374,4 +376,17 @@ public class ApisUtil {
         }
     }
 
+    /**
+     * Get the list of processors
+     * @return The processors - might be empty
+     */
+    public static List<Processor> getProcessors() {
+        final ServiceLoader<Processor> loader = ServiceLoader.load(Processor.class);
+
+        final List<Processor> result = new ArrayList<>();
+        for(final Processor p : loader) {
+            result.add(p);
+        }
+        return result;
+    }
 }
