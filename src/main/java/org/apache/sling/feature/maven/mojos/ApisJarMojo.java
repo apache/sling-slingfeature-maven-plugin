@@ -650,6 +650,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         otherPackages.removeAll(ctx.getPackagesWithoutJavaClasses());
 
         apiPackages.addAll(otherPackages);
+        if ( artifactType == ArtifactType.JAVADOC ) {
+            // jquery might be part of javadoc
+            final Collection<String> jqueryPackages = Arrays.asList("jquery", "jquery.external.jquery", "jquery.images", "jquery.jszip-utils.dist", "jquery.jszip.dist", "resources");
+            apiPackages.removeAll(jqueryPackages);
+        }
+
         if (missing.isEmpty() && apiPackages.isEmpty()) {
             getLog().info("Verified " + artifactType.getId() + " jar for region " + apiRegion.getName());
         } else {
