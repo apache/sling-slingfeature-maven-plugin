@@ -41,8 +41,6 @@ import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.json.JsonArray;
-
 import org.apache.commons.lang3.StringUtils;
 import org.apache.felix.utils.manifest.Clause;
 import org.apache.felix.utils.manifest.Parser;
@@ -78,8 +76,6 @@ import org.apache.maven.shared.utils.logging.MessageUtils;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.ExecutionEnvironmentExtension;
-import org.apache.sling.feature.Extension;
-import org.apache.sling.feature.Extensions;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.ArtifactProvider;
 import org.apache.sling.feature.extension.apiregions.api.ApiExport;
@@ -426,42 +422,31 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private ApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
         ApiRegions regions = new ApiRegions();
 
-        Extensions extensions = feature.getExtensions();
-        Extension apiRegionsExtension = extensions.getByName(ApiRegions.EXTENSION_NAME);
-        if (apiRegionsExtension != null) {
-            if (apiRegionsExtension.getJSONStructure() == null) {
-                getLog().info(
-                        "Feature file " + feature.getId().toMvnId() + " declares an empty '" + ApiRegions.EXTENSION_NAME
-                    + "' extension, no API JAR will be created");
+        final ApiRegions sourceRegions;
+        try {
+            sourceRegions = ApiRegions.getApiRegions(feature);
+        } catch ( final IllegalArgumentException iae ) {
+            throw new MojoExecutionException(iae.getMessage(), iae);
+        }
+        if ( sourceRegions != null ) {
+            // calculate all api-regions first, taking the inheritance in account
+            for (final ApiRegion r : sourceRegions.listRegions()) {
+                if (r.getParent() != null && !this.incrementalApis) {
+                    for (final ApiExport exp : r.getParent().listExports()) {
+                        r.add(exp);
+                    }
+                }
+                if (isRegionIncluded(r.getName())) {
+                    getLog().debug("API Region " + r.getName()
+                                + " will not processed due to the configured include/exclude list");
+                    regions.add(r);
+                }
+            }
+
+            if (regions.isEmpty()) {
+                getLog().info("Feature file " + feature.getId().toMvnId()
+                        + " has no included api regions, no API JAR will be created");
                 regions = null;
-            } else {
-                ApiRegions sourceRegions;
-                try {
-                    sourceRegions = ApiRegions
-                            .parse((JsonArray) apiRegionsExtension.getJSONStructure());
-                } catch (final IOException ioe) {
-                    throw new MojoExecutionException(ioe.getMessage(), ioe);
-                }
-
-                // calculate all api-regions first, taking the inheritance in account
-                for (final ApiRegion r : sourceRegions.listRegions()) {
-                    if (r.getParent() != null && !this.incrementalApis) {
-                        for (final ApiExport exp : r.getParent().listExports()) {
-                            r.add(exp);
-                        }
-                    }
-                    if (isRegionIncluded(r.getName())) {
-                        getLog().debug("API Region " + r.getName()
-                                    + " will not processed due to the configured include/exclude list");
-                        regions.add(r);
-                    }
-                }
-
-                if (regions.isEmpty()) {
-                    getLog().info("Feature file " + feature.getId().toMvnId()
-                            + " has no included api regions, no API JAR will be created");
-                    regions = null;
-                }
             }
         } else {
             // create exports on the fly
