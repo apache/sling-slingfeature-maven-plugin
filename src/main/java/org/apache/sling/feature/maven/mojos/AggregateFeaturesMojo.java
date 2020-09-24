@@ -53,9 +53,6 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
     private static final String HANDLER_CONFIG_WILDCARD = "all";
 
-    /* A context flag to track if we have already been processed */
-    private static final String PROPERTY_HANDLED_AGGREGATE_FEATURES = AggregateFeaturesMojo.class.getName() + "/generated";
-
     /**
      * The definition of the features used to create the new feature.
      */
@@ -69,15 +66,18 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     public void execute() throws MojoExecutionException {
         checkPreconditions();
 
-        // make sure to check for aggregate features only once
-        if (this.project.getContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES) == Boolean.TRUE) {
-            getLog().info("Skipping aggregate-features execution as it has already been processed once");
-            return;
-        } else {
-            this.project.setContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES, Boolean.TRUE);
-        }
-
         for (final Aggregate aggregate : aggregates) {
+            // SLING-9656 - remove the previously generated feature from the project in case we have already invoked this Mojo before
+            final String aggregateFeatureKey = ProjectHelper.generateAggregateFeatureKey(aggregate.classifier, aggregate.attach);
+            Feature remove = ProjectHelper.getAssembledFeatures(project).remove(aggregateFeatureKey);
+            if (remove != null) {
+                getLog().debug("Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project assembled features map");
+            }
+            Feature remove2 = ProjectHelper.getFeatures(this.project).remove(aggregateFeatureKey);
+            if (remove2 != null) {
+                getLog().debug("Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project features map");
+            }
+
             // check classifier
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);
 
@@ -164,9 +164,8 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.setFeatureInfo(project, result);
 
             // Add feature to map of features
-            final String key = ProjectHelper.generateAggregateFeatureKey(aggregate.classifier, aggregate.attach);
-            ProjectHelper.getAssembledFeatures(project).put(key, result);
-            ProjectHelper.getFeatures(this.project).put(key, result);
+            ProjectHelper.getAssembledFeatures(project).put(aggregateFeatureKey, result);
+            ProjectHelper.getFeatures(this.project).put(aggregateFeatureKey, result);
         }
     }
 
