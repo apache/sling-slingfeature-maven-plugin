@@ -53,6 +53,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
     private static final String HANDLER_CONFIG_WILDCARD = "all";
 
+    /* A context flag to track if we have already been processed */
+    private static final String PROPERTY_HANDLED_AGGREGATE_FEATURES = AggregateFeaturesMojo.class.getName() + "/generated";
+
     /**
      * The definition of the features used to create the new feature.
      */
@@ -65,6 +68,15 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     @Override
     public void execute() throws MojoExecutionException {
         checkPreconditions();
+
+        // make sure to check for aggregate features only once
+        if (this.project.getContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES) == Boolean.TRUE) {
+            getLog().info("Skipping aggregate-features execution as it has already been processed once");
+            return;
+        } else {
+            this.project.setContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES, Boolean.TRUE);
+        }
+
         for (final Aggregate aggregate : aggregates) {
             // check classifier
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);

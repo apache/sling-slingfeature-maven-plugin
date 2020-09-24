@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -35,8 +36,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
-
-import com.google.common.io.Files;
 
 /**
  * Launches the given Feature File
@@ -184,7 +183,12 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
             getLog().info("Features from Selection: " + features);
             for (Feature feature : features) {
                 // Loop over all features found, create a temporary file, write the features there and add them to the launcher's file list
-                File folder = Files.createTempDir();
+                File folder;
+				try {
+					folder = Files.createTempDirectory("features").toFile();
+				} catch (IOException e1) {
+					throw new MojoExecutionException("Failed to create temp directory", e1);
+				}
                 ArtifactId id = feature.getId();
                 File featureFile = new File(folder, id.toMvnId().replaceAll(":", "-") + ".json");
                 // TODO: Do we need to support Prototypes etc?
