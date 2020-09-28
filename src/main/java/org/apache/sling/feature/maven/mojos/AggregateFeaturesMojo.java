@@ -53,6 +53,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
     private static final String HANDLER_CONFIG_WILDCARD = "all";
 
+    /* A context flag to track if we have already been processed */
+    private static final String PROPERTY_HANDLED_AGGREGATE_FEATURES = AggregateFeaturesMojo.class.getName() + "/generated";
+
     /**
      * The definition of the features used to create the new feature.
      */
@@ -66,16 +69,28 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     public void execute() throws MojoExecutionException {
         checkPreconditions();
 
+        // SLING-9656 - make sure to process each aggregate feature only once
+        @SuppressWarnings("unchecked")
+        Map<Aggregate, Feature> handledAggregates = (Map<Aggregate, Feature>)this.project.getContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES);
+        if (handledAggregates == null) {
+            handledAggregates = new HashMap<>();
+            this.project.setContextValue(PROPERTY_HANDLED_AGGREGATE_FEATURES, handledAggregates);
+        }
+
         for (final Aggregate aggregate : aggregates) {
-            // SLING-9656 - remove the previously generated feature from the project in case we have already invoked this Mojo before
             final String aggregateFeatureKey = ProjectHelper.generateAggregateFeatureKey(aggregate.classifier, aggregate.attach);
-            Feature remove = ProjectHelper.getAssembledFeatures(project).remove(aggregateFeatureKey);
-            if (remove != null) {
-                getLog().debug("Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project assembled features map");
-            }
-            Feature remove2 = ProjectHelper.getFeatures(this.project).remove(aggregateFeatureKey);
-            if (remove2 != null) {
-                getLog().debug("Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project features map");
+
+            // SLING-9656 - check if we have already processed this one
+            Feature processedFeature = handledAggregates.get(aggregate);
+            if (processedFeature != null) {
+                getLog().debug("Found previously processed aggregate-feature " + aggregateFeatureKey);
+                if (ProjectHelper.getAssembledFeatures(project).remove(aggregateFeatureKey, processedFeature)) {
+                    getLog().debug("  Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project assembled features map");
+                }
+
+                if (ProjectHelper.getFeatures(this.project).remove(aggregateFeatureKey, processedFeature)) {
+                    getLog().debug("  Removed previous aggregate feature '" + aggregateFeatureKey + "' from the project features map");
+                }
             }
 
             // check classifier
@@ -166,6 +181,9 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             // Add feature to map of features
             ProjectHelper.getAssembledFeatures(project).put(aggregateFeatureKey, result);
             ProjectHelper.getFeatures(this.project).put(aggregateFeatureKey, result);
+
+            // SLING-9656 - remember that we have already processed this one
+            handledAggregates.put(aggregate, result);
         }
     }
 
