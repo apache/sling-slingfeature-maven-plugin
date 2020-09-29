@@ -17,12 +17,14 @@
 package org.apache.sling.feature.maven.mojos;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,7 +64,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 
-@SuppressWarnings("deprecation")
 public class AggregateFeaturesMojoTest {
     private Path tempDir;
     private static Map<String, ArtifactId> pluginCallbacks;
@@ -864,6 +865,213 @@ public class AggregateFeaturesMojoTest {
         assertEquals(1, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
                 ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
+    }
+
+
+    /**
+     * Sling-9656 - verify that equals works for two equivalent Aggregate objects
+     */
+    @Test
+    public void testAggregateEquals() throws Exception {
+        Aggregate ag = new Aggregate();
+        ag.classifier = "myagg";
+        ag.attach = true;
+        ag.markAsFinal = true;
+        ag.markAsComplete = true;
+        ag.title = "title";
+        ag.description = "description";
+        ag.vendor = "vendor";
+        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag.configurationOverrides = Arrays.asList("one");
+        ag.variablesOverrides = Collections.singletonMap("key", "value");
+        ag.frameworkPropertiesOverrides = Collections.singletonMap("key", "value");
+        ag.setFilesExclude("file1.json");
+        ag.setFilesInclude("file2.json");
+
+        Aggregate ag2 = new Aggregate();
+        ag2.classifier = "myagg";
+        ag2.attach = true;
+        ag2.markAsFinal = true;
+        ag2.markAsComplete = true;
+        ag2.title = "title";
+        ag2.description = "description";
+        ag2.vendor = "vendor";
+        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag2.configurationOverrides = Arrays.asList("one");
+        ag2.variablesOverrides = Collections.singletonMap("key", "value");
+        ag2.frameworkPropertiesOverrides = Collections.singletonMap("key", "value");
+        ag2.setFilesExclude("file1.json");
+        ag2.setFilesInclude("file2.json");
+
+        assertEquals(ag, ag2);
+
+        // hashCode should be equal too
+        assertEquals(ag.hashCode(), ag2.hashCode());
+
+        Object [][] fieldChanges = new Object[][] {
+            {"classifier", "myagg2"},
+            {"attach", false},
+            {"markAsFinal", false},
+            {"markAsComplete", false},
+            {"title", "title2"},
+            {"description", "description2"},
+            {"vendor", "vendor2"},
+            {"artifactsOverrides", Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                    "org.apache.sling:somebundle:2.2.0", "org.apache.sling:somebundle:3.0.0")},
+            {"configurationOverrides", Arrays.asList("two")},
+            {"variablesOverrides", Collections.singletonMap("key2", "value2")},
+            {"frameworkPropertiesOverrides", Collections.singletonMap("key2", "value2")}
+        };
+
+        // change something in each field to make them not equal
+        for (Object[] objects : fieldChanges) {
+            String fieldName = (String)objects[0];
+            Field field = ag2.getClass().getField(fieldName);
+            Object originalValue = field.get(ag2);
+            try {
+                field.set(ag2, objects[1]);
+
+                // now the two object should no longer be equal
+                assertNotEquals("expected not equal after changing field: " + fieldName, ag, ag2);
+                assertNotEquals("expected hashCode not equal after changing field: " + fieldName, ag.hashCode(), ag2.hashCode());
+            } finally {
+                // put the old value back
+                field.set(ag2, originalValue);
+            }
+        }
+
+        // also check equals afterchanges to non-field data
+        ag2.setFilesExclude("file3.json");
+        ag2.setFilesInclude("file4.json");
+
+        // now the two object should no longer be equal
+        assertNotEquals("expected not equal after changing included/excluded files", ag, ag2);
+        assertNotEquals("expected hashCode not equal after changing included/excluded files", ag.hashCode(), ag2.hashCode());
+    }
+
+    /**
+     * Sling-9656 - verify gracefully handling of scenarios where the AggregateFeaturesMojo gets invoked
+     * more than once with equivalent configuration during the build
+     */
+    @Test
+    public void testAggregateFeaturesInvokedMultipleTimes() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir5").getFile());
+
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "myagg";
+        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArt = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getId()).thenReturn("test.aggregate.project1");
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+        Map<Aggregate, Feature> handledAggregates = new HashMap<>();
+        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated")).thenReturn(handledAggregates);
+
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
+        af.aggregates = Collections.singletonList(ag);
+        af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        af.features = featuresDir;
+        af.handlerConfiguration = new HashMap<>();
+
+        // execute the first time
+        af.execute();
+
+        // and executing again with different (but equal) Aggregate objects should not fail either
+        Aggregate ag2 = new Aggregate();
+        ag2.setFilesInclude("*.json");
+        ag2.classifier = "myagg";
+        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        af.aggregates = Collections.singletonList(ag2);
+
+        af.execute();
+    }
+
+    /**
+     * Sling-9656 - verify configuration with duplicate Aggregate classifiers fails
+     */
+    @Test
+    public void testAggregateFeaturesDuplicateClassifier() throws Exception {
+        File featuresDir = new File(
+                getClass().getResource("/aggregate-features/dir5").getFile());
+
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate ag = new Aggregate();
+        ag.setFilesInclude("*.json");
+        ag.classifier = "myagg";
+        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+
+        // a second different aggregate with the same classifier
+        Aggregate ag2 = new Aggregate();
+        ag2.setFilesInclude("*.json");
+        ag2.classifier = "myagg";
+        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.2");
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArt = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getId()).thenReturn("test.aggregate.project1");
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+        Map<Aggregate, Feature> handledAggregates = new HashMap<>();
+        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated")).thenReturn(handledAggregates);
+
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
+        af.aggregates = Arrays.asList(ag, ag2);
+        af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        af.features = featuresDir;
+        af.handlerConfiguration = new HashMap<>();
+
+        try {
+            af.execute();
+
+            fail("Expected RuntimeException about duplicate aggregate classifier");
+        } catch (RuntimeException e) {
+            assertEquals("More than one feature file for classifier myagg in project test.aggregate.project1 : [aggregate myagg, aggregate myagg]", e.getMessage());
+        }
     }
 
     private Artifact createMockArtifact() {

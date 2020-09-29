@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.sling.feature.ArtifactId;
@@ -70,6 +71,37 @@ public class Aggregate extends FeatureSelectionConfig {
     public Map<String, String> variablesOverrides;
 
     public Map<String, String> frameworkPropertiesOverrides;
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), artifactsOverrides, attach, classifier, configurationOverrides, description,
+                frameworkPropertiesOverrides, markAsComplete, markAsFinal, title, variablesOverrides, vendor);
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!super.equals(obj))
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        Aggregate other = (Aggregate) obj;
+        return Objects.equals(artifactsOverrides, other.artifactsOverrides) && attach == other.attach
+                && Objects.equals(classifier, other.classifier)
+                && Objects.equals(configurationOverrides, other.configurationOverrides)
+                && Objects.equals(description, other.description)
+                && Objects.equals(frameworkPropertiesOverrides, other.frameworkPropertiesOverrides)
+                && markAsComplete == other.markAsComplete && markAsFinal == other.markAsFinal
+                && Objects.equals(title, other.title) && Objects.equals(variablesOverrides, other.variablesOverrides)
+                && Objects.equals(vendor, other.vendor);
+    }
 
     @Override
     public String toString() {

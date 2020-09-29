@@ -18,6 +18,7 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.maven.model.Dependency;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -35,6 +36,29 @@ public class FeatureSelectionConfig {
         public Selection(final SelectionType type, final String instruction) {
             this.type = type;
             this.instruction = instruction;
+        }
+
+        /* (non-Javadoc)
+         * @see java.lang.Object#hashCode()
+         */
+        @Override
+        public int hashCode() {
+            return Objects.hash(instruction, type);
+        }
+
+        /* (non-Javadoc)
+         * @see java.lang.Object#equals(java.lang.Object)
+         */
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            Selection other = (Selection) obj;
+            return Objects.equals(instruction, other.instruction) && type == other.type;
         }
 
         @Override
@@ -81,6 +105,29 @@ public class FeatureSelectionConfig {
 
     public List<Selection> getSelections() {
         return this.selections;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode() {
+        return Objects.hash(filesExcludes, selections);
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        FeatureSelectionConfig other = (FeatureSelectionConfig) obj;
+        return Objects.equals(filesExcludes, other.filesExcludes) && Objects.equals(selections, other.selections);
     }
 
     @Override
