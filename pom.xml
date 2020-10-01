@@ -99,7 +99,8 @@
                         <exclude>src/site/markdown/**</exclude>
                         <exclude>src/test/resources/**/*.txt</exclude>
                         <exclude>src/test/resources/**/*.feature</exclude>
-                        <exclude>src/test/resources/META-INF/services/*</exclude>
+			<exclude>src/test/resources/**/*.xml</exclude>
+			<exclude>src/test/resources/META-INF/services/*</exclude>
                         <exclude>src/it/**/*.json</exclude>
                     </excludes>
                 </configuration>

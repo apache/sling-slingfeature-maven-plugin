@@ -312,7 +312,11 @@ public class Preprocessor {
 
                     ProjectHelper.checkFeatureId(info.project, feature);
 
+                    // Extension handling
+                    JSONFeatures.handleExtensions(feature, file);
+
                     ProjectHelper.setFeatureInfo(info.project, feature);
+
                     this.postProcessReadFeature(feature);
                     (config.isTestConfig() ? info.testFeatures : info.features).put(file.toPath().normalize().toFile().getAbsolutePath(), feature);
 

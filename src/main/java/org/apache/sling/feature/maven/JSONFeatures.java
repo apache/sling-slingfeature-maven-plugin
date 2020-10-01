@@ -16,11 +16,13 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
@@ -34,8 +36,11 @@ import javax.json.JsonWriter;
 import javax.json.stream.JsonGenerator;
 import javax.json.stream.JsonGeneratorFactory;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.felix.cm.json.Configurations;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Extension;
+import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 
@@ -112,4 +117,33 @@ public class JSONFeatures {
             FeatureJSONWriter.write(writer, feature);
         }
     }
+
+    private static final String FILE_PREFIX = "@file";
+
+    /**
+     * Check for extensions of type text and if they reference a file
+     */
+	public static void handleExtensions(final Feature feature, final File file) throws IOException {
+        for(final Extension ext : feature.getExtensions()) {
+            if ( ext.getType() == ExtensionType.TEXT && ext.getText().startsWith(FILE_PREFIX)) {
+                final int pos = file.getName().lastIndexOf(".");
+                final String baseName = pos == -1 ? file.getName() : file.getName().substring(0, pos);
+                final String fileName;
+                if ( FILE_PREFIX.equals(ext.getText()) ) {
+                    fileName = baseName.concat("-").concat(ext.getName()).concat(".txt");
+                } else {
+                    if ( !ext.getText().substring(FILE_PREFIX.length()).startsWith(":") ) {
+                        throw new IOException("Invalid file reference: " + ext.getText());
+                    }
+                    fileName = baseName.concat("-").concat(ext.getText().substring(FILE_PREFIX.length() + 1));
+                }
+                final File txtFile = new File(file.getParentFile(), fileName);
+                if ( !txtFile.exists() || !txtFile.isFile()) {
+                    throw new IOException("Extension text file " + txtFile.getAbsolutePath() + " not found.");
+                }
+                final String contents = FileUtils.readFileToString(txtFile, StandardCharsets.UTF_8);
+                ext.setText(contents);
+            }
+        }
+	}
 }

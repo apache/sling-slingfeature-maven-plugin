@@ -42,6 +42,7 @@ import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
+import org.apache.sling.feature.maven.JSONFeatures;
 import org.apache.sling.feature.maven.ProjectHelper;
 
 /**
@@ -275,6 +276,9 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
                         final Feature feature = FeatureJSONReader.read(reader, file.getAbsolutePath());
 
                         ProjectHelper.checkFeatureId(project, feature);
+
+                        // Extension handling
+                        JSONFeatures.handleExtensions(feature, file);
 
                         ProjectHelper.setFeatureInfo(project, feature);
 
