@@ -18,9 +18,11 @@ package org.apache.sling.feature.maven.mojos.apis;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 
 import javax.json.JsonArray;
 import javax.json.JsonObject;
@@ -133,6 +135,8 @@ public class ApisConfiguration {
 
     private final Map<String, String> manifestEntries = new HashMap<>();
 
+    private final Set<String> enabledToggles = new HashSet<>();
+    
     public ApisConfiguration(final Feature feature) throws MojoExecutionException {
         // check for extension
         final Extension ext = feature.getExtensions().getByName(EXTENSION_NAME);
@@ -400,5 +404,17 @@ public class ApisConfiguration {
         if ( this.manifestEntries.isEmpty() && valuesFromProject != null ) {
             this.manifestEntries.putAll(ProjectHelper.propertiesToMap(valuesFromProject));
         }
+    }
+
+    public void setEnabledToggles(final String value) {
+        if (value != null ) {
+            for(final String name : value.split(",")) {
+                enabledToggles.add(name.trim());
+            }
+        }        
+    }
+
+    public Set<String> getEnabledToggles() {
+        return this.enabledToggles;
     }
 }

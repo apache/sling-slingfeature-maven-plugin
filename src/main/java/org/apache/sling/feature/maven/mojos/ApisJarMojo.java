@@ -344,6 +344,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private List<String> javadocClasspathTops;
 
+    /**
+     * A comma separated list of enabled toggles used as input to generate the api jars.
+     * @since 1.5.0
+     */
+    @Parameter(property = "enabled.toggles")
+    private String enabledToggles;
 
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
@@ -500,6 +506,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         ctx.getConfig().setRegionMappings(apiRegionNameMappings);
         ctx.getConfig().setManifestEntries(manifestProperties);
         ctx.getConfig().logConfiguration(getLog());
+        ctx.getConfig().setEnabledToggles(this.enabledToggles);
 
         ctx.setDependencyRepositories(this.apiRepositoryUrls);
 
@@ -587,7 +594,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 .a(" succesfully created").toString());
     }
 
-    private void report(final ApisJarContext ctx,
+	private void report(final ApisJarContext ctx,
             final File jarFile,
             final ArtifactType artifactType,
             final ApiRegion apiRegion,
@@ -731,7 +738,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * @param artifact The artifact
      * @throws MojoExecutionException
      */
-    private void onArtifact(final ApisJarContext ctx, final Artifact artifact)
+    private void onArtifact(final ApisJarContext ctx, Artifact artifact)
     throws MojoExecutionException {
         final File bundleFile = getArtifactFile(artifactProvider, artifact.getId());
 
@@ -742,9 +749,33 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if (exportedPackageClauses.length > 0) {
 
             // calculate the exported packages in the manifest file for all regions
-            final Set<String> usedExportedPackages = computeUsedExportPackages(ctx.getApiRegions(), exportedPackageClauses, artifact);
+            final Set<String> usedExportedPackages = computeUsedExportPackages(ctx, exportedPackageClauses, artifact);
 
             if ( !usedExportedPackages.isEmpty()) {
+                // check for previous version of artifact due to toggles
+                ArtifactId previous = null;
+                for(final String pckName : usedExportedPackages) {
+                    for(final ApiRegion region : ctx.getApiRegions().listRegions()) {
+                        final ApiExport exp = region.getExportByName(pckName);
+                        if ( exp != null ) {
+                            if ( exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle()) && exp.getPrevious() != null ) {
+                                if ( previous != null && previous.compareTo(exp.getPrevious()) != 0 ) {
+                                    throw new MojoExecutionException("More than one previous version artifact configured for " + 
+                                        artifact.getId().toMvnId() + " : " + previous.toMvnId() + ", " + exp.getPrevious().toMvnId());
+                                }
+                                previous = exp.getPrevious();
+                            }                        
+                            break;
+                        }
+                    }
+                }
+                if ( previous != null ) {
+                    final Artifact previousArtifact = new Artifact(previous);
+                    previousArtifact.getMetadata().putAll(artifact.getMetadata());
+                    getLog().debug("Using " + previous.toMvnId() + " instead of " + artifact.getId().toMvnId() + " due to disabled toggle(s)");
+                    artifact = previousArtifact;
+                }
+
                 final ArtifactInfo info = ctx.addArtifactInfo(artifact);
                 info.setUsedExportedPackages(usedExportedPackages);
 
@@ -803,7 +834,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     ApisUtil.buildJavadocClasspath(getLog(), repositorySystem, mavenSession, artifact.getId()).forEach( ctx::addJavadocClasspath );
                 }
             }
-
         }
     }
 
@@ -1404,22 +1434,29 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /**
      * Compute exports based on all regions
      *
-     * @return List of packages exported by this bundle and used in any region
+     * @return Set of packages exported by this bundle and used in any region
      */
-    private Set<String> computeUsedExportPackages(final ApiRegions apiRegions,
+    private Set<String> computeUsedExportPackages(final ApisJarContext ctx,
             final Clause[] exportedPackages,
             final Artifact bundle)
-            throws MojoExecutionException {
+            throws MojoExecutionException {        
         final Set<String> result = new HashSet<>();
 
         // filter for each region
         for (final Clause exportedPackage : exportedPackages) {
             final String packageName = exportedPackage.getName();
 
-            for (ApiRegion apiRegion : apiRegions.listRegions()) {
+            for (ApiRegion apiRegion : ctx.getApiRegions().listRegions()) {
                 final ApiExport exp = apiRegion.getExportByName(packageName);
                 if (exp != null) {
-                    result.add(exportedPackage.getName());
+                    boolean include = true;
+                    // if the package is behind a toggle, don't include it
+                    if ( exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle()) && exp.getPrevious() == null ) {
+                        include = false;
+                    }
+                    if ( include ) {
+                        result.add(exportedPackage.getName());
+                    }
                 }
             }
         }
