@@ -369,12 +369,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
 
-        getLog().debug("Retrieving Feature files...");
+        getLog().debug("Retrieving feature files...");
         final Collection<Feature> features = this.getSelectedFeatures(selection).values();
 
         if (features.isEmpty()) {
             getLog().info(
-                    "There are no assciated Feature files in the current project, plugin execution will be skipped");
+                    "There are no associated feature files in the current project, plugin execution will be skipped");
         } else {
             getLog().debug("Starting APIs JARs creation...");
 
@@ -697,7 +697,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private boolean calculateOmitDependenciesFlag(final Clause[] exportedPackageClauses, final Set<Clause> usedExportedPackagesPerRegion) {
+    private boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses, final Set<Clause> usedExportedPackagesPerRegion) {
         // check whether all packages are exported in this region
         boolean fullUsage = true;
         for(final Clause c : exportedPackageClauses) {
@@ -710,6 +710,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             }
 
             if (!found) {
+                fullUsage = false;
+                break;
+            }
+            // check deprecation - if deprecation is set, artifact can't be used as a dependency
+            final ApiExport exp = region.getAllExportByName(c.getName());
+            if (  exp != null && exp.getDeprecation() != null ) {
                 fullUsage = false;
                 break;
             }
@@ -747,7 +753,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region, exportedPackageClauses, artifact);
 
                     // check whether packages are included in api jars - or added as a dependency
-                    boolean useAsDependency = this.useApiDependencies ? calculateOmitDependenciesFlag(exportedPackageClauses, usedExportedPackagesPerRegion) : false;
+                    boolean useAsDependency = this.useApiDependencies ? calculateOmitDependenciesFlag(region, exportedPackageClauses, usedExportedPackagesPerRegion) : false;
                     if ( useAsDependency ) {
                         useAsDependency = ctx.findDependencyArtifact(getLog(), info);
                         if ( useAsDependency ) {
