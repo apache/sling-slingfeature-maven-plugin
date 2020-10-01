@@ -65,6 +65,12 @@ Up to version 1.3.4 of the maven plugin, all occurences of placeholders where tr
 
 For versions higher than 1.3.4, the `enableLegacyVariableReplacement` configuration can be set to `true` to enable this old behaviour. But it is discouraged to do so and rather use `replacePropertyVariables` with a clearly defined set of placeholders.
 
+## External Files for Text Extensions
+
+For versions higher than 1.4.0, the maven plugin supports to author extensions in external files. For example a repoinit section can be written in a text file next to the feature model file. If an extension of type text is specified in the feature model with the value `@file`, the maven plugin looks for a file in the same directory as the feature model. The file must have the same name as the feature file followed by a dash, the name of the extension and ".txt". For example a feature file `src/main/features/myfeature.json` with a repoinit extension using "@file" reads the repoinit from `src/main/features/myfeature-repoinit.txt`.
+
+In addition, it is possible to control the name of the file name by specifying the part after the dash. For example using `@file:xssapi.xml` as the value of the extension leads to the a file named `myfeature-xssapi.xml` to be read.
+
 # Global Configuration
 
 * features : The directory containing the feature files. The default is `src/main/features`.
