@@ -24,7 +24,7 @@ import org.codehaus.plexus.util.*;
         File file = new File(basedir, "build.log");
         String log = FileUtils.fileRead(file);
 
-        if (log.indexOf("One or more feature analyzer(s) detected feature error(s), please read the plugin log for more details") < 0) {
+        if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );
             return false;
         }

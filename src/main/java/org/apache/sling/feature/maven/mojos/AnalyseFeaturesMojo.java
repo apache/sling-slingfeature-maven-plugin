@@ -80,6 +80,9 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
     @Parameter(defaultValue = "true")
     private boolean logWarnings;
 
+    @Parameter(defaultValue = "true", property = "failon.analyser.errors")
+    private boolean failOnAnalyserErrors;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
@@ -195,8 +198,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             }
         }
         if (hasErrors) {
-            throw new MojoFailureException(
-                    "One or more feature analyzer(s) detected feature error(s), please read the plugin log for more details");
+            if ( failOnAnalyserErrors ) {
+                throw new MojoFailureException(
+                    "One or more feature analyser(s) detected feature error(s), please read the plugin log for more details");
+            }
+            getLog().warn("Errors found during analyser run, but this plugin is configured to ignore errors and continue the build!");
         }
     }
 
