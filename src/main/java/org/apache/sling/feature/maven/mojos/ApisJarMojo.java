@@ -54,6 +54,7 @@ import org.apache.maven.model.building.ModelBuilder;
 import org.apache.maven.model.building.ModelBuildingRequest;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -105,25 +106,21 @@ import org.osgi.framework.Constants;
 /**
  * Generates the APIs JARs for the selected feature files.
  */
-@Mojo(name = "apis-jar",
-    defaultPhase = LifecyclePhase.PACKAGE,
-    requiresDependencyResolution = ResolutionScope.TEST,
-    threadSafe = true
-)
+@Mojo(name = "apis-jar", defaultPhase = LifecyclePhase.PACKAGE, requiresDependencyResolution = ResolutionScope.TEST, threadSafe = true)
 public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
-   /**
-     * Select the features for api generation.
-     * Separate api jars will be generated for each feature.
+    /**
+     * Select the features for api generation. Separate api jars will be generated
+     * for each feature.
      */
     @Parameter
     private FeatureSelectionConfig selection;
 
     /**
-     * Patterns identifying which resources to include from bundles.
-     * This can be used to include files like license or notices files.
-     * Starting with version 1.2.0 these files are only searched
-     * in the folders mentioned by {@code #resourceFolders}
+     * Patterns identifying which resources to include from bundles. This can be
+     * used to include files like license or notices files. Starting with version
+     * 1.2.0 these files are only searched in the folders mentioned by
+     * {@code #resourceFolders}
      */
     @Parameter
     private String[] includeResources;
@@ -222,6 +219,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Optional version to be put into the manifest of the created jars
+     * 
      * @since 1.2.0
      */
     @Parameter
@@ -229,6 +227,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Comma separated list of folders where files are renamed.
+     * 
      * @since 1.2.0
      */
     @Parameter(defaultValue = "META-INF,SLING-INF")
@@ -236,6 +235,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Create a license report file. This is the name of that file within the jar
+     * 
      * @since 1.2.0
      */
     @Parameter
@@ -243,9 +243,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * A artifact patterns to match artifacts without a license. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". After the patter a "=" followed by
-     * the license information needs to be specified. This information is used in the
-     * license report if no license is specified for an artifact.
+     * "groupId:artifactId:type:classifier:version". After the patter a "=" followed
+     * by the license information needs to be specified. This information is used in
+     * the license report if no license is specified for an artifact.
+     * 
      * @since 1.2.0
      */
     @Parameter
@@ -253,6 +254,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Header added on top of the license report
+     * 
      * @since 1.2.0
      */
     @Parameter(defaultValue = "This archive contains files from the following artifacts:")
@@ -260,37 +262,45 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Footer added at the bottom of the license report
+     * 
      * @since 1.2.0
      */
     @Parameter
     private String licenseReportFooter;
 
     /**
-     * If enabled, packages from artifacts which are fully consumed (all public api) are omitted from the api and source jars
-     * and a dependency list is generated instead.
+     * If enabled, packages from artifacts which are fully consumed (all public api)
+     * are omitted from the api and source jars and a dependency list is generated
+     * instead.
+     * 
      * @since 1.3.0
      */
     @Parameter(defaultValue = "false")
     private boolean useApiDependencies;
 
     /**
-     * Comma separated list of Maven repository lists. If set, and {@link #useApiDependencies} is enabled,
-     * then one of the listed repositories must provide the artifact.
+     * Comma separated list of Maven repository lists. If set, and
+     * {@link #useApiDependencies} is enabled, then one of the listed repositories
+     * must provide the artifact.
+     * 
      * @since 1.3.0
      */
     @Parameter
     private String apiRepositoryUrls;
 
     /**
-     * Fail the build if errors are detected. For example, errors could be missing packages in the api jars, or
-     * too many packages in those jars.
+     * Fail the build if errors are detected. For example, errors could be missing
+     * packages in the api jars, or too many packages in those jars.
+     * 
      * @since 1.3.2
      */
     @Parameter(defaultValue = "false")
     private boolean failOnError;
 
     /**
-     * specify the manifest properties values that you need to replace in the Manifest file.
+     * specify the manifest properties values that you need to replace in the
+     * Manifest file.
+     * 
      * @since 1.3.2
      */
     @Parameter
@@ -298,6 +308,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Fail the build if sources are mising for javadoc generation
+     * 
      * @since 1.3.6
      */
     @Parameter(defaultValue = "false")
@@ -305,6 +316,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Whether the index should be generated
+     * 
      * @since 1.3.6
      */
     @Parameter(defaultValue = "true")
@@ -312,40 +324,47 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     /**
      * Whether the tree should be generated
+     * 
      * @since 1.3.6
      */
     @Parameter(defaultValue = "true")
     private boolean javadocTree;
 
     /**
-     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". Any matching artifact is removed from the
-     * classpath. Removals are processed first.
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows
+     * the pattern "groupId:artifactId:type:classifier:version". Any matching
+     * artifact is removed from the classpath. Removals are processed first.
+     * 
      * @since 1.3.14
      */
     @Parameter
     private List<String> javadocClasspathRemovals;
 
     /**
-     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". From the matching artifacts, only
-     * the highest version is kept per artifact. This rule is applied after the removals.
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows
+     * the pattern "groupId:artifactId:type:classifier:version". From the matching
+     * artifacts, only the highest version is kept per artifact. This rule is
+     * applied after the removals.
+     * 
      * @since 1.3.14
      */
     @Parameter
     private List<String> javadocClasspathHighestVersions;
 
     /**
-     * A artifact patterns to match artifacts put on the javadoc classpath. Follows the pattern
-     * "groupId:artifactId:type:classifier:version". Any matching artifact is put at the top of
-     * the classpath. This rule is applied last.
+     * A artifact patterns to match artifacts put on the javadoc classpath. Follows
+     * the pattern "groupId:artifactId:type:classifier:version". Any matching
+     * artifact is put at the top of the classpath. This rule is applied last.
+     * 
      * @since 1.3.14
      */
     @Parameter
     private List<String> javadocClasspathTops;
 
     /**
-     * A comma separated list of enabled toggles used as input to generate the api jars.
+     * A comma separated list of enabled toggles used as input to generate the api
+     * jars.
+     * 
      * @since 1.5.0
      */
     @Parameter(property = "enabled.toggles")
@@ -431,10 +450,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final ApiRegions sourceRegions;
         try {
             sourceRegions = ApiRegions.getApiRegions(feature);
-        } catch ( final IllegalArgumentException iae ) {
+        } catch (final IllegalArgumentException iae) {
             throw new MojoExecutionException(iae.getMessage(), iae);
         }
-        if ( sourceRegions != null ) {
+        if (sourceRegions != null) {
             // calculate all api-regions first, taking the inheritance in account
             for (final ApiRegion r : sourceRegions.listRegions()) {
                 if (r.getParent() != null && !this.incrementalApis) {
@@ -444,7 +463,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
                 if (isRegionIncluded(r.getName())) {
                     getLog().debug("API Region " + r.getName()
-                                + " will not processed due to the configured include/exclude list");
+                            + " will not processed due to the configured include/exclude list");
                     regions.add(r);
                 }
             }
@@ -476,14 +495,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /**
      * Create api jars for a feature
      */
-    private void onFeature(final Feature feature)
-            throws MojoExecutionException {
+    private void onFeature(final Feature feature) throws MojoExecutionException {
         getLog().info(MessageUtils.buffer().a("Creating API JARs for Feature ").strong(feature.getId().toMvnId())
                 .a(" ...").toString());
 
         final ApiRegions regions = getApiRegions(feature);
         if (regions == null) {
-            // wrongly configured api regions - skip execution, info is logged already so we can just return
+            // wrongly configured api regions - skip execution, info is logged already so we
+            // can just return
             return;
         }
 
@@ -515,14 +534,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             onArtifact(ctx, artifact);
         }
 
-        if ( this.generateSourceJar || this.generateJavadocJar ) {
+        if (this.generateSourceJar || this.generateJavadocJar) {
             getLog().info("--------------------------------------------------------");
             getLog().info("Used sources:");
-            for(final ArtifactInfo info : ctx.getArtifactInfos()) {
-                if ( info.getSources().isEmpty()) {
+            for (final ArtifactInfo info : ctx.getArtifactInfos()) {
+                if (info.getSources().isEmpty()) {
                     getLog().info("- ".concat(info.getId().toMvnId()).concat(" : NO SOURCES FOUND"));
                 } else {
-                    getLog().info("- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getSources().toString()));
+                    getLog().info(
+                            "- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getSources().toString()));
                 }
             }
             getLog().info("--------------------------------------------------------");
@@ -548,20 +568,23 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 report(ctx, sourceJar, ArtifactType.SOURCES, apiRegion, this.useApiDependencies, report, null);
             }
 
-            if ( this.useApiDependencies && (this.generateApiJar || this.generateSourceJar)) {
-               this.createDependenciesFile(ctx, apiRegion);
+            if (this.useApiDependencies && (this.generateApiJar || this.generateSourceJar)) {
+                this.createDependenciesFile(ctx, apiRegion);
             }
 
             if (generateJavadocJar) {
                 final File javadocsDir = new File(regionDir, ArtifactType.JAVADOC.getId());
-                final ExecutionEnvironmentExtension ext = ExecutionEnvironmentExtension.getExecutionEnvironmentExtension(feature);
+                final ExecutionEnvironmentExtension ext = ExecutionEnvironmentExtension
+                        .getExecutionEnvironmentExtension(feature);
                 final JavadocLinks links = new JavadocLinks();
-                links.calculateLinks(ctx.getConfig().getJavadocLinks(), ctx.getArtifactInfos(apiRegion, false), ext != null ? ext.getFramework() : null);
+                links.calculateLinks(ctx.getConfig().getJavadocLinks(), ctx.getArtifactInfos(apiRegion, false),
+                        ext != null ? ext.getFramework() : null);
 
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, apiRegion, links, javadocsDir);
-                if ( infos != null ) {
+                if (infos != null) {
                     ctx.setJavadocDir(javadocsDir);
-                    final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC, this.apiJavadocResources, infos, report);
+                    final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
+                            this.apiJavadocResources, infos, report);
                     report(ctx, javadocJar, ArtifactType.JAVADOC, apiRegion, false, report, links);
                 } else {
                     getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
@@ -571,7 +594,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             final ArtifactId reportId = this.buildArtifactId(ctx, apiRegion, ArtifactType.REPORT);
             final File reportFile = new File(mainOutputDir, reportId.toMvnName());
-            if ( !report.isEmpty() ) {
+            if (!report.isEmpty()) {
                 report.stream().forEach(v -> getLog().info(v));
                 try {
                     Files.write(reportFile.toPath(), report);
@@ -580,13 +603,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
                 hasErrors = true;
             } else {
-                if ( reportFile.exists()) {
+                if (reportFile.exists()) {
                     reportFile.delete();
                 }
             }
         }
 
-        if ( hasErrors && this.failOnError ) {
+        if (hasErrors && this.failOnError) {
             throw new MojoExecutionException("API generation has errors, please see report files for more information");
         }
 
@@ -594,21 +617,17 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 .a(" succesfully created").toString());
     }
 
-	private void report(final ApisJarContext ctx,
-            final File jarFile,
-            final ArtifactType artifactType,
-            final ApiRegion apiRegion,
-            final boolean omitDependencyArtifacts,
-            final List<String> report,
-            final JavadocLinks links)
-    throws MojoExecutionException {
-        final Map.Entry<Set<String>, Set<String>> packageResult = getPackages(ctx, jarFile, artifactType.getContentExtension());
+    private void report(final ApisJarContext ctx, final File jarFile, final ArtifactType artifactType,
+            final ApiRegion apiRegion, final boolean omitDependencyArtifacts, final List<String> report,
+            final JavadocLinks links) throws MojoExecutionException {
+        final Map.Entry<Set<String>, Set<String>> packageResult = getPackages(ctx, jarFile,
+                artifactType.getContentExtension());
         final Set<String> apiPackages = packageResult.getKey();
         final Set<String> otherPackages = packageResult.getValue();
-        if ( omitDependencyArtifacts ) {
-            for(final ArtifactInfo info : ctx.getArtifactInfos(apiRegion, false)) {
-                if ( info.isUseAsDependencyPerRegion(apiRegion) ) {
-                    for(final Clause c : info.getUsedExportedPackages(apiRegion) ) {
+        if (omitDependencyArtifacts) {
+            for (final ArtifactInfo info : ctx.getArtifactInfos(apiRegion, false)) {
+                if (info.isUseAsDependencyPerRegion(apiRegion)) {
+                    for (final Clause c : info.getUsedExportedPackages(apiRegion)) {
                         apiPackages.add(c.getName());
                     }
                 }
@@ -617,34 +636,35 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         // make sure no reports for packages not containing java classes
         otherPackages.addAll(ctx.getPackagesWithoutJavaClasses());
         // ignore packages without sources for javadoc?
-        if ( artifactType == ArtifactType.JAVADOC && !failOnMissingSourcesForJavadoc) {
+        if (artifactType == ArtifactType.JAVADOC && !failOnMissingSourcesForJavadoc) {
             otherPackages.addAll(ctx.getPackagesWithoutSources());
         }
         // add packages found in links
-        if ( links != null ) {
+        if (links != null) {
             apiPackages.addAll(links.getLinkedPackages());
         }
         final List<ApiExport> missing = new ArrayList<>();
 
         for (final ApiExport exp : apiRegion.listExports()) {
             final String packageName = exp.getName();
-            if ( !apiPackages.remove(packageName) && !otherPackages.remove(packageName)) {
+            if (!apiPackages.remove(packageName) && !otherPackages.remove(packageName)) {
                 missing.add(exp);
             }
         }
         // correct remaining packages
-        if ( links != null ) {
+        if (links != null) {
             apiPackages.removeAll(links.getLinkedPackages());
         }
-        if ( artifactType == ArtifactType.JAVADOC ) {
+        if (artifactType == ArtifactType.JAVADOC) {
             otherPackages.removeAll(ctx.getPackagesWithoutSources());
         }
         otherPackages.removeAll(ctx.getPackagesWithoutJavaClasses());
 
         apiPackages.addAll(otherPackages);
-        if ( artifactType == ArtifactType.JAVADOC ) {
+        if (artifactType == ArtifactType.JAVADOC) {
             // jquery might be part of javadoc
-            final Collection<String> jqueryPackages = Arrays.asList("jquery", "jquery.external.jquery", "jquery.images", "jquery.jszip-utils.dist", "jquery.jszip.dist", "resources");
+            final Collection<String> jqueryPackages = Arrays.asList("jquery", "jquery.external.jquery", "jquery.images",
+                    "jquery.jszip-utils.dist", "jquery.jszip.dist", "resources");
             apiPackages.removeAll(jqueryPackages);
         }
 
@@ -652,18 +672,20 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             getLog().info("Verified " + artifactType.getId() + " jar for region " + apiRegion.getName());
         } else {
             Collections.sort(missing);
-            report.add(artifactType.getId().concat(" jar for region ").concat(apiRegion.getName()).concat(" has ").concat( String.valueOf(missing.size() + apiPackages.size()) ).concat(" errors:"));
+            report.add(artifactType.getId().concat(" jar for region ").concat(apiRegion.getName()).concat(" has ")
+                    .concat(String.valueOf(missing.size() + apiPackages.size())).concat(" errors:"));
             for (final ApiExport exp : missing) {
                 final List<String> candidates = new ArrayList<>();
-                for(final ArtifactInfo info : ctx.getArtifactInfos()) {
-                    for(final Clause clause : info.getUsedExportedPackages(apiRegion)) {
-                        if ( exp.getName().equals(clause.getName())) {
+                for (final ArtifactInfo info : ctx.getArtifactInfos()) {
+                    for (final Clause clause : info.getUsedExportedPackages(apiRegion)) {
+                        if (exp.getName().equals(clause.getName())) {
                             candidates.add(info.getId().toMvnName());
                             break;
                         }
                     }
                 }
-                report.add("- Missing package ".concat(exp.getName()).concat(" from bundle(s) ").concat(String.join(",", candidates)));
+                report.add("- Missing package ".concat(exp.getName()).concat(" from bundle(s) ")
+                        .concat(String.join(",", candidates)));
             }
             for (final String m : apiPackages) {
                 report.add("- Wrong package ".concat(m));
@@ -678,8 +700,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             throw new MojoExecutionException("Unable to find artifact " + artifactId.toMvnId());
         }
         File bundleFile = null;
-        try
-        {
+        try {
             bundleFile = IOUtils.getFileFromURL(artifactURL, true, this.getTmpDir());
         } catch (IOException e) {
             throw new MojoExecutionException(e.getMessage());
@@ -704,13 +725,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses, final Set<Clause> usedExportedPackagesPerRegion) {
+    private boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
+            final Set<Clause> usedExportedPackagesPerRegion) {
         // check whether all packages are exported in this region
         boolean fullUsage = true;
-        for(final Clause c : exportedPackageClauses) {
+        for (final Clause c : exportedPackageClauses) {
             boolean found = false;
-            for(final Clause current : usedExportedPackagesPerRegion) {
-                if ( current.getName().equals(c.getName()) ) {
+            for (final Clause current : usedExportedPackagesPerRegion) {
+                if (current.getName().equals(c.getName())) {
                     found = true;
                     break;
                 }
@@ -720,9 +742,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 fullUsage = false;
                 break;
             }
-            // check deprecation - if deprecation is set, artifact can't be used as a dependency
+            // check deprecation - if deprecation is set, artifact can't be used as a
+            // dependency
             final ApiExport exp = region.getAllExportByName(c.getName());
-            if (  exp != null && exp.getDeprecation() != null ) {
+            if (exp != null && exp.getDeprecation() != null) {
                 fullUsage = false;
                 break;
             }
@@ -732,14 +755,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Process a single artifact.
-     * This is a "global" processing and not per region
-     * @param ctx The context
+     * Process a single artifact. This is a "global" processing and not per region
+     * 
+     * @param ctx      The context
      * @param artifact The artifact
      * @throws MojoExecutionException
      */
-    private void onArtifact(final ApisJarContext ctx, Artifact artifact)
-    throws MojoExecutionException {
+    private void onArtifact(final ApisJarContext ctx, Artifact artifact) throws MojoExecutionException {
         final File bundleFile = getArtifactFile(artifactProvider, artifact.getId());
 
         final Manifest manifest = getManifest(artifact.getId(), bundleFile);
@@ -751,28 +773,33 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             // calculate the exported packages in the manifest file for all regions
             final Set<String> usedExportedPackages = computeUsedExportPackages(ctx, exportedPackageClauses, artifact);
 
-            if ( !usedExportedPackages.isEmpty()) {
+            if (!usedExportedPackages.isEmpty()) {
                 // check for previous version of artifact due to toggles
                 ArtifactId previous = null;
-                for(final String pckName : usedExportedPackages) {
-                    for(final ApiRegion region : ctx.getApiRegions().listRegions()) {
+                for (final String pckName : usedExportedPackages) {
+                    for (final ApiRegion region : ctx.getApiRegions().listRegions()) {
                         final ApiExport exp = region.getExportByName(pckName);
-                        if ( exp != null ) {
-                            if ( exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle()) && exp.getPrevious() != null ) {
-                                if ( previous != null && previous.compareTo(exp.getPrevious()) != 0 ) {
-                                    throw new MojoExecutionException("More than one previous version artifact configured for " + 
-                                        artifact.getId().toMvnId() + " : " + previous.toMvnId() + ", " + exp.getPrevious().toMvnId());
+                        if (exp != null) {
+                            if (exp.getToggle() != null
+                                    && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle())
+                                    && exp.getPrevious() != null) {
+                                if (previous != null && previous.compareTo(exp.getPrevious()) != 0) {
+                                    throw new MojoExecutionException(
+                                            "More than one previous version artifact configured for "
+                                                    + artifact.getId().toMvnId() + " : " + previous.toMvnId() + ", "
+                                                    + exp.getPrevious().toMvnId());
                                 }
                                 previous = exp.getPrevious();
-                            }                        
+                            }
                             break;
                         }
                     }
                 }
-                if ( previous != null ) {
+                if (previous != null) {
                     final Artifact previousArtifact = new Artifact(previous);
                     previousArtifact.getMetadata().putAll(artifact.getMetadata());
-                    getLog().debug("Using " + previous.toMvnId() + " instead of " + artifact.getId().toMvnId() + " due to disabled toggle(s)");
+                    getLog().debug("Using " + previous.toMvnId() + " instead of " + artifact.getId().toMvnId()
+                            + " due to disabled toggle(s)");
                     artifact = previousArtifact;
                 }
 
@@ -780,17 +807,22 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 info.setUsedExportedPackages(usedExportedPackages);
 
                 // calculate per region packages
-                for(final ApiRegion region : ctx.getApiRegions().listRegions()) {
-                    final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region, exportedPackageClauses, artifact);
+                for (final ApiRegion region : ctx.getApiRegions().listRegions()) {
+                    final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region,
+                            exportedPackageClauses, artifact);
 
                     // check whether packages are included in api jars - or added as a dependency
-                    boolean useAsDependency = this.useApiDependencies ? calculateOmitDependenciesFlag(region, exportedPackageClauses, usedExportedPackagesPerRegion) : false;
-                    if ( useAsDependency ) {
+                    boolean useAsDependency = this.useApiDependencies
+                            ? calculateOmitDependenciesFlag(region, exportedPackageClauses,
+                                    usedExportedPackagesPerRegion)
+                            : false;
+                    if (useAsDependency) {
                         useAsDependency = ctx.findDependencyArtifact(getLog(), info);
-                        if ( useAsDependency ) {
+                        if (useAsDependency) {
                             // check scm info
-                            if ( artifact.getMetadata().get(ApisUtil.SCM_LOCATION) != null ) {
-                                throw new MojoExecutionException("Dependency artifact must not specify " + ApisUtil.SCM_LOCATION + " : " + artifact.getId().toMvnId());
+                            if (artifact.getMetadata().get(ApisUtil.SCM_LOCATION) != null) {
+                                throw new MojoExecutionException("Dependency artifact must not specify "
+                                        + ApisUtil.SCM_LOCATION + " : " + artifact.getId().toMvnId());
                             }
                         }
                     }
@@ -801,11 +833,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
 
                 final boolean skipBinDeflate = info.getBinDirectory().exists();
-                if ( skipBinDeflate ) {
+                if (skipBinDeflate) {
                     getLog().debug("Artifact " + info.getId().toMvnName() + " already deflated");
                 }
                 final boolean skipSourceDeflate = info.getSourceDirectory().exists();
-                if ( skipSourceDeflate ) {
+                if (skipSourceDeflate) {
                     getLog().debug("Source for artifact " + info.getId().toMvnName() + " already deflated");
                 }
 
@@ -820,18 +852,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 processBinary(ctx, info, bundleFile, artifact, embeddedBundles, skipBinDeflate, skipSourceDeflate);
 
                 // check if the bundle wraps other bundles
-                if ( embeddedBundles != null ) {
+                if (embeddedBundles != null) {
                     computeWrappedBundles(ctx, info, embeddedBundles, skipBinDeflate, skipSourceDeflate);
                 }
 
                 postProcessArtifact(ctx, info, artifact);
 
-                if ( !info.getSourceDirectory().exists() ) {
+                if (!info.getSourceDirectory().exists()) {
                     info.setSourceDirectory(null);
                 }
 
-                if ( generateJavadocJar ) {
-                    ApisUtil.buildJavadocClasspath(getLog(), repositorySystem, mavenSession, artifact.getId()).forEach( ctx::addJavadocClasspath );
+                if (generateJavadocJar) {
+                    ApisUtil.buildJavadocClasspath(getLog(), repositorySystem, mavenSession, artifact.getId())
+                            .forEach(ctx::addJavadocClasspath);
                 }
             }
         }
@@ -845,26 +878,29 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * <li>Find empty directories and remove them
      * <li>Clean up sources - if encoding is not UTF-8
      * </ul>
-     * @param ctx The context
+     * 
+     * @param ctx  The context
      * @param info The artifact info
      * @throws MojoExecutionException
      */
     private void postProcessArtifact(final ApisJarContext ctx, final ArtifactInfo info, final Artifact artifact)
-    throws MojoExecutionException {
+            throws MojoExecutionException {
         // binary post processing
         this.postProcessBinDirectory(ctx, info, info.getBinDirectory(), "");
 
         // source post processing
-        if ( (generateSourceJar || generateJavadocJar) ) {
+        if ((generateSourceJar || generateJavadocJar)) {
             final Set<String> foundPackages = new HashSet<>();
-            if ( info.getSourceDirectory() != null && info.getSourceDirectory().exists()) {
+            if (info.getSourceDirectory() != null && info.getSourceDirectory().exists()) {
                 final String encoding = artifact.getMetadata().getOrDefault(ApisUtil.SCM_ENCODING, "UTF-8");
-                this.postProcessSourcesDirectory(ctx, info, foundPackages, info.getSourceDirectory(), "UTF-8".equals(encoding) ? null : encoding, "");
+                this.postProcessSourcesDirectory(ctx, info, foundPackages, info.getSourceDirectory(),
+                        "UTF-8".equals(encoding) ? null : encoding, "");
             }
             // check for missing packages
-            for(final String pck : info.getUsedExportedPackages()) {
-                if ( !foundPackages.contains(pck) ) {
-                    // We need to record this kind of packages and ensure we don't trigger warnings for them
+            for (final String pck : info.getUsedExportedPackages()) {
+                if (!foundPackages.contains(pck)) {
+                    // We need to record this kind of packages and ensure we don't trigger warnings
+                    // for them
                     // when checking the api jars for correctness.
                     getLog().debug("No sources found in " + pck);
                     ctx.getPackagesWithoutSources().add(pck);
@@ -874,21 +910,24 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     }
 
-    private void postProcessBinDirectory(final ApisJarContext ctx, final ArtifactInfo info, final File dir, final String pck) {
+    private void postProcessBinDirectory(final ApisJarContext ctx, final ArtifactInfo info, final File dir,
+            final String pck) {
         boolean hasJavaFile = false;
-        for(final File child : dir.listFiles()) {
-            if ( child.isDirectory() ) {
-                postProcessBinDirectory(ctx, info, child, pck.isEmpty() ? child.getName() : pck.concat(".").concat(child.getName()));
-            } else if ( child.getName().endsWith(ArtifactType.APIS.getContentExtension())) {
+        for (final File child : dir.listFiles()) {
+            if (child.isDirectory()) {
+                postProcessBinDirectory(ctx, info, child,
+                        pck.isEmpty() ? child.getName() : pck.concat(".").concat(child.getName()));
+            } else if (child.getName().endsWith(ArtifactType.APIS.getContentExtension())) {
                 hasJavaFile = true;
             }
         }
-        if ( dir.listFiles().length == 0 && !pck.isEmpty() ) {
+        if (dir.listFiles().length == 0 && !pck.isEmpty()) {
             // empty dir -> remove
             dir.delete();
-        } else if ( !hasJavaFile && info.getUsedExportedPackages().contains(pck) ) {
+        } else if (!hasJavaFile && info.getUsedExportedPackages().contains(pck)) {
 
-            // We need to record this kind of packages and ensure we don't trigger warnings for them
+            // We need to record this kind of packages and ensure we don't trigger warnings
+            // for them
             // when checking the api jars for correctness.
             getLog().debug("No classes found in " + pck);
             ctx.getPackagesWithoutJavaClasses().add(pck);
@@ -896,26 +935,22 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Process a binary
-     * Extract the binary, rename resources and (optional) download the sources
-     * @param ctx The context
-     * @param info The current artifact
-     * @param binFile The binary to extract
-     * @param binArtifact The artifact to extract
-     * @param embeddedBundles Embedded bundles (optional)
-     * @param skipBinDeflate Flag to skip deflating the binary
+     * Process a binary Extract the binary, rename resources and (optional) download
+     * the sources
+     * 
+     * @param ctx               The context
+     * @param info              The current artifact
+     * @param binFile           The binary to extract
+     * @param binArtifact       The artifact to extract
+     * @param embeddedBundles   Embedded bundles (optional)
+     * @param skipBinDeflate    Flag to skip deflating the binary
      * @param skipSourceDeflate Flag to skip deflating the source
      * @throws MojoExecutionException
      */
-    private void processBinary(final ApisJarContext ctx,
-            final ArtifactInfo info,
-            final File binFile,
-            final Artifact binArtifact,
-            final String[] embeddedBundles,
-            final boolean skipBinDeflate,
-            final boolean skipSourceDeflate)
-    throws MojoExecutionException {
-        if ( !skipBinDeflate ) {
+    private void processBinary(final ApisJarContext ctx, final ArtifactInfo info, final File binFile,
+            final Artifact binArtifact, final String[] embeddedBundles, final boolean skipBinDeflate,
+            final boolean skipSourceDeflate) throws MojoExecutionException {
+        if (!skipBinDeflate) {
             // deflate all bundles first, in order to copy APIs and resources later,
             // depending to the region
             final List<String> deflateIncludes = new ArrayList<>();
@@ -923,9 +958,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             // add all used exported packages
             deflateIncludes.addAll(Arrays.asList(info.getUsedExportedPackageIncludes()));
             // add embedded bundles
-            if ( embeddedBundles != null ) {
-                for(final String jarName : embeddedBundles) {
-                    if ( !".".equals(jarName) ) {
+            if (embeddedBundles != null) {
+                for (final String jarName : embeddedBundles) {
+                    if (!".".equals(jarName)) {
                         deflateIncludes.add(jarName);
                     }
                 }
@@ -941,8 +976,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         this.renameResources(ctx, info, binArtifact.getId());
 
         // download sources
-        if ( this.generateSourceJar || this.generateJavadocJar ) {
-            if ( !skipSourceDeflate ) {
+        if (this.generateSourceJar || this.generateJavadocJar) {
+            if (!skipSourceDeflate) {
                 this.downloadSources(ctx, info, binArtifact);
             } else {
                 info.addSourceInfo("USE CACHE FROM PREVIOUS BUILD");
@@ -953,16 +988,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
     private List<String> getIncludeResourcePatterns(final ApisJarContext ctx, final ArtifactId id) {
         final List<String> pattern = new ArrayList<>();
-        for(final String folder : ctx.getConfig().getBundleResourceFolders()) {
-            for(final String inc : ctx.getConfig().getBundleResources()) {
+        for (final String folder : ctx.getConfig().getBundleResourceFolders()) {
+            for (final String inc : ctx.getConfig().getBundleResources()) {
                 pattern.add(folder.concat("/").concat(inc));
             }
         }
 
         // add NOTICE and LICENSE for license report
-        if ( ctx.getConfig().getLicenseReport() != null ) {
+        if (ctx.getConfig().getLicenseReport() != null) {
             final String licenseDefault = ctx.getConfig().getLicenseDefault(id);
-            if ( licenseDefault == null || !licenseDefault.isEmpty() ) {
+            if (licenseDefault == null || !licenseDefault.isEmpty()) {
                 pattern.add("META-INF/NOTICE");
                 pattern.add("META-INF/LICENSE");
             }
@@ -972,43 +1007,37 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void postProcessSourcesDirectory(final ApisJarContext ctx, final ArtifactInfo info,
-            final Set<String> foundPackages,
-            final File dir,
-            final String readEncoding,
-            final String pck) throws MojoExecutionException {
+            final Set<String> foundPackages, final File dir, final String readEncoding, final String pck)
+            throws MojoExecutionException {
         boolean hasSourceFile = false;
-        for(final File child : dir.listFiles()) {
-            if ( child.isDirectory() ) {
-                postProcessSourcesDirectory(ctx, info,
-                        foundPackages, child, readEncoding,
+        for (final File child : dir.listFiles()) {
+            if (child.isDirectory()) {
+                postProcessSourcesDirectory(ctx, info, foundPackages, child, readEncoding,
                         pck.isEmpty() ? child.getName() : pck.concat(".").concat(child.getName()));
-            } else if ( child.getName().endsWith(ArtifactType.SOURCES.getContentExtension())) {
+            } else if (child.getName().endsWith(ArtifactType.SOURCES.getContentExtension())) {
                 hasSourceFile = true;
-                if (readEncoding != null ) {
+                if (readEncoding != null) {
                     try {
                         final String javaSource = FileUtils.fileRead(child, readEncoding);
                         FileUtils.fileWrite(child, StandardCharsets.UTF_8.name(), javaSource);
-                    } catch ( final IOException ioe) {
+                    } catch (final IOException ioe) {
                         throw new MojoExecutionException("Unable to clean up java source " + child, ioe);
                     }
                 }
             }
         }
-        if ( dir.listFiles().length == 0 && !pck.isEmpty() ) {
+        if (dir.listFiles().length == 0 && !pck.isEmpty()) {
             // empty dir -> remove
             dir.delete();
-        } else if ( hasSourceFile ) {
+        } else if (hasSourceFile) {
             foundPackages.add(pck);
         }
     }
 
-    private void computeWrappedBundles(final ApisJarContext ctx,
-            final ArtifactInfo info,
-            final String[] embeddedBundles,
-            final boolean skipBinDeflate,
-            final boolean skipSourceDeflate)
-    throws MojoExecutionException {
-        for(final String jarName : embeddedBundles) {
+    private void computeWrappedBundles(final ApisJarContext ctx, final ArtifactInfo info,
+            final String[] embeddedBundles, final boolean skipBinDeflate, final boolean skipSourceDeflate)
+            throws MojoExecutionException {
+        for (final String jarName : embeddedBundles) {
             if (".".equals(jarName)) {
                 continue;
             }
@@ -1020,9 +1049,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             try (final JarInputStream jis = new JarInputStream(new FileInputStream(wrappedJar))) {
                 JarEntry jarEntry = null;
-                while ( (jarEntry = jis.getNextJarEntry()) != null ) {
-                    if (!jarEntry.isDirectory()
-                            && pomPropertiesPattern.matcher(jarEntry.getName()).matches()) {
+                while ((jarEntry = jis.getNextJarEntry()) != null) {
+                    if (!jarEntry.isDirectory() && pomPropertiesPattern.matcher(jarEntry.getName()).matches()) {
                         getLog().debug("Loading Maven GAV from " + wrappedJar + '!' + jarEntry.getName());
                         properties.load(jis);
                         break;
@@ -1070,8 +1098,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // bundleName is now the bare name without extension
         String synthesized = artifactId + "-" + version;
-        if (synthesized.length() < bundleName.length() &&
-                bundleName.startsWith(synthesized)) {
+        if (synthesized.length() < bundleName.length() && bundleName.startsWith(synthesized)) {
             String suffix = bundleName.substring(synthesized.length());
             if (suffix.length() > 1 && suffix.startsWith("-")) {
                 String classifier = suffix.substring(1);
@@ -1092,7 +1119,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return sourceFile;
     }
 
-    private void deflate(final File destDirectory, final File artifact, final String...includes) throws MojoExecutionException {
+    private void deflate(final File destDirectory, final File artifact, final String... includes)
+            throws MojoExecutionException {
         getLog().debug("Deflating artifact " + artifact.getName() + "...");
         destDirectory.mkdirs();
 
@@ -1114,7 +1142,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         getLog().debug("Artifact " + artifact + " successfully deflated");
     }
 
-    private void renameResources(final ApisJarContext ctx, final ArtifactInfo info, final ArtifactId artifactId) throws MojoExecutionException {
+    private void renameResources(final ApisJarContext ctx, final ArtifactInfo info, final ArtifactId artifactId)
+            throws MojoExecutionException {
         final List<String> patterns = getIncludeResourcePatterns(ctx, info.getId());
         if (patterns.isEmpty()) {
             getLog().debug("No configured resources to rename in " + info.getBinDirectory());
@@ -1136,7 +1165,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final File resource = new File(info.getBinDirectory(), resourceName);
 
             String includedName = resourceName.replace(File.separatorChar, '/');
-            if ( !info.getIncludedResources().contains(resource) ) {
+            if (!info.getIncludedResources().contains(resource)) {
                 final String prefix = artifactId.toMvnName().concat("-");
 
                 if (resource.getName().startsWith(prefix)) {
@@ -1155,14 +1184,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                 + ", please check the current user has enough rights on the File System");
                     }
                     final int lastSlash = includedName.lastIndexOf('/');
-                    if ( lastSlash == -1 ) {
+                    if (lastSlash == -1) {
                         includedName = renamed.getName();
                     } else {
                         includedName = includedName.substring(0, lastSlash + 1).concat(renamed.getName());
                     }
                 }
             }
-            if ( includedName.endsWith(ArtifactType.CND.getContentExtension())) {
+            if (includedName.endsWith(ArtifactType.CND.getContentExtension())) {
                 info.getNodeTypes().add(includedName);
             }
         }
@@ -1170,17 +1199,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         getLog().debug(patterns + " resources in " + info.getBinDirectory() + " successfully renamed");
     }
 
-    private boolean downloadSourceAndDeflate(final ApisJarContext ctx,
-            final ArtifactInfo info,
-            final ArtifactId sourcesArtifactId,
-            final boolean allowFallback) throws MojoExecutionException {
+    private boolean downloadSourceAndDeflate(final ApisJarContext ctx, final ArtifactInfo info,
+            final ArtifactId sourcesArtifactId, final boolean allowFallback) throws MojoExecutionException {
         boolean failed = false;
         try {
             final URL url = retrieve(artifactProvider, sourcesArtifactId);
             if (url != null) {
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
                 deflate(info.getSourceDirectory(), sourcesBundle, info.getUsedExportedPackageIncludes());
-             } else {
+            } else {
                 if (!allowFallback) {
                     throw new MojoExecutionException("Unable to download sources for " + info.getId().toMvnId()
                             + " due to missing artifact " + sourcesArtifactId.toMvnId());
@@ -1203,29 +1230,31 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return failed;
     }
 
-    private void downloadSources(final ApisJarContext ctx, final ArtifactInfo info, final Artifact artifact) throws MojoExecutionException {
+    private void downloadSources(final ApisJarContext ctx, final ArtifactInfo info, final Artifact artifact)
+            throws MojoExecutionException {
         getLog().debug("Downloading sources for " + artifact.getId().toMvnId() + "...");
 
         ApisUtil.validateSourceInfo(artifact);
 
         final List<ArtifactId> scmIds = ApisUtil.getSourceIds(artifact);
         final String scmLocation = artifact.getMetadata().get(ApisUtil.SCM_LOCATION);
-        if ( scmIds != null ) {
-            for(final ArtifactId sourcesArtifactId : scmIds) {
+        if (scmIds != null) {
+            for (final ArtifactId sourcesArtifactId : scmIds) {
                 downloadSourceAndDeflate(ctx, info, sourcesArtifactId, false);
                 info.addSourceInfo(sourcesArtifactId);
             }
-        } else if ( scmLocation != null ) {
+        } else if (scmLocation != null) {
             final String connection = checkoutSourcesFromSCM(ctx, info, artifact);
             info.addSourceInfo(connection);
         } else {
             String sourceClassifier = artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER);
-            if ( sourceClassifier == null ) {
+            if (sourceClassifier == null) {
                 sourceClassifier = "sources"; // default
             }
             final ArtifactId sourcesArtifactId = artifact.getId().changeClassifier(sourceClassifier).changeType("jar");
-            if ( downloadSourceAndDeflate(ctx, info, sourcesArtifactId, artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER) == null) ) {
-                final String connection =  checkoutSourcesFromSCM(ctx, info, artifact);
+            if (downloadSourceAndDeflate(ctx, info, sourcesArtifactId,
+                    artifact.getMetadata().get(ApisUtil.SCM_CLASSIFIER) == null)) {
+                final String connection = checkoutSourcesFromSCM(ctx, info, artifact);
                 info.addSourceInfo(connection);
             } else {
                 info.addSourceInfo(sourcesArtifactId);
@@ -1237,7 +1266,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final ArtifactId pomArtifactId = artifactId.changeClassifier(null).changeType("pom");
         // check model cache
         Model model = ctx.getModelCache().get(pomArtifactId);
-        if ( model == null ) {
+        if (model == null) {
             getLog().debug("Retrieving POM " + pomArtifactId.toMvnId() + "...");
             // POM file must exist, let the plugin fail otherwise
             final URL pomURL = retrieve(artifactProvider, pomArtifactId);
@@ -1263,34 +1292,31 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return model;
     }
 
-    private String checkoutSourcesFromSCM(final ApisJarContext ctx,
-            final ArtifactInfo info,
-            final Artifact sourceArtifact)
-    throws MojoExecutionException {
+    private String checkoutSourcesFromSCM(final ApisJarContext ctx, final ArtifactInfo info,
+            final Artifact sourceArtifact) throws MojoExecutionException {
         // fallback to Artifacts SCM metadata first
         String connection = sourceArtifact.getMetadata().get(ApisUtil.SCM_LOCATION);
         String tag = sourceArtifact.getMetadata().get(ApisUtil.SCM_TAG);
 
-        // Artifacts SCM metadata may not available or are an override, let's fallback to the POM
+        // Artifacts SCM metadata may not available or are an override, let's fallback
+        // to the POM
         getLog().debug("Falling back to SCM checkout...");
         final Model pomModel = getArtifactPom(ctx, sourceArtifact.getId());
         getLog().debug("Processing SCM info from pom...");
 
         final Scm scm = pomModel.getScm();
         if (scm != null) {
-            if ( connection == null ) {
+            if (connection == null) {
                 connection = scm.getConnection();
             }
-            if ( tag == null ) {
+            if (tag == null) {
                 tag = scm.getTag();
             }
         }
 
         if (connection == null) {
             getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId() + " : SCM not defined in "
-                    + sourceArtifact.getId().toMvnId()
-                          + " bundle neither in "
-                    + pomModel.getId() + " POM file.");
+                    + sourceArtifact.getId().toMvnId() + " bundle neither in " + pomModel.getId() + " POM file.");
             return null;
         }
 
@@ -1337,7 +1363,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             pomScanner.scan();
             for (String pomFileLocation : pomScanner.getIncludedFiles()) {
                 final File pomFile = new File(basedir, pomFileLocation);
-                final Model model = modelBuilder.buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
+                final Model model = modelBuilder
+                        .buildRawModel(pomFile, ModelBuildingRequest.VALIDATION_LEVEL_MINIMAL, false).get();
 
                 if (sourceArtifact.getId().getArtifactId().equals(model.getArtifactId())) {
                     basedir = pomFile.getParentFile();
@@ -1352,9 +1379,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 // there could be just resources artifacts
                 if (!javaSources.exists()) {
-                    getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId() + " : SCM checkout for "
-                            + sourceArtifact.getId().toMvnId()
-                            + " does not contain any source.");
+                    getLog().warn(
+                            "Ignoring sources for artifact " + sourceArtifact.getId().toMvnId() + " : SCM checkout for "
+                                    + sourceArtifact.getId().toMvnId() + " does not contain any source.");
                     return null;
                 }
             }
@@ -1376,21 +1403,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     FileUtils.copyFile(source, destination);
                 } catch (IOException e) {
                     throw new MojoExecutionException(
-                                "An error occurred while copying sources from " + source + " to " + destination, e);
+                            "An error occurred while copying sources from " + source + " to " + destination, e);
                 }
             }
 
             return tag == null ? connection : connection.concat("@").concat(tag);
         } catch (ScmRepositoryException se) {
-            throw new MojoExecutionException("An error occurred while reading SCM from "
-                                             + connection
-                                             + " connection for bundle "
-                                             + sourceArtifact.getId(), se);
+            throw new MojoExecutionException("An error occurred while reading SCM from " + connection
+                    + " connection for bundle " + sourceArtifact.getId(), se);
         } catch (NoSuchScmProviderException nsspe) {
             getLog().warn("Ignoring sources for artifact " + sourceArtifact.getId().toMvnId()
-                    + " : bundle points to an SCM connection "
-                           + connection
-                           + " which does not specify a valid or supported SCM provider", nsspe);
+                    + " : bundle points to an SCM connection " + connection
+                    + " which does not specify a valid or supported SCM provider", nsspe);
             return null;
         }
     }
@@ -1407,10 +1431,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      *
      * @return List of packages exported by this bundle and used in the region
      */
-    private Set<Clause> computeUsedExportPackages(final ApiRegion apiRegion,
-            final Clause[] exportedPackages,
-            final Artifact bundle)
-            throws MojoExecutionException {
+    private Set<Clause> computeUsedExportPackages(final ApiRegion apiRegion, final Clause[] exportedPackages,
+            final Artifact bundle) throws MojoExecutionException {
 
         final Set<Clause> result = new HashSet<>();
 
@@ -1420,7 +1442,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         for (final Clause exportedPackage : exportedPackages) {
             final String packageName = exportedPackage.getName();
 
-            if ( !ignoredPackages.contains(packageName)) {
+            if (!ignoredPackages.contains(packageName)) {
                 final ApiExport exp = apiRegion.getExportByName(packageName);
                 if (exp != null) {
                     result.add(exportedPackage);
@@ -1436,10 +1458,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      *
      * @return Set of packages exported by this bundle and used in any region
      */
-    private Set<String> computeUsedExportPackages(final ApisJarContext ctx,
-            final Clause[] exportedPackages,
-            final Artifact bundle)
-            throws MojoExecutionException {        
+    private Set<String> computeUsedExportPackages(final ApisJarContext ctx, final Clause[] exportedPackages,
+            final Artifact bundle) throws MojoExecutionException {
         final Set<String> result = new HashSet<>();
 
         // filter for each region
@@ -1451,10 +1471,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 if (exp != null) {
                     boolean include = true;
                     // if the package is behind a toggle, don't include it
-                    if ( exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle()) && exp.getPrevious() == null ) {
+                    if (exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle())
+                            && exp.getPrevious() == null) {
                         include = false;
                     }
-                    if ( include ) {
+                    if (include) {
                         result.add(exportedPackage.getName());
                     }
                 }
@@ -1470,8 +1491,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private String getApiExportClause(final ApiRegion region, final Collection<ArtifactInfo> infos) {
         final StringBuilder sb = new StringBuilder();
         boolean first = true;
-        for(final ArtifactInfo info : infos) {
-            for(final Clause clause : info.getUsedExportedPackages(region)) {
+        for (final ArtifactInfo info : infos) {
+            for (final Clause clause : info.getUsedExportedPackages(region)) {
                 if (first) {
                     first = false;
                 } else {
@@ -1483,32 +1504,30 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return sb.toString();
     }
 
-    private File createArchive(final ApisJarContext ctx,
-            final ApiRegion apiRegion,
-            final ArtifactType archiveType,
-            final List<File> resources,
-            final Collection<ArtifactInfo> infos,
-            final List<String> report) throws MojoExecutionException {
+    private File createArchive(final ApisJarContext ctx, final ApiRegion apiRegion, final ArtifactType archiveType,
+            final List<File> resources, final Collection<ArtifactInfo> infos, final List<String> report)
+            throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
         final List<Processor> processors;
         final List<Source> sources;
 
-        if ( archiveType == ArtifactType.APIS || archiveType == ArtifactType.SOURCES ) {
+        if (archiveType == ArtifactType.APIS || archiveType == ArtifactType.SOURCES) {
             processors = ApisUtil.getProcessors();
             sources = processors.isEmpty() ? null : new ArrayList<>();
             // api or source
-            for(final ArtifactInfo info : infos) {
+            for (final ArtifactInfo info : infos) {
                 final File dir = archiveType == ArtifactType.APIS ? info.getBinDirectory() : info.getSourceDirectory();
 
-                if ( dir != null ) {
+                if (dir != null) {
                     final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
-                    getLog().debug("Adding directory " + dir.getName() + " with " + Arrays.toString(usedExportedPackageIncludes));
+                    getLog().debug("Adding directory " + dir.getName() + " with "
+                            + Arrays.toString(usedExportedPackageIncludes));
                     final DefaultFileSet fileSet = new DefaultFileSet(dir);
                     fileSet.setIncludingEmptyDirectories(false);
                     fileSet.setIncludes(usedExportedPackageIncludes);
                     jarArchiver.addFileSet(fileSet);
-                    if ( sources != null ) {
+                    if (sources != null) {
                         sources.add(new DirectorySource(fileSet));
                     }
                 }
@@ -1522,13 +1541,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         // add included resources
-        for(final ArtifactInfo info : infos) {
+        for (final ArtifactInfo info : infos) {
             final int prefixLength = info.getBinDirectory().getAbsolutePath().length() + 1;
-            for(final File resource : info.getIncludedResources()) {
+            for (final File resource : info.getIncludedResources()) {
                 final String name = resource.getAbsolutePath().substring(prefixLength);
                 jarArchiver.addFile(resource, name);
                 getLog().debug("Adding resource " + name);
-                if ( sources != null ) {
+                if (sources != null) {
                     sources.add(new FileSource(info.getBinDirectory(), resource));
                 }
             }
@@ -1547,15 +1566,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     for (String includedFile : ds.getIncludedFiles()) {
                         jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
                     }
-                    if ( sources != null ) {
+                    if (sources != null) {
                         final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
                         fileSet.setIncludingEmptyDirectories(false);
-                        fileSet.setIncludes(new String[] {"**/*.*"});
+                        fileSet.setIncludes(new String[] { "**/*.*" });
                         sources.add(new DirectorySource(fileSet));
                     }
                 } else {
                     jarArchiver.addFile(rsrc, rsrc.getName());
-                    if ( sources != null ) {
+                    if (sources != null) {
                         sources.add(new FileSource(rsrc.getParentFile(), rsrc));
                     }
                 }
@@ -1563,7 +1582,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         // run processors
-        for(final Processor p : processors) {
+        for (final Processor p : processors) {
             final ProcessorContext pc = new ProcessorContext() {
 
                 @Override
@@ -1584,6 +1603,11 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 @Override
                 public ApiRegion getApiRegion() {
                     return apiRegion;
+                }
+
+                @Override
+                public Log getLog() {
+                    return ApisJarMojo.this.getLog();
                 }
             };
             if ( archiveType == ArtifactType.APIS ) {

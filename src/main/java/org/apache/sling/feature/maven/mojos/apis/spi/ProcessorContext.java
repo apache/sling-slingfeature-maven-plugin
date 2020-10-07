@@ -17,6 +17,7 @@
 package org.apache.sling.feature.maven.mojos.apis.spi;
 
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
@@ -48,4 +49,9 @@ public interface ProcessorContext {
      * Get the session
      */
     MavenSession getSession();
+
+    /**
+     * The logger
+     */
+    Log getLog();
 }
