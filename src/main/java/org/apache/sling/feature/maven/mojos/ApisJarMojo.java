@@ -30,6 +30,7 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -557,15 +558,20 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final File regionDir = new File(featureDir, apiRegion.getName());
 
             if (generateApiJar) {
-                final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources,
-                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies), report);
+                final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(apiRegion, this.useApiDependencies);
+                this.runProcessor(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos);
+                final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos, report);
                 report(ctx, apiJar, ArtifactType.APIS, apiRegion, this.useApiDependencies, report, null);
             }
 
             if (generateSourceJar) {
-                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources,
-                        ctx.getArtifactInfos(apiRegion, this.useApiDependencies), report);
+                final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(apiRegion, this.useApiDependencies);
+                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, infos);
+                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, report);
                 report(ctx, sourceJar, ArtifactType.SOURCES, apiRegion, this.useApiDependencies, report, null);
+            } else if ( generateJavadocJar ) {
+                final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(apiRegion, false);
+                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, infos);
             }
 
             if (this.useApiDependencies && (this.generateApiJar || this.generateSourceJar)) {
@@ -1504,118 +1510,151 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return sb.toString();
     }
 
+    private void addFileSets(final ApiRegion apiRegion, 
+             final ArtifactType archiveType,
+             final Collection<ArtifactInfo> infos,
+             final JarArchiver jarArchiver,
+             final List<Source> sources) {
+        for (final ArtifactInfo info : infos) {
+            final File dir = archiveType == ArtifactType.APIS ? info.getBinDirectory() : info.getSourceDirectory();
+
+            if (dir != null) {
+                final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
+                getLog().debug("Adding directory " + dir.getName() + " with "
+                        + Arrays.toString(usedExportedPackageIncludes));
+                final DefaultFileSet fileSet = new DefaultFileSet(dir);
+                fileSet.setIncludingEmptyDirectories(false);
+                fileSet.setIncludes(usedExportedPackageIncludes);
+
+                if ( jarArchiver != null ) {
+                    jarArchiver.addFileSet(fileSet);
+                }
+                if ( sources != null ) {
+                    sources.add(new DirectorySource(fileSet));
+                }
+            }
+        }
+    }
+    
+    private void addResources(final Collection<ArtifactInfo> infos,
+             final List<File> resources,
+             final JarArchiver jarArchiver,
+             final List<Source> sources) {
+        for (final ArtifactInfo info : infos) {
+            final int prefixLength = info.getBinDirectory().getAbsolutePath().length() + 1;
+            for (final File resource : info.getIncludedResources()) {
+                final String name = resource.getAbsolutePath().substring(prefixLength);
+                getLog().debug("Adding resource " + name);
+
+                if ( jarArchiver != null ) {
+                    jarArchiver.addFile(resource, name);
+
+                }
+                if ( sources != null ) {
+                    sources.add(new FileSource(info.getBinDirectory(), resource));
+                }
+            }
+        }
+
+       // add additional resources
+       if (resources != null) {
+        for (final File rsrc : resources) {
+            getLog().debug("Adding resource " + rsrc);
+            if (rsrc.isDirectory()) {
+                DirectoryScanner ds = new DirectoryScanner();
+                ds.setBasedir(rsrc);
+                ds.setIncludes("**/*.*");
+                ds.scan();
+
+                if ( jarArchiver != null ) {
+                    for (String includedFile : ds.getIncludedFiles()) {
+                        jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
+                    }    
+                }
+                if (sources != null) {
+                    final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
+                    fileSet.setIncludingEmptyDirectories(false);
+                    fileSet.setIncludes(new String[] { "**/*.*" });
+                    sources.add(new DirectorySource(fileSet));
+                }
+            } else {
+                if ( jarArchiver != null ) {
+                    jarArchiver.addFile(rsrc, rsrc.getName());
+                }
+                if (sources != null) {
+                    sources.add(new FileSource(rsrc.getParentFile(), rsrc));
+                }
+            }
+        }
+    }
+}
+
+    private void runProcessor(final ApisJarContext ctx, 
+        final ApiRegion apiRegion, 
+        final ArtifactType archiveType,
+        final List<File> resources,
+        final Collection<ArtifactInfo> infos) {
+        final List<Processor> processors = ApisUtil.getProcessors();
+        if ( !processors.isEmpty() ) {
+            final List<Source> sources = new ArrayList<>();
+
+            this.addFileSets(apiRegion, archiveType, infos, null, sources);
+            this.addResources(infos, resources, null, sources);
+
+            // run processors
+            for (final Processor p : processors) {
+                final ProcessorContext pc = new ProcessorContext() {
+
+                    @Override
+                    public MavenSession getSession() {
+                        return mavenSession;
+                    }
+
+                    @Override
+                    public MavenProject getProject() {
+                        return project;
+                    }
+
+                    @Override
+                    public Feature getFeature() {
+                        return ctx.getFeature();
+                    }
+
+                    @Override
+                    public ApiRegion getApiRegion() {
+                        return apiRegion;
+                    }
+
+                    @Override
+                    public Log getLog() {
+                        return ApisJarMojo.this.getLog();
+                    }
+                };
+                if ( archiveType == ArtifactType.APIS ) {
+                    p.processBinaries(pc, sources);
+                } else {
+                    p.processSources(pc, sources);
+                }
+            }
+        }
+    }
+
     private File createArchive(final ApisJarContext ctx, final ApiRegion apiRegion, final ArtifactType archiveType,
             final List<File> resources, final Collection<ArtifactInfo> infos, final List<String> report)
             throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
-        final List<Processor> processors;
-        final List<Source> sources;
-
         if (archiveType == ArtifactType.APIS || archiveType == ArtifactType.SOURCES) {
-            processors = ApisUtil.getProcessors();
-            sources = processors.isEmpty() ? null : new ArrayList<>();
             // api or source
-            for (final ArtifactInfo info : infos) {
-                final File dir = archiveType == ArtifactType.APIS ? info.getBinDirectory() : info.getSourceDirectory();
-
-                if (dir != null) {
-                    final String[] usedExportedPackageIncludes = info.getUsedExportedPackageIncludes(apiRegion);
-                    getLog().debug("Adding directory " + dir.getName() + " with "
-                            + Arrays.toString(usedExportedPackageIncludes));
-                    final DefaultFileSet fileSet = new DefaultFileSet(dir);
-                    fileSet.setIncludingEmptyDirectories(false);
-                    fileSet.setIncludes(usedExportedPackageIncludes);
-                    jarArchiver.addFileSet(fileSet);
-                    if (sources != null) {
-                        sources.add(new DirectorySource(fileSet));
-                    }
-                }
-            }
+            this.addFileSets(apiRegion, archiveType, infos, jarArchiver, null);
         } else {
-            processors = Collections.emptyList();
-            sources = null;
             // javadoc
             final DefaultFileSet fileSet = new DefaultFileSet(ctx.getJavadocDir());
             jarArchiver.addFileSet(fileSet);
         }
 
         // add included resources
-        for (final ArtifactInfo info : infos) {
-            final int prefixLength = info.getBinDirectory().getAbsolutePath().length() + 1;
-            for (final File resource : info.getIncludedResources()) {
-                final String name = resource.getAbsolutePath().substring(prefixLength);
-                jarArchiver.addFile(resource, name);
-                getLog().debug("Adding resource " + name);
-                if (sources != null) {
-                    sources.add(new FileSource(info.getBinDirectory(), resource));
-                }
-            }
-        }
-
-        // add additional resources
-        if (resources != null) {
-            for (final File rsrc : resources) {
-                getLog().debug("Adding resource " + rsrc);
-                if (rsrc.isDirectory()) {
-                    DirectoryScanner ds = new DirectoryScanner();
-                    ds.setBasedir(rsrc);
-                    ds.setIncludes("**/*.*");
-                    ds.scan();
-
-                    for (String includedFile : ds.getIncludedFiles()) {
-                        jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
-                    }
-                    if (sources != null) {
-                        final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
-                        fileSet.setIncludingEmptyDirectories(false);
-                        fileSet.setIncludes(new String[] { "**/*.*" });
-                        sources.add(new DirectorySource(fileSet));
-                    }
-                } else {
-                    jarArchiver.addFile(rsrc, rsrc.getName());
-                    if (sources != null) {
-                        sources.add(new FileSource(rsrc.getParentFile(), rsrc));
-                    }
-                }
-            }
-        }
-
-        // run processors
-        for (final Processor p : processors) {
-            final ProcessorContext pc = new ProcessorContext() {
-
-                @Override
-                public MavenSession getSession() {
-                    return mavenSession;
-                }
-
-                @Override
-                public MavenProject getProject() {
-                    return project;
-                }
-
-                @Override
-                public Feature getFeature() {
-                    return ctx.getFeature();
-                }
-
-                @Override
-                public ApiRegion getApiRegion() {
-                    return apiRegion;
-                }
-
-                @Override
-                public Log getLog() {
-                    return ApisJarMojo.this.getLog();
-                }
-            };
-            if ( archiveType == ArtifactType.APIS ) {
-                p.processBinaries(pc, sources);
-            } else {
-                p.processSources(pc, sources);
-            }
-        }
+        this.addResources(infos, resources, jarArchiver, null);
 
         // check for license report
         if ( ctx.getConfig().getLicenseReport() != null ) {
