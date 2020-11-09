@@ -21,7 +21,7 @@ import java.util.jar.*;
 
 import org.codehaus.plexus.util.*;
 
-    boolean checkBundle(File file, String[] exportPackages, String[] expectedEntries) throws Exception {
+    boolean checkBundle(File file, List<String> exportPackages, List<String> expectedEntries, List<String> providedCapabilities) throws Exception {
         if (!file.exists()) {
             System.out.println("FAILED!");
             System.out.println("File '" + file + "' not found");
@@ -30,8 +30,8 @@ import org.codehaus.plexus.util.*;
 
         JarFile jarFile = new JarFile(file);
 
+        Manifest manifest= jarFile.getManifest();
         if (exportPackages != null) {
-            Manifest manifest= jarFile.getManifest();
 
             String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
             for (String exportPackage : exportPackages) {
@@ -43,6 +43,18 @@ import org.codehaus.plexus.util.*;
             }
         }
 
+        if (providedCapabilities != null) {
+
+            String providedCapabilitiesHeader = manifest.getMainAttributes().getValue("Provide-Capability");
+            for (String providedCapability : providedCapabilities) {
+                if (providedCapabilitiesHeader.indexOf(providedCapability) < 0) {
+                    System.out.println("FAILED!");
+                    System.out.println("Provide-Capability header '" + providedCapabilitiesHeader + "' does not contain " + providedCapability + " in bundle " + file);
+                    return false;
+                }
+            }
+        }
+        
         for (String expectedEntry : expectedEntries) {
             if (jarFile.getJarEntry(expectedEntry) == null) {
                 System.out.println("FAILED!");
@@ -62,14 +74,22 @@ import org.codehaus.plexus.util.*;
 
         File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-apis.jar");
         if (!checkBundle(baseApiJar,
-                        [
+                         [
                              "org.apache.felix.inventory;version=1.0",
-                             "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0"
-                         ] as String[],
+                             "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0",
+                             "org.osgi.service.metatype;uses:=org.osgi.framework;version=1.4.0"
+                         ],
                          [
                              "org/apache/felix/metatype/",
+                             "org/osgi/service/metatype/",
                              "org/apache/felix/inventory/"
-                         ] as String[])) {
+                         ],
+                         [    // clauses keep insertion order, quoted only where necessary
+                              "osgi.implementation;uses:=org.osgi.service.metatype;osgi.implementation=osgi.metatype;version:Version=1.4," +
+                              "osgi.extender;uses:=org.osgi.service.metatype;osgi.extender=osgi.metatype;version:Version=1.4," +
+                              "osgi.service;uses:=org.osgi.service.metatype;objectClass:List<String>=org.osgi.service.metatype.MetaTypeService"
+                         ]
+                         )) {
             return false;
         }
 
@@ -79,7 +99,8 @@ import org.codehaus.plexus.util.*;
                          [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/"
-                         ] as String[] )) {
+                         ],
+                         null)) {
             return false;
         }
 
@@ -92,13 +113,14 @@ import org.codehaus.plexus.util.*;
                              "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0",
                              "org.apache.felix.scr.component;uses:=org.osgi.service.component;version=1.1.0",
                              "org.apache.felix.scr.info;version=1.0.0"
-                         ] as String[],
+                         ],
                          [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         ] as String[] )) {
+                         ],
+                         null )) {
             return false;
         }
 
@@ -110,7 +132,8 @@ import org.codehaus.plexus.util.*;
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         ]  as String[] )) {
+                         ],
+                         null )) {
             return false;
         }
 

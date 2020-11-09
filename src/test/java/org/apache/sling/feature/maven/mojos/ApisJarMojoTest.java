@@ -16,10 +16,10 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+
+import org.junit.Test;
 
 public class ApisJarMojoTest {
     @Test

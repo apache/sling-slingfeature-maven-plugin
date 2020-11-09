@@ -157,6 +157,7 @@
                         <pomInclude>**/pom.xml</pomInclude>
                     </pomIncludes>
                     <postBuildHookScript>verify</postBuildHookScript>
+                    <streamLogsOnFailures>true</streamLogsOnFailures>
                 </configuration>
                 <executions>
                     <execution>
@@ -177,6 +178,12 @@
             <groupId>org.osgi</groupId>
             <artifactId>osgi.core</artifactId>
             <version>8.0.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.namespace.service</artifactId>
+            <version>1.0.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
