@@ -55,11 +55,11 @@ public class ApisJarContext {
 
         private File sourceDirectory;
 
-        /** Exported packages used by all regions. */
+        /** Exported packages used by any region. */
         private Set<String> usedExportedPackages;
 
         /** Exported packages per region. */
-        private final Map<String, Set<Clause>> usedExportedPackagesRegion = new HashMap<>();
+        private final Map<String, Set<Clause>> usedExportedPackagesPerRegion = new HashMap<>();
 
         /** Flag if used as dependency */
         private final Map<String, String> useAsDependencyPerRegion = new HashMap<>();
@@ -71,6 +71,8 @@ public class ApisJarContext {
         private List<License> licenses;
 
         private final Set<String> sources = new HashSet<>();
+
+        private final Map<String, Set<Clause>> providedCapabilitiesPerRegion = new HashMap<>();
 
         public ArtifactInfo(final Artifact artifact) {
             this.artifact = artifact;
@@ -117,11 +119,11 @@ public class ApisJarContext {
         }
 
         public Set<Clause> getUsedExportedPackages(final String regionName) {
-            return this.usedExportedPackagesRegion.get(regionName);
+            return this.usedExportedPackagesPerRegion.get(regionName);
         }
 
         public void setUsedExportedPackages(final String regionName, final Set<Clause> usedExportedPackages, final String useAsDependency) {
-            this.usedExportedPackagesRegion.put(regionName, usedExportedPackages);
+            this.usedExportedPackagesPerRegion.put(regionName, usedExportedPackages);
             if ( useAsDependency != null ) {
                 this.useAsDependencyPerRegion.put(regionName, useAsDependency);
             }
@@ -213,10 +215,17 @@ public class ApisJarContext {
             return this.sources;
         }
 
+        public Set<Clause> getProvidedCapabilities(final String regionName) {
+            return providedCapabilitiesPerRegion.get(regionName);
+        }
+
+        public void setProvidedCapabilities(final String regionName, final Set<Clause> providedCapabilitiesPerRegion) {
+            this.providedCapabilitiesPerRegion.put(regionName, providedCapabilitiesPerRegion);
+        }
+
         /* (non-Javadoc)
          * @see java.lang.Object#hashCode()
          */
-
         @Override
         public int hashCode() {
             return Objects.hash(artifact);
@@ -225,7 +234,6 @@ public class ApisJarContext {
         /* (non-Javadoc)
          * @see java.lang.Object#equals(java.lang.Object)
          */
-
         @Override
         public boolean equals(Object obj) {
             if (this == obj)

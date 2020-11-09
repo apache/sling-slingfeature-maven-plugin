@@ -19,7 +19,8 @@
       "name": "base",
       "exports": [
         "org.apache.felix.inventory",
-        "org.apache.felix.metatype"
+        "org.apache.felix.metatype",
+        "org.osgi.service.metatype"
       ]
     },
     {
