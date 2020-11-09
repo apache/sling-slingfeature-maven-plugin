@@ -20,12 +20,12 @@ import java.util.*;
      boolean check() {
         File file = new File(basedir, "target/slingfeature-tmp/feature-slingtest.json");
         String log = FileUtils.fileRead(file);
-         String[] values = {
+         String[] values = [
             "\"title\":\"Apache Sling Features Maven plugin test\"",
             "\"description\":\"This is just an Apache Sling Features Maven plugin test to verify added metadata\"",
             "\"vendor\":\"The Apache Sling Team\"",
             "\"license\":\"Apache License, Version 2.0\""
-        };
+        ];
          for (String value : values) {
             if (log.indexOf(value) < 0) {
                 System.out.println("FAILED!");

@@ -23,7 +23,7 @@ import org.codehaus.plexus.util.*;
 
         String group = "org.apache.sling";
         String groupPath = group.replaceAll("\\.", "/");
-        String artifact = "slingfeature-maven-plugin-test-include-artifact-simple";
+        String artifact = "slingfeature-maven-plugin-test-include-artifact-start-order";
         String version = "1.0.0-SNAPSHOT";
         File localMavenRepositoryInstallationFolder = new File(
             localRepositoryPath, groupPath + "/" + artifact + "/" + version
@@ -49,12 +49,12 @@ import org.codehaus.plexus.util.*;
         String dependentGroup = "org.codehaus.janino";
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
-        String[] values = {
+        String[] values = [
             "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
             "\"bundles\":[",
             group + ":" + artifact + ":" + version + "\"",
-            dependentGroup + ":" + dependentArtifact + ":" + dependentVersion + "\"",
-        };
+            "\"id\":\"" + dependentGroup + ":" + dependentArtifact + ":" + dependentVersion + "\"",
+        ];
         for (String value : values) {
             if (fmContent.indexOf(value) < 0) {
                 System.out.println("Did not find line: " + value + " -> FAILED!");

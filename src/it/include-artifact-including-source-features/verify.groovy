@@ -23,7 +23,7 @@ import org.codehaus.plexus.util.*;
 
         String group = "org.apache.sling";
         String groupPath = group.replaceAll("\\.", "/");
-        String artifact = "slingfeature-maven-plugin-test-include-artifact-including-source-features-folder";
+        String artifact = "slingfeature-maven-plugin-test-include-artifact-including-source-features";
         String version = "1.0.0-SNAPSHOT";
         File localMavenRepositoryInstallationFolder = new File(
             localRepositoryPath, groupPath + "/" + artifact + "/" + version
@@ -33,10 +33,9 @@ import org.codehaus.plexus.util.*;
             return false;
         }
 
-        String classifier = "final";
         String extension = "slingosgifeature";
         File fmDescriptorFile = new File(
-            localMavenRepositoryInstallationFolder, artifact + "-" + version + "-" + classifier + "." + extension
+            localMavenRepositoryInstallationFolder, artifact + "-" + version + "." + extension
         );
         if(!fmDescriptorFile.exists()) {
             System.out.println("FM Descriptor file does not exist: " + fmDescriptorFile);
@@ -49,13 +48,13 @@ import org.codehaus.plexus.util.*;
         String dependentGroup = "org.codehaus.janino";
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
-        String[] values = {
-            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
+        String[] values = [
+            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + version + "\"",
             "\"bundles\":[",
             group + ":" + artifact + ":" + version + "\"",
             "\"repoinit:TEXT|true\":[",
             "\"create path (rep:AuthorizableFolder) /home/users/system\""
-        };
+        ];
         for (String value : values) {
             if (fmContent.indexOf(value) < 0) {
                 System.out.println("Did not find line: " + value + " -> FAILED!");

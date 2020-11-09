@@ -20,10 +20,10 @@ import java.util.*;
      boolean check() {
         File file = new File(basedir, "build.log");
         String log = FileUtils.fileRead(file);
-         String[] values = {
+         String[] values = [
             " * /definitions/Bundle: instance type (boolean) does not match any allowed primitive type (allowed: [\"object\",\"string\"])",
             " * /properties/model-version: instance type (integer) does not match any allowed primitive type (allowed: [\"string\"])"
-        };
+         ];
          for (String value : values) {
             if (log.indexOf(value) < 0) {
                 System.out.println("FAILED!");
