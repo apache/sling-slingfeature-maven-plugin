@@ -24,7 +24,7 @@ import org.codehaus.plexus.util.*;
         File file = new File(basedir, "target/slingfeature-tmp/feature-slingtest.json");
         String log = FileUtils.fileRead(file);
 
-        String[] values = {
+        String[] values = [
             "\"id\":\"org.apache.sling:slingfeature-maven-plugin-test:slingfeature:slingtest:1.0.0-SNAPSHOT\"",
             "\"title\":\"Apache Sling Features Maven plugin test\"",
             "\"description\":\"This is just an Apache Sling Features Maven plugin test to verify variables interpolation\"",
@@ -36,7 +36,7 @@ import org.codehaus.plexus.util.*;
             "\"sling.framework.install.startlevel\":\"1\"",
             "\"sling.ignoreSystemProperties\":\"true\"",
             "\"id\":\"org.osgi:org.osgi.framework:1.9.0\""
-        };
+        ];
 
         for (String value : values) {
             if (log.indexOf(value) < 0) {

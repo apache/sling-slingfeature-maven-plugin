@@ -45,13 +45,13 @@ import org.codehaus.plexus.util.*;
                 return false;
             }
 
-            for (String expectedEntry : new String[] {
+            for (String expectedEntry : [
                 "com/google/gson/stream/JsonReader.class",
                 "com/google/gson/stream/JsonScope.class",
                 "com/google/gson/stream/JsonToken.class",
                 "com/google/gson/stream/JsonWriter.class",
                 "com/google/gson/stream/MalformedJsonException.class"
-            }) {
+            ]) {
                 if (jarFile.getJarEntry(expectedEntry) == null) {
                     System.out.println("FAILED!");
                     System.out.println("Entry '" + expectedEntry + "' does not exist in bundle " + baseApiJar);

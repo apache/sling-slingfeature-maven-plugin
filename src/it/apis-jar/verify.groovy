@@ -62,24 +62,24 @@ import org.codehaus.plexus.util.*;
 
         File baseApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-apis.jar");
         if (!checkBundle(baseApiJar,
-                         new String[] {
+                        [
                              "org.apache.felix.inventory;version=1.0",
                              "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0"
-                         },
-                         new String[] {
+                         ],
+                         [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/"
-                         })) {
+                         ])) {
             return false;
         }
 
         File baseSourcesJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-base-sources.jar");
         if (!checkBundle(baseSourcesJar,
                          null,
-                         new String[] {
+                         [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/"
-                         })) {
+                         ])) {
             return false;
         }
 
@@ -87,30 +87,30 @@ import org.codehaus.plexus.util.*;
 
         File extendedApiJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-extended-apis.jar");
         if (!checkBundle(extendedApiJar,
-                         new String[] {
+                         [
                              "org.apache.felix.inventory;version=1.0",
                              "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0",
                              "org.apache.felix.scr.component;uses:=org.osgi.service.component;version=1.1.0",
                              "org.apache.felix.scr.info;version=1.0.0"
-                         },
-                         new String[] {
+                         ],
+                         [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         })) {
+                         ])) {
             return false;
         }
 
         File extendedSourcesJar = new File(apisJarDir, "slingfeature-maven-plugin-test-1.0.0-SNAPSHOT-extended-sources.jar");
         if (!checkBundle(extendedApiJar,
                          null,
-                         new String[] {
+                         [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         })) {
+                         ])) {
             return false;
         }
 
