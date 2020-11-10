@@ -65,11 +65,11 @@ import org.codehaus.plexus.util.*;
                         [
                              "org.apache.felix.inventory;version=1.0",
                              "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0"
-                         ],
+                         ] as String[],
                          [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/"
-                         ])) {
+                         ] as String[])) {
             return false;
         }
 
@@ -79,7 +79,7 @@ import org.codehaus.plexus.util.*;
                          [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/"
-                         ])) {
+                         ] as String[] )) {
             return false;
         }
 
@@ -92,13 +92,13 @@ import org.codehaus.plexus.util.*;
                              "org.apache.felix.metatype;uses:=\"org.osgi.framework,org.osgi.service.metatype\";version=1.2.0",
                              "org.apache.felix.scr.component;uses:=org.osgi.service.component;version=1.1.0",
                              "org.apache.felix.scr.info;version=1.0.0"
-                         ],
+                         ] as String[],
                          [
                              "org/apache/felix/metatype/",
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         ])) {
+                         ] as String[] )) {
             return false;
         }
 
@@ -110,7 +110,7 @@ import org.codehaus.plexus.util.*;
                              "org/apache/felix/inventory/",
                              "org/apache/felix/scr/component/",
                              "org/apache/felix/scr/info/"
-                         ])) {
+                         ]  as String[] )) {
             return false;
         }
 
