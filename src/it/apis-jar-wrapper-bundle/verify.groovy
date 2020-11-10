@@ -39,7 +39,7 @@ import org.codehaus.plexus.util.*;
             Manifest manifest= jarFile.getManifest();
             String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
 
-            if (exportPackageHeader.indexOf("com.google.gson.stream;version=\"2.8.4\"") < 0) {
+            if (exportPackageHeader.indexOf("com.google.gson.stream;version=2.8.4") < 0) {
                 System.out.println("FAILED!");
                 System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'com.google.gson.stream;version=\"2.8.4\"' in bundle " + baseApiJar);
                 return false;

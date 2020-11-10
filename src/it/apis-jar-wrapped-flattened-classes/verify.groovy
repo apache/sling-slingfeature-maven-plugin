@@ -40,31 +40,18 @@ import org.codehaus.plexus.util.*;
             Manifest manifest= jarFile.getManifest();
             String exportPackageHeader = manifest.getMainAttributes().getValue("Export-Package");
 
-            if (exportPackageHeader.indexOf("org.apache.lucene.analysis.standard") < 0) {
+            if (exportPackageHeader.indexOf("org.apache.jackrabbit.oak.plugins.index.lucene") < 0) {
                 System.out.println("FAILED!");
-                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'org.apache.lucene.analysis.standard' in bundle " + baseApiJar);
+                System.out.println("Export-Package header '" + exportPackageHeader + "' does not contain 'org.apache.jackrabbit.oak.plugins.index.lucene' in bundle " + baseApiJar);
                 return false;
             }
 
-            JarEntry jarEntry = jarFile.getJarEntry("org/apache/lucene/analysis/standard/StandardAnalyzer.class");
+            JarEntry jarEntry = jarFile.getJarEntry("org/apache/jackrabbit/oak/plugins/index/lucene/OakAnalyzer.class");
             if (jarEntry == null) {
                 System.out.println("FAILED!");
-                System.out.println("Entry 'org/apache/lucene/analysis/standard/StandardAnalyzer.class' does not exist in bundle " + file);
+                System.out.println("Entry 'org/apache/jackrabbit/oak/plugins/index/lucene/OakAnalyzer.class' does not exist in bundle " + file);
             }
 
-            bytecodeStream = jarFile.getInputStream(jarEntry);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buf = new byte[1024];
-            int len = 0;
-            while ((len = bytecodeStream.read(buf)) >= 0) {
-                baos.write(buf, 0, len);
-            }
-
-            if (!baos.toString().contains("#(Lorg/apache/lucene/util/Version;)V")) {
-                System.out.println("FAILED!");
-                System.out.println("Expected org.apache.lucene.analysis.standard.StandardAnalyzer class containing a constructor with 'org.apache.lucene.util.Version' argument");
-                return false;
-            }
         } finally {
             if (jarFile != null) {
                 jarFile.close();

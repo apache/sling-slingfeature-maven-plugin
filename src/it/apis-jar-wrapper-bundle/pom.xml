@@ -38,6 +38,8 @@
           </execution>
         </executions>
         <configuration>
+	  <generateSourceJar>false</generateSourceJar>
+          <generateJavadocJar>false</generateJavadocJar>
           <selection>
             <filesInclude>**/*.json</filesInclude>
           </selection>
