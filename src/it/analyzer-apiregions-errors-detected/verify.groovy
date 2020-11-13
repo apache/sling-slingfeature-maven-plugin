@@ -24,7 +24,7 @@ import org.codehaus.plexus.util.*;
         File file = new File(basedir, "build.log");
         String log = FileUtils.fileRead(file);
 
-        if (log.indexOf("Bundle 'org.apache.aries.versioning:org.apache.aries.versioning.checker:0.3.1' (defined in feature 'org.apache.sling:slingfeature-maven-plugin-test:1.0.0-SNAPSHOT') declares 'org.apache.aries.versioning.check' in the 'Export-Package' header, enlisted in the 'my-global' region, which uses 'org.objectweb.asm' package that is in the 'my-deprecated' region") < 0) {
+        if (log.indexOf("Bundle 'org.apache.aries.versioning:org.apache.aries.versioning.checker:0.3.1' (defined in feature 'org.apache.sling:slingfeature-maven-plugin-test:1.0.0-SNAPSHOT') exports package 'org.apache.aries.versioning.check' that is declared in the visible 'my-global' region, which uses package 'org.objectweb.asm' that is in the non-visible 'my-deprecated' region") < 0) {
             System.out.println( "FAILED!" );
             return false;
         }
