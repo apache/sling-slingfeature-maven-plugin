@@ -38,7 +38,9 @@ import javax.json.stream.JsonGeneratorFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.felix.cm.json.Configurations;
+import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Artifacts;
 import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
@@ -143,6 +145,30 @@ public class JSONFeatures {
                 }
                 final String contents = FileUtils.readFileToString(txtFile, StandardCharsets.UTF_8);
                 ext.setText(contents);
+            }
+        }
+	}
+
+    private static final String FEATURE_BUNDLES = "bundles";
+
+    public static void handleDefaultMetadata(final Feature feature, final Map<String, Map<String, String>> defaultMetadata) {
+        for(final Map.Entry<String, Map<String, String>> entry : defaultMetadata.entrySet()) {
+            final String extensionName = entry.getKey();
+            final Artifacts artifacts;
+            if ( FEATURE_BUNDLES.equals(extensionName) ) {
+                artifacts = feature.getBundles();
+            } else {
+                final Extension ext = feature.getExtensions().getByName(extensionName);
+                artifacts = ext == null || ext.getType() != ExtensionType.ARTIFACTS ? null : ext.getArtifacts();
+            }
+            if ( artifacts != null ) {
+                for(final Map.Entry<String, String> propEntry : entry.getValue().entrySet()) {
+                    for(final Artifact artifact : artifacts) {
+                        if ( !artifact.getMetadata().containsKey(propEntry.getKey()) ) {
+                            artifact.getMetadata().put(propEntry.getKey(), propEntry.getValue());
+                        }
+                    }
+                }
             }
         }
 	}

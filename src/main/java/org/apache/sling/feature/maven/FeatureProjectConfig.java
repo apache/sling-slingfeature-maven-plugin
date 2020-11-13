@@ -16,7 +16,11 @@
  */
 package org.apache.sling.feature.maven;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.maven.artifact.Artifact;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 public class FeatureProjectConfig {
 
@@ -56,6 +60,8 @@ public class FeatureProjectConfig {
 
     public static final String CFG_LEGACY_REPLACE = "enableLegacyVariableReplacement";
 
+    public static final String CFG_DEFAULT_METADATA = "defaultMetadata";
+
 
     private final String featuresDirName;
 
@@ -83,6 +89,8 @@ public class FeatureProjectConfig {
 
     private final boolean enableLegacyVariableReplacement;
 
+    private final Map<String, Map<String, String>> defaultMetadata = new HashMap<>();
+    
     public static FeatureProjectConfig getMainConfig(final FeatureProjectInfo info) {
         return new FeatureProjectConfig(info, false);
     }
@@ -135,6 +143,22 @@ public class FeatureProjectConfig {
             this.replacePropertyVariables = vars.split(",");
         }
         this.enableLegacyVariableReplacement = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_LEGACY_REPLACE, "false"));
+
+        // process metadata
+        if ( !test ) {
+            final Xpp3Dom metadataRoot = ProjectHelper.getConfig(info.plugin, CFG_DEFAULT_METADATA);
+            if ( metadataRoot != null ) {
+                for(final Xpp3Dom extension : metadataRoot.getChildren()) {
+                    final String name = extension.getName();
+                    final Map<String, String> map = this.defaultMetadata.computeIfAbsent(name, id -> new HashMap<>());
+                    for(final Xpp3Dom key : extension.getChildren()) {
+                        if ( key.getValue() != null ) {
+                            map.put(key.getName(), key.getValue());
+                        }
+                    }
+                }
+            }    
+        }
     }
 
     public String getName() {
@@ -187,6 +211,10 @@ public class FeatureProjectConfig {
 
     public boolean isEnableLegacyVariableReplacement() {
         return enableLegacyVariableReplacement;
+    }
+
+    public Map<String, Map<String, String>> getDefaultMetadata() {
+        return this.defaultMetadata;
     }
 }
 

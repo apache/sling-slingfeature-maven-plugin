@@ -104,7 +104,10 @@ public class Preprocessor {
      */
     public void process(final Environment env) {
         for(final FeatureProjectInfo finfo : env.modelProjects.values()) {
-            process(env, finfo, FeatureProjectConfig.getMainConfig(finfo));
+            final FeatureProjectConfig cfg = FeatureProjectConfig.getMainConfig(finfo);
+            ProjectHelper.setDefaultMetadata(finfo.project, cfg.getDefaultMetadata());
+
+            process(env, finfo, cfg);
             process(env, finfo, FeatureProjectConfig.getTestConfig(finfo));
 
             ProjectHelper.storeProjectInfo(finfo);
@@ -315,6 +318,9 @@ public class Preprocessor {
                     // Extension handling
                     JSONFeatures.handleExtensions(feature, file);
 
+                    // Default metadata
+                    JSONFeatures.handleDefaultMetadata(feature, ProjectHelper.getDefaultMetadata(info.project));
+                    
                     ProjectHelper.setFeatureInfo(info.project, feature);
 
                     this.postProcessReadFeature(feature);

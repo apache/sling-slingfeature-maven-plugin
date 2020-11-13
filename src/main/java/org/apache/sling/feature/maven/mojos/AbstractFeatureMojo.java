@@ -280,6 +280,9 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
                         // Extension handling
                         JSONFeatures.handleExtensions(feature, file);
 
+                        // Default metadata
+                        JSONFeatures.handleDefaultMetadata(feature, ProjectHelper.getDefaultMetadata(project));
+        
                         ProjectHelper.setFeatureInfo(project, feature);
 
                         // Add feature to map of features

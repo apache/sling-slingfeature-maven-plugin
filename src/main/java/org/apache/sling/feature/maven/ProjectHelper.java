@@ -26,6 +26,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +69,9 @@ public abstract class ProjectHelper {
     /** Assembled feature. */
     private static final String ASSEMBLED_FEATURE_JSON = Feature.class.getName() + "/assembledmain.json";
     private static final String ASSEMBLED_TEST_FEATURE_JSON = Feature.class.getName() + "/assembledtest.json";
+
+    /** Default metadata */
+    private static final String METADATA_KEY = Feature.class.getName() + "/metadata";
 
     private static void store(final MavenProject project, final String key, final Map<String, Feature> features) {
         if ( features != null && !features.isEmpty()) {
@@ -229,6 +233,36 @@ public abstract class ProjectHelper {
         return values.isEmpty() ? defaultValue : values.iterator().next();
     }
 
+    /**
+     * Gets a configuration value for a plugin if it is set in the configuration for
+     * the plugin or any configuration for an execution of the plugin.
+     * @param plugin Plugin
+     * @param name Configuration parameter.
+     * @return {@code null} if nothing is configured, the value otherwise.
+     * @throws RuntimeException If more than one value is configured
+     */
+    public static Xpp3Dom getConfig(final Plugin plugin,
+            final String name) {
+        final Set<Xpp3Dom> values = new HashSet<>();
+        final Xpp3Dom config = plugin == null ? null : (Xpp3Dom)plugin.getConfiguration();
+        final Xpp3Dom globalNode = (config == null ? null : config.getChild(name));
+        if ( globalNode != null && globalNode.getChildCount() > 0 ) {
+            values.add(globalNode);
+        }
+        for(final PluginExecution exec : plugin.getExecutions()) {
+            final Xpp3Dom cfg = (Xpp3Dom)exec.getConfiguration();
+            final Xpp3Dom pluginNode = (cfg == null ? null : cfg.getChild(name));
+            if ( pluginNode != null && pluginNode.getChildCount() > 0 ) {
+                values.add(pluginNode);
+            }
+        }
+        if ( values.size() > 1 ) {
+            throw new RuntimeException("More than one value configured in plugin (executions) of "
+                    + plugin.getKey() + " for " + name + " : " + values);
+        }
+        return values.isEmpty() ? null : values.iterator().next();
+    }
+    
     private static Artifact findArtifact(final ArtifactId id, final Collection<Artifact> artifacts) {
         if (artifacts != null) {
             for(final Artifact artifact : artifacts) {
@@ -567,4 +601,16 @@ public abstract class ProjectHelper {
         }
     }
 
+    public static void setDefaultMetadata(final MavenProject project, final Map<String, Map<String, String>> data) {
+        project.setContextValue(METADATA_KEY, data);
+    }
+
+    @SuppressWarnings("unchecked")
+    public static final Map<String, Map<String, String>> getDefaultMetadata(final MavenProject project) {
+        Map<String, Map<String, String>> map = (Map<String, Map<String, String>>) project.getContextValue(METADATA_KEY);
+        if ( map == null ) {
+            map = Collections.emptyMap();
+        }
+        return map;
+    }
 }
