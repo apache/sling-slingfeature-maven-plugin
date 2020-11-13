@@ -33,6 +33,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Dictionary;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
@@ -159,7 +160,7 @@ public class AggregateFeaturesMojoTest {
         for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
             actualConfigs.put(conf.getPid(), conf.getProperties());
         }
-        assertEquals(expectedConfigs, actualConfigs);
+        assertConfigsEquivalent(expectedConfigs, actualConfigs);
     }
 
     @Test
@@ -235,7 +236,7 @@ public class AggregateFeaturesMojoTest {
         for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
             actualConfigs.put(conf.getPid(), conf.getProperties());
         }
-        assertEquals(expectedConfigs, actualConfigs);
+        assertConfigsEquivalent(expectedConfigs, actualConfigs);
     }
 
     @Test
@@ -397,7 +398,21 @@ public class AggregateFeaturesMojoTest {
         for (org.apache.sling.feature.Configuration conf : genFeat.getConfigurations()) {
             actualConfigs.put(conf.getPid(), conf.getProperties());
         }
-        assertEquals(expectedConfigs, actualConfigs);
+        assertConfigsEquivalent(expectedConfigs, actualConfigs);
+    }
+
+    private void assertConfigsEquivalent(Map<String, Dictionary<String, Object>> expectedConfigs,
+            Map<String, Dictionary<String, Object>> actualConfigs) {
+        for (Map.Entry<String, Dictionary<String,Object>> entry : expectedConfigs.entrySet()) {
+            Dictionary<String, Object> actualValues = actualConfigs.get(entry.getKey());
+            assertNotNull(actualValues);
+
+            Dictionary<String, Object> expectedValues = entry.getValue();
+            for (Enumeration<String> e = expectedValues.keys(); e.hasMoreElements(); ) {
+                String key = e.nextElement();
+                assertEquals(expectedValues.get(key), actualValues.get(key));
+            }
+        }
     }
 
     @Test
