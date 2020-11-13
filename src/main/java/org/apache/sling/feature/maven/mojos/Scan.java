@@ -62,8 +62,7 @@ public class Scan extends FeatureSelectionConfig {
     public void setTaskConfiguration(String task, Map<String,String> config) {
         Properties p = new Properties();
 
-        config.entrySet().stream()
-            .forEach(e -> p.setProperty(e.getKey(), e.getValue()));
+        config.forEach(p::setProperty);
         taskConfiguration.put(task, p);
     }
 
