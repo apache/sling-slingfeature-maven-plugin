@@ -59,6 +59,13 @@ public class Scan extends FeatureSelectionConfig {
         return result;
     }
 
+    public void setTaskConfiguration(String task, Map<String,String> config) {
+        Properties p = new Properties();
+
+        config.forEach(p::setProperty);
+        taskConfiguration.put(task, p);
+    }
+
     public void setFramework(final Dependency d) {
         this.framework = d;
     }
