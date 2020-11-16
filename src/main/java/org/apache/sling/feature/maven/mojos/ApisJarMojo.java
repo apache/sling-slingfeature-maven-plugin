@@ -1344,7 +1344,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 CheckOutScmResult result = null;
                 try {
-                    if (scmVersion != null) {
+                    if (scmVersion == null) {
                         result = scmManager.checkOut(repository, fileSet, true);
                     } else {
                         result = scmManager.checkOut(repository, fileSet, scmVersion, true);
