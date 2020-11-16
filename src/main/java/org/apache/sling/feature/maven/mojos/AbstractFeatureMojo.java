@@ -343,7 +343,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
                     .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
                     .getFile().toURI().toURL();
             } catch (Exception e) {
-                getLog().error(e);
+                getLog().debug("Artifact " + id.toMvnId() + " not found");
                 return null;
             }
         }

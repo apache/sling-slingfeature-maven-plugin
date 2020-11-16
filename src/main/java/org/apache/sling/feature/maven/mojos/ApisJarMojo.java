@@ -30,7 +30,6 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -699,9 +698,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private File getArtifactFile(final ArtifactProvider artifactProvider, final ArtifactId artifactId)
+    private File getArtifactFile(final ArtifactId artifactId)
             throws MojoExecutionException {
-        final URL artifactURL = retrieve(artifactProvider, artifactId);
+        final URL artifactURL = retrieve(artifactId);
         if (artifactURL == null) {
             throw new MojoExecutionException("Unable to find artifact " + artifactId.toMvnId());
         }
@@ -768,7 +767,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * @throws MojoExecutionException
      */
     private void onArtifact(final ApisJarContext ctx, Artifact artifact) throws MojoExecutionException {
-        final File bundleFile = getArtifactFile(artifactProvider, artifact.getId());
+        final File bundleFile = getArtifactFile(artifact.getId());
 
         final Manifest manifest = getManifest(artifact.getId(), bundleFile);
 
@@ -1082,7 +1081,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 Artifact syntheticArtifact = new Artifact(
                         new ArtifactId(groupId, artifactId, version, classifier, null));
-                final File bundleFile = getArtifactFile(artifactProvider, syntheticArtifact.getId());
+                final File bundleFile = getArtifactFile(syntheticArtifact.getId());
 
                 processBinary(ctx, info, bundleFile, syntheticArtifact, null, skipBinDeflate, skipSourceDeflate);
             }
@@ -1116,7 +1115,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return null;
     }
 
-    private URL retrieve(final ArtifactProvider artifactProvider, final ArtifactId artifactId) {
+    private URL retrieve(final ArtifactId artifactId) {
         getLog().debug("Retrieving artifact " + artifactId + "...");
         URL sourceFile = artifactProvider.provide(artifactId);
         if (sourceFile != null) {
@@ -1209,7 +1208,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final ArtifactId sourcesArtifactId, final boolean allowFallback) throws MojoExecutionException {
         boolean failed = false;
         try {
-            final URL url = retrieve(artifactProvider, sourcesArtifactId);
+            final URL url = retrieve(sourcesArtifactId);
             if (url != null) {
                 File sourcesBundle = IOUtils.getFileFromURL(url, true, null);
                 deflate(info.getSourceDirectory(), sourcesBundle, info.getUsedExportedPackageIncludes());
@@ -1275,7 +1274,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         if (model == null) {
             getLog().debug("Retrieving POM " + pomArtifactId.toMvnId() + "...");
             // POM file must exist, let the plugin fail otherwise
-            final URL pomURL = retrieve(artifactProvider, pomArtifactId);
+            final URL pomURL = retrieve(pomArtifactId);
             if (pomURL == null) {
                 throw new MojoExecutionException("Unable to find artifact " + pomArtifactId.toMvnId());
             }
