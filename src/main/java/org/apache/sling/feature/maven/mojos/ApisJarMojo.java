@@ -1316,6 +1316,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             }
             if (tag == null) {
                 tag = scm.getTag();
+                // Maven uses "HEAD" as default value
+                if ( "HEAD".equals(tag) ) {
+                    tag = null;
+                }
             }
         }
 
