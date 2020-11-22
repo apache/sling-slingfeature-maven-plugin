@@ -23,7 +23,7 @@ and version and let the maven plugin insert them for you.
 
 In the following example the qualifier `base` is specified for the feature file:
 
-```
+``` json
    {
       "id":"${project.groupId}:${project.artifactId}:slingosgifeature:base:${project.version}",
       ...
@@ -40,6 +40,7 @@ If your feature is named `feature.json` then this becomes the main artifact of t
 ### Default placeholders
 
 This maven plugin replaces some placeholders when processing feature files, placeholders use the common `${name}` syntax. The following placeholders are replaced by default:
+
 * project.groupId - The group id of the current maven project
 * project.artifactId - The artifact id of the current maven project
 * project.version - The version of the current maven project
@@ -51,7 +52,7 @@ The replacement of these placeholders can be disabled by setting the configurati
 
 The plugin can be configured to replace placeholders in the feature file based on maven project properties. To enable this, the configuration `replacePropertyVariables` can be set with a comma separated list of property names like:
 
-```
+``` xml
     <replacePropertyVariables>oak.version,jackrabbit.version</replacePropertyVariables>
 ```
 
@@ -59,7 +60,8 @@ The value needs to be set as a property on the maven project to be replaced.
 
 ### Legacy Replacement
 
-Up to version 1.3.4 of the maven plugin, all occurences of placeholders where tried to be replaced by the maven plugin. However, this had two problems: 
+Up to version 1.3.4 of the maven plugin, all occurences of placeholders where tried to be replaced by the maven plugin. However, this had two problems:
+
 * if a variable name in the feature model clashes with an (randomly) set maven project property, the usage of the variable got replaced with the value of the property.
 * Placeholders got replaced not only based on project properties but also on other inputs like system properties etc. making the build not reproducible.
 
@@ -70,6 +72,26 @@ For versions higher than 1.3.4, the `enableLegacyVariableReplacement` configurat
 For versions higher than 1.4.0, the maven plugin supports to author extensions in external files. For example a repoinit section can be written in a text file next to the feature model file. If an extension of type text is specified in the feature model with the value `@file`, the maven plugin looks for a file in the same directory as the feature model. The file must have the same name as the feature file followed by a dash, the name of the extension and ".txt". For example a feature file `src/main/features/myfeature.json` with a repoinit extension using "@file" reads the repoinit from `src/main/features/myfeature-repoinit.txt`.
 
 In addition, it is possible to control the name of the file name by specifying the part after the dash. For example using `@file:xssapi.xml` as the value of the extension leads to the a file named `myfeature-xssapi.xml` to be read.
+
+## Global Metadata
+
+For versions higher than 1.4.16, the maven plugin supports configuring global metadata for bundles and artifacts. For bundles as well for each extension with artifacts, a map of defaults can be configured. If the source of the feature does not have the configured property, it will be added. This allows to add for example the same metadata start order to bundles while single bundles might still override that value.
+
+The below configuration sets the start-order to 5 and foo to bar for bundles, and start-order to 1 for content-packages.
+
+``` xml
+<configuration>
+    <defaultMetadata>
+        <bundles> <!-- Defaults for bundles -->
+            <start-order>5</start-order>
+            <foo>bar</foo>
+        </bundles>
+        <content-packages> <!-- Defaults for an extension namend content-packages -->
+            <start-order>1</start-order>
+        </content-packages>
+    </defaultMetadata>
+</configuration>
+```
 
 # Global Configuration
 
@@ -94,7 +116,7 @@ Most of the plugin goals take a selection of features as input, for example to a
 
 All of these goals use the same way of selecting the features: Whenever a goal can select from the above global list of features, `filesInclude` and `filesExclude` can be used to select from the above list of project files. The patterns are relative to the specified features directory:
 
-```
+``` xml
    ...
       <!-- Include all feature files with a filename starting with base -->
       <filesInclude>**/base-*.json</filesInclude>
@@ -109,7 +131,7 @@ The order of the above include statements defines the order in which the feature
 
 In addition, most of the goals can also be configured to select aggregated features (see below) based on their qualifier. The special token `*` can be used to select all aggregated features and the token `:` selects the aggregated feature without a classifier (main artifact).
 
-```
+``` xml
    ...
       <includeClassifier>core-aggregate</includeClassifier>
       <includeClassifier>web-aggregate</includeClassifier>
@@ -120,7 +142,7 @@ Again the order of the instructions defines the order of processing.
 
 Most of the goals also support including of `ref` files. A ref file is a text file where each line in the text file contains a Maven url like mvn:groupId/artifactId/version. Lines starting with a hash can contain comments. The provided patterns are relative to the project directory.
 
-```
+``` xml
    ...
       <!-- Include all ref files within a source directory -->
       <refsInclude>src/main/references/*.ref</refsInclude>
@@ -131,7 +153,7 @@ Most of the goals also support including of `ref` files. A ref file is a text fi
 
 Finally, most of the goals also support to add features from other projects:
 
-```
+``` xml
    ...
       <includeArtifact>
           <groupId>org.apache.sling</groupId>
@@ -150,7 +172,7 @@ Produce an aggregated feature from a list of features. The list of features is e
 
 Sample configuration:
 
-```
+``` xml
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
@@ -204,35 +226,34 @@ If an include or an exclude is not using a pattern but directly specifying a fil
 
 The merged feature will have the same `groupId`, `artifactId` and `version` as the pom in which the aggregation is configured. It will have type `slingosgifeature` and as classifier the one specified in the configuration named `classifier`.
 
-Variables and framework properties can be overridden using the `<variables>` and
-`<fraweworkProperties>` sections. If multiple definitions of the same variables are found
-in the feature that are to be aggregated and the values for these variables are different,
-they *must* be overridden, otherwise the aggregation will generate an error.
+Variables and framework properties can be overridden using the `<variables>` and `<fraweworkProperties>` sections. The values configured are only used if at least one feature contains such a variable or framework property. If multiple definitions of the same variable or framework properties are found in the features that are to be aggregated and the values for these variable / framework properties are different, they *must* be overridden, otherwise the aggregation will generate an error.
 
-If the aggregation sources contain the same artifact more than once in different versions, 
-a conflict resolution override 
-must be specified using the `<artifactsOverride>` tag. In most cases the desired result will
-only contain one version of the artifact, although it's also possible to state that all versions
-must be kept. 
+If the aggregation sources contain the same artifact more than once in different versions, a conflict resolution override must be specified using the `<artifactsOverride>` tag. In most cases the desired result will only contain one version of the artifact, although it's also possible to state that all versions must be kept.
 
 The following syntax is supported for `<artifactsOverride>`:
 
-To provide a conflict resolution for a specific artifact:
+``` xml
+    <configuration>
+        <aggregates>
+            <aggregate>
+                ...
+                <artifactsOverrides>
+                    <!-- To provide a conflict resolution for a specific artifact: -->
+                    <artifactsOverride>groupid1:artifactid1:RESOLUTION</artifactsOverride>
 
-    groupid1:artifactid1:<resolution>
+                    <!-- To apply the same override rule for all clashes, a wildcard using '*' for
+                         groupID and artifactID can be used -->
+                    <artifactsOverride>*:*:RESOLUTION</artifactsOverride>
+                </artifactsOverrides>
+                ...
+```
 
-To apply the same override rule for all clashes, a wildcard using '*' for
-groupID and artifactID can be used:
-
-    *:*:<resolution>
-
-This means always select the same resolution in case of a clash.
-
-Where `<resolution>` is one of the following:
+The RESOLUTION is one of the following:
 
 * `ALL` - select all the artifacts, i.e. keep them side-by-side.
 * `HIGHEST` - select only the artifact with the highest version number.
 * `LATEST` - select only the artifact provided latest, so the version used in the last feature file merged in.
+* `FIRST` - select only the artifact provided first, the version used in the first feature
 * `<version>` - selects this specific version.
 
 When comparing version numbers these are converted to OSGi version
@@ -245,7 +266,7 @@ Merging of extensions is specific to the extension being merged. Handlers can be
 To provide additional handlers to the `slingfeature-maven-plugin`, list the artifacts in the `<dependencies>`
 section of the plugin configuration:
 
-```
+``` xml
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
@@ -264,6 +285,7 @@ section of the plugin configuration:
 ```
 
 ## Analyse Features (analyse-features)
+
 Run feature model analysers on the feature models in the project. Analysers are defined in the
 https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID,
 which is obtained from the `getId()` method in
