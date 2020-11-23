@@ -176,7 +176,6 @@ Sample configuration:
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>0.2.1-SNAPSHOT</version>
     <extensions>true</extensions>
     <executions>
       <execution>
@@ -237,12 +236,13 @@ The following syntax is supported for `<artifactsOverride>`:
         <aggregates>
             <aggregate>
                 ...
+                <!-- The overrides are processed in the specified order -->
                 <artifactsOverrides>
                     <!-- To provide a conflict resolution for a specific artifact: -->
                     <artifactsOverride>groupid1:artifactid1:RESOLUTION</artifactsOverride>
 
                     <!-- To apply the same override rule for all clashes, a wildcard using '*' for
-                         groupID and artifactID can be used -->
+                         groupID and artifactID can be used; this can be used as a catch all -->
                     <artifactsOverride>*:*:RESOLUTION</artifactsOverride>
                 </artifactsOverrides>
                 ...
@@ -256,8 +256,7 @@ The RESOLUTION is one of the following:
 * `FIRST` - select only the artifact provided first, the version used in the first feature
 * `<version>` - selects this specific version.
 
-When comparing version numbers these are converted to OSGi version
-numbers and the OSGi version number ordering is applied.
+When comparing version numbers these are converted to OSGi version numbers and the OSGi version number ordering is applied.
 
 ### Extension merging
 
@@ -270,7 +269,6 @@ section of the plugin configuration:
   <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>0.2.1-SNAPSHOT</version>
     <executions>
       ...
     </executions>
@@ -286,12 +284,10 @@ section of the plugin configuration:
 
 ## Analyse Features (analyse-features)
 
-Run feature model analysers on the feature models in the project. Analysers are defined in the
-https://github.com/apache/sling-org-apache-sling-feature-analyser project and are selected by their ID,
-which is obtained from the `getId()` method in
-https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/src/main/java/org/apache/sling/feature/analyser/task/AnalyserTask.java
+Run feature model analysers on the feature models in the project. Analysers are defined in the [Apache Sling Feature Analyser](https://github.com/apache/sling-org-apache-sling-feature-analyser) project and are selected by their ID, which is obtained from the `getId()` method in
+[Analyser Task](https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/src/main/java/org/apache/sling/feature/analyser/task/AnalyserTask.java).
 
-```
+``` xml
 <execution>
   <id>analyze</id>
   <goals>
@@ -343,6 +339,7 @@ https://github.com/apache/sling-org-apache-sling-feature-analyser/blob/master/sr
 ```
 
 ## Attaching Features to the Project (attach-features)
+
 Attach feature files found in the project to the projects produced artifacts. This includes features
 found in `src/main/features` as well as features produce with the `aggregate-features` goal if no configuration is specified.
 
@@ -356,7 +353,7 @@ It is possible to refine which feature archives should be created by selecting f
 
 By default, a feature archive gets the type `far`. By specifying the optional `type` configuration this can be changed to another type.
 
-```
+``` xml
 <execution>
     <id>create-feature-archives</id>
     <goals>
@@ -375,17 +372,18 @@ By default, a feature archive gets the type `far`. By specifying the optional `t
                 <includeClassifier>uibase</includeClassifier>
                 <includeClassifier>ui</includeClassifier>
             </archive>
-        </archives>        
+        </archives>
     </configuration>
 </execution>
 ```
 
 ## Extract contents of an Extension (extract-extension)
+
 This goal can be used to extract the contents of an extension into a local file, which may be useful for other tools that can work on the content of the extension.
 
 The goal is configured as in the following example:
 
-```
+``` xml
 <execution>
     <id>extract-apiregions</id>
     <goals>
@@ -396,12 +394,12 @@ The goal is configured as in the following example:
             <featuresInclude>feature-abc.json</featuresInclude>
             <extension>api-regions</extension>
             <outputDir>target/extracted</outputDir>
-        </selection>        
+        </selection>
     </configuration>
 </execution>
 ```
 
-This example extracts the `api-region` extension from the feature files `feature-abc.json` and puts it in the `target/extracted` directory. Feature files are selected as described in the Global Configuration above. 
+This example extracts the `api-region` extension from the feature files `feature-abc.json` and puts it in the `target/extracted` directory. Feature files are selected as described in the Global Configuration above.
 
 Output files are written to the output directory follows where the file name is the classifier of the selected feature, followed by the extension name and a `.json` extension for JSON and `.txt` extension for others.
 
@@ -409,54 +407,53 @@ Output files are written to the output directory follows where the file name is 
 * TEXT extensions: the file contains the text from the extension.
 * ARTIFACT extensions: the file contains the Maven IDs for each artifact. One ID per line.
 
-
 ## Update artifact Versions (update-feature-versions)
 
 Dependencies get out of date over time, with the `update-feature-versions` goal, all artifacts in a feature can be checked for available updates and updated to a newer version. By default all artifacts in all feature files in the project are checked and updated:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions
 ```
 
 To first check which artifacts will be updated and to what version, it is possible to just do a dry runs which does not alter the feature files:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions -DdryRun=true
 ```
 
 The selection of feature files can be further refined by specifying the `classifiers` parameter which selects feature files based on their classifier. The special token ':' can be used to select the main artifact (artifact without a classifier). The parameter takes a comma separated list:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions -Dclassifiers=platform,:
 ```
 
 By default all artifacts in a feature file are checked for updates. By specifying `includes` and `excludes` based on Maven coordinates the selection of artifacts can be further refined. The most common use case is to specify the group id only. For example the following command just updates all artifacts with the Sling group id:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions -Dincludes=org.apache.sling
 ```
+
 Both parameters, `includes` and `excludes`, take a comma separated list.
 
 It is also possible to define the version scope, which means the policy how to update. By default *ANY* is used, meaning the latest found version (excluding snapshots) is used. You can also specify *MAJOR*, *MINOR*, *INCREMENTAL* and *SUBINCREMENTAL* by using the `versionScope` parameter.
 
 This can also be combined with `includes` to specify different scopes for each include:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions -Dincludes=org.apache.sling/MAJOR,org.apache.felix/INCREMENTAL
 ```
 
 Instead of specifying a scope, `includes` can also be used to define a specific version:
 
-```
+``` bash
     mvn slingfeature:update-feature-versions -Dincludes=org.apache.jackrabbit.oak/4.0.2
 ```
-
 
 ## Create an artifact repository (repository)
 
 With the repository goal, a directory with all artifacts from the selected features will be created.
 
-```
+``` xml
 <execution>
   <id>repo</id>
   <goals>
@@ -500,7 +497,7 @@ This report is done across all features and list the contents (bundles and artif
 
 When used in a Maven project, the list of features for the input goal can be specified by defining the feature set for the goal. The features are configured as described in the global configuration section above. If no configuration is provided, all feature files from the project are used.
 
-```
+``` xml
 <execution>
   <id>info</id>
   <goals>
@@ -520,23 +517,21 @@ When used in a Maven project, the list of features for the input goal can be spe
 
 The `info` goal can also be used standalone without a Maven project. In this case the property `infoFeatureFiles` must be specified with a comma separated list of feature files:
 
-```
+``` bash
     mvn slingfeature:info -DinfoFeatureFiles=/path/to/my/feature.json
 ```
 
 If the `outputFormat` is set to *file*, by default the files are generated in the current directory. `outputDirectory` can be used to specify an alternative directory.
 
-
 ### Example
 
 To generate the `duplicates` report to the log use:
 
-```
+``` bash
     mvn slingfeature:info -Dreports=duplicates -DoutputFormat=log
 ```
 
 If the `outputFormat` is set to *file*, by default the files are generated a directory named *feature-reports* in the build directory. `outputDirectory` can be used to specify an alternative directory.
-
 
 ## Feature Launcher (launch-features)
 
@@ -545,7 +540,8 @@ may change the way the Mojo is used.
 
 This Mojo allows the user to launch a Feature(s) from a POM through a
 profile. This can look like this:
-```
+
+``` xml
 <profile>
     <id>launch</id>
     <build>
@@ -553,7 +549,6 @@ profile. This can look like this:
             <plugin>
                 <groupId>org.apache.sling</groupId>
                 <artifactId>slingfeature-maven-plugin</artifactId>
-                <version>1.0.7-SNAPSHOT</version>
                 <extensions>true</extensions>
                 <dependencies>
                     <!-- To Support the Deployment of Content Package the Extension Content
@@ -561,12 +556,12 @@ profile. This can look like this:
                     <dependency>
                         <groupId>org.apache.sling</groupId>
                         <artifactId>org.apache.sling.feature.extension.content</artifactId>
-                        <version>1.0.5-SNAPSHOT</version>
+                        <version>LATEST_VERSION</version>
                     </dependency>
                     <dependency>
                         <groupId>org.apache.sling</groupId>
                         <artifactId>org.apache.sling.feature.launcher</artifactId>
-                        <version>1.0.7-SNAPSHOT</version>
+                        <version>LATEST_VERSION</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -594,35 +589,33 @@ is released the two are decoupled and the Feature Launcher is loaded at
 runtime instead. For that the feature launcher must be added to the plugin
 as dependency. If missing this Mojo with fail as it cannot find the launcher.
 
-**Attention**: to deploy converted Content Packages the **Feature Content
-Extension must added here as well and it must be place **AHEAD** of the
-Feature Launcher.
+**Attention**: to deploy converted Content Packages the **Feature Content** Extension must added here as well and it must be place **AHEAD** of the feature launcher.
 
 Beside the Feature Files this Mojo for now supports all the parameters
 of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
 FeautreLaucherMojoTest.testFullLaunch() test method.
 
-**Support for Feature Archives**: feature archives (FAR) are supported now
-and can be added to the project either:
+**Support for Feature Archives**: feature archives (FAR) are supported now and can be added to the project either:
 
 1. By its classifier if part of the project
-```xml
-   <featureArchiveClassifiers>
-       <featureArchiveClassifier>sling12archive</featureArchiveClassifier>
-   </featureArchiveClassifiers>
-```
+
+    ``` xml
+       <featureArchiveClassifiers>
+           <featureArchiveClassifier>sling12archive</featureArchiveClassifier>
+       </featureArchiveClassifiers>
+    ```
+
 2. Or by its Artifact Id when installed in the local Maven Repo
-```xml
-     <featureArchiveIds> 
-         <featureArchiveId>org.apache.sling.sample.far:sling-sample-far:far:samplefararchive:1.0.0-SNAPSHOT</featureArchiveId> 
-     </featureArchiveIds> 
-```
+
+    ``` xml
+        <featureArchiveIds>
+            <featureArchiveId>org.apache.sling.sample.far:sling-sample-far:far:samplefararchive:1.0.0-SNAPSHOT</featureArchiveId>
+        </featureArchiveIds>
+    ```
 
 ## Create Feature Model Descriptor from POM (include-artifact)
 
-With the **include-artifact** goal it is possible to generate a POM based
-Feature Model so that it later can be used to be incorporated into other
-Feature Models without having to reference or copy the Feature Model files.
+With the **include-artifact** goal it is possible to generate a POM based Feature Model so that it later can be used to be incorporated into other Feature Models without having to reference or copy the Feature Model files.
 
 This snippet is creating a POM based Feature Model (create-test) and then
 incorporates another Feature Model (feature-test-repoinit.json) which contains
@@ -630,12 +623,11 @@ the Repository Init instruction for that Feature Model.
 Eventually the result is installed (attach-features) into the local Maven
 repository.
 
-```
+``` xml
 <!-- Generates and Installs the Sling OSGi Feature Model file -->
 <plugin>
     <groupId>org.apache.sling</groupId>
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>${slingfeature-maven-plugin.version}</version>
     <extensions>true</extensions>
     <executions>
       <execution>
@@ -673,12 +665,14 @@ repository.
       </execution>
     </executions>
 ```
+
 The **aggregate** execution above is only necessary if additional Feature Model
 Snippets are added to the final Feature Model file.
 See the **src/it/include-artifact** folders for more details.
 
 The Feature Model Descriptor file name in the local Maven repository can be found here:
-```
+
+``` xml
 <group id as path>/<artifact-id>/<version>/<artifact id>-<version>.slingosgifeature
 ```
 
@@ -687,7 +681,7 @@ The Feature Model Descriptor file name in the local Maven repository can be foun
 This MOJO compares different versions of the same Feature Model, producing the prototype
 Feature Model that shows the differences.
 
-```
+``` xml
 <execution>
   <id>diff</id>
   <goals>
@@ -706,7 +700,7 @@ Feature Model that shows the differences.
 It will produce `${project.classifier}.json` JSON output files under the `${project.build.directory}/features-diff` directory,
 where IDs will be composed by:
 
-```
+``` text
 ${project.groupId}:${project.artifactId}:${project.classifier}_updater:${project.version}
 ```
 
