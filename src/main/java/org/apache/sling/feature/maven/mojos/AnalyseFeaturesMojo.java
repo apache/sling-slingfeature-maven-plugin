@@ -93,24 +93,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             a.setFilesInclude("**/*.*");
             list = Collections.singletonList(a);
         }
-        final ArtifactProvider am = new ArtifactProvider() {
-
-            @Override
-            public URL provide(final ArtifactId id) {
-                try {
-                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
-                } catch (final MalformedURLException e) {
-                    getLog().debug("Malformed url " + e.getMessage(), e);
-                    // ignore
-                    return null;
-                }
-            }
-        };
 
         getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
         Scanner scanner;
         try {
-            scanner = new Scanner(am);
+            scanner = new Scanner(getArtifactProvider());
         } catch (final IOException e) {
             throw new MojoExecutionException("A fatal error occurred while setting up the Scanner, see error cause:",
                     e);
@@ -204,6 +191,22 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             }
             getLog().warn("Errors found during analyser run, but this plugin is configured to ignore errors and continue the build!");
         }
+    }
+
+    protected ArtifactProvider getArtifactProvider() {
+        return new ArtifactProvider() {
+
+            @Override
+            public URL provide(final ArtifactId id) {
+                try {
+                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
+                } catch (final MalformedURLException e) {
+                    getLog().debug("Malformed url " + e.getMessage(), e);
+                    // ignore
+                    return null;
+                }
+            }
+        };
     }
 
     void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
