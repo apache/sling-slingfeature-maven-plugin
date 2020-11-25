@@ -104,7 +104,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         }
         getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
 
-        FeatureProvider featureProvider = new BaseFeatureProvider();
+        FeatureProvider featureProvider = getFeatureProvider();
 
         boolean hasErrors = false;
         for (final Scan an : list) {
@@ -207,6 +207,10 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         };
+    }
+
+    protected BaseFeatureProvider getFeatureProvider() {
+        return new BaseFeatureProvider();
     }
 
     void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
