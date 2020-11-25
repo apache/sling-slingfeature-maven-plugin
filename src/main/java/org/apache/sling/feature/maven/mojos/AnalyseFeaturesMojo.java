@@ -209,7 +209,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         };
     }
 
-    protected BaseFeatureProvider getFeatureProvider() {
+    protected FeatureProvider getFeatureProvider() {
         return new BaseFeatureProvider();
     }
 
