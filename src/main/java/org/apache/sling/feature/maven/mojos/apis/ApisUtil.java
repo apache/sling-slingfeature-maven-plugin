@@ -141,7 +141,11 @@ public class ApisUtil {
             result = new HashSet<>();
             linkedPackagesMap.put(javadocUrl, result);
             try {
-                final URL url = new URL(javadocUrl.concat("/package-list"));
+                String prefix = javadocUrl;
+		if ( prefix.endsWith("/") ) {
+			prefix = prefix.substring(0, prefix.length() - 1);
+		}
+		final URL url = new URL(prefix.concat("/package-list"));
                 try (final LineNumberReader reader = new LineNumberReader(new InputStreamReader(url.openConnection().getInputStream(), StandardCharsets.UTF_8))) {
                     String line = null;
                     while ( (line = reader.readLine()) != null ) {
