@@ -46,9 +46,9 @@
             <includeResource>*.tld</includeResource>
           </includeResources>
           <javadocLinks>
-            <javadocLink>https://docs.osgi.org/javadoc/r6/core</javadocLink>
-            <javadocLink>https://docs.osgi.org/javadoc/r6/annotation</javadocLink>
-            <javadocLink>https://docs.osgi.org/javadoc/r6/cmpn</javadocLink>
+            <javadocLink>https://docs.osgi.org/javadoc/r6/core/</javadocLink>
+            <javadocLink>https://docs.osgi.org/javadoc/r6/annotation/</javadocLink>
+            <javadocLink>https://docs.osgi.org/javadoc/r6/cmpn/</javadocLink>
           </javadocLinks>
           <incrementalApis>false</incrementalApis>
         </configuration>
