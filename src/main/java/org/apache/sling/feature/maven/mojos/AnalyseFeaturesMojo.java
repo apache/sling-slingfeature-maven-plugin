@@ -122,6 +122,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                     includedTasks.add("bundle-packages");
                     includedTasks.add("requirements-capabilities");
                     includedTasks.add("apis-jar");
+                    includedTasks.add("repoinit");
                     if (an.getExcludeTasks() != null) {
                         includedTasks.removeAll(an.getExcludeTasks());
                         if (includedTasks.isEmpty()) {
