@@ -134,18 +134,18 @@ public class ApisUtil {
         return null;
     }
 
-    public static void getPackageList(final String javadocUrl, final Set<String> linkedPackages,
+    public static void getPackageList(String javadocUrl, final Set<String> linkedPackages,
             final Map<String, Set<String>> linkedPackagesMap) throws MojoExecutionException {
+        if ( javadocUrl.endsWith("/") ) {
+            javadocUrl = javadocUrl.substring(0, javadocUrl.length() - 1);
+        }
         Set<String> result = linkedPackagesMap.get(javadocUrl);
         if ( result == null ) {
             result = new HashSet<>();
             linkedPackagesMap.put(javadocUrl, result);
+            final String urlString = javadocUrl.concat("/package-list");
             try {
-                String prefix = javadocUrl;
-		if ( prefix.endsWith("/") ) {
-			prefix = prefix.substring(0, prefix.length() - 1);
-		}
-		final URL url = new URL(prefix.concat("/package-list"));
+		        final URL url = new URL(urlString);
                 try (final LineNumberReader reader = new LineNumberReader(new InputStreamReader(url.openConnection().getInputStream(), StandardCharsets.UTF_8))) {
                     String line = null;
                     while ( (line = reader.readLine()) != null ) {
@@ -153,7 +153,7 @@ public class ApisUtil {
                     }
                 }
             } catch (final IOException e) {
-                throw new MojoExecutionException("Unable to find/read package-list at ".concat(javadocUrl), e);
+                throw new MojoExecutionException("Unable to find/read package-list at ".concat(urlString), e);
             }
         }
         result.stream().forEach(v -> linkedPackages.add(v));
