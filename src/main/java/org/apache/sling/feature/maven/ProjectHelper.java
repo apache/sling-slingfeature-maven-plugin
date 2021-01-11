@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.apache.maven.artifact.Artifact;
@@ -72,6 +73,9 @@ public abstract class ProjectHelper {
 
     /** Default metadata */
     private static final String METADATA_KEY = Feature.class.getName() + "/metadata";
+
+    /** Artifact cache */
+    private static final String ARTIFACT_CACHE = Artifact.class.getName() + "/cache";
 
     private static void store(final MavenProject project, final String key, final Map<String, Feature> features) {
         if ( features != null && !features.isEmpty()) {
@@ -317,37 +321,47 @@ public abstract class ProjectHelper {
             final ArtifactHandlerManager artifactHandlerManager,
             final ArtifactResolver resolver,
             final ArtifactId id) {
-        Artifact result = findArtifact(id, project.getAttachedArtifacts());
+        @SuppressWarnings("unchecked")
+        Map<String, Artifact> cache = (Map<String, Artifact>) project.getContextValue(ARTIFACT_CACHE);
+        if ( cache == null ) {
+            cache = new ConcurrentHashMap<>();
+            project.setContextValue(ARTIFACT_CACHE, cache);
+        }
+        Artifact result = cache.get(id.toMvnId());
         if ( result == null ) {
-            result = findArtifact(id, project.getDependencyArtifacts());
+            result = findArtifact(id, project.getAttachedArtifacts());
             if ( result == null ) {
-                if ( isLocalProjectArtifact(project, id)) {
-                    for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
-                        if ( entry.getValue().getId().equals(id)) {
-                            final Artifact artifact = new DefaultArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), Artifact.SCOPE_PROVIDED, id.getType(), id.getClassifier(), null);
-                            artifact.setFile(createTmpFeatureFile(project, entry.getValue()));
+                result = findArtifact(id, project.getDependencyArtifacts());
+                if ( result == null ) {
+                    if ( isLocalProjectArtifact(project, id)) {
+                        for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
+                            if ( entry.getValue().getId().equals(id)) {
+                                final Artifact artifact = new DefaultArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), Artifact.SCOPE_PROVIDED, id.getType(), id.getClassifier(), null);
+                                artifact.setFile(createTmpFeatureFile(project, entry.getValue()));
 
-                            result = artifact;
-                            break;
+                                result = artifact;
+                                break;
+                            }
                         }
                     }
-                }
-                if ( result == null ) {
-                    final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
-                            id.getArtifactId(),
-                            VersionRange.createFromVersion(id.getVersion()),
-                            Artifact.SCOPE_PROVIDED,
-                            id.getType(),
-                            id.getClassifier(),
-                            artifactHandlerManager.getArtifactHandler(id.getType()));
-                    try {
-                        resolver.resolve(prjArtifact, project.getRemoteArtifactRepositories(), session.getLocalRepository());
-                    } catch (final ArtifactResolutionException | ArtifactNotFoundException e) {
-                        throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
+                    if ( result == null ) {
+                        final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
+                                id.getArtifactId(),
+                                VersionRange.createFromVersion(id.getVersion()),
+                                Artifact.SCOPE_PROVIDED,
+                                id.getType(),
+                                id.getClassifier(),
+                                artifactHandlerManager.getArtifactHandler(id.getType()));
+                        try {
+                            resolver.resolve(prjArtifact, project.getRemoteArtifactRepositories(), session.getLocalRepository());
+                        } catch (final ArtifactResolutionException | ArtifactNotFoundException e) {
+                            throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
+                        }
+                        result = prjArtifact;
                     }
-                    result = prjArtifact;
                 }
             }
+            cache.put(id.toMvnId(), result);
         }
 
         return result;
