@@ -67,8 +67,15 @@ public class Substitution {
             if ( additionalProperties != null ) {
                 for(String p : additionalProperties) {
                     p = p.trim();
-                    if ( project.getProperties().containsKey(p)) {
-                        props.setProperty(p, project.getProperties().getProperty(p));
+                    // check for a system property that overwrites the project property
+                    String value = System.getProperty(p);
+                    if (value == null && project.getProperties().containsKey(p)) {
+                        // no system property, so try the project property
+                        value = project.getProperties().getProperty(p);
+                    }
+                    if (value != null) {
+                        // found a value
+                        props.setProperty(p, value);
                     }
                 }
             }
