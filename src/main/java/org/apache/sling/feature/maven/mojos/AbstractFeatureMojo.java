@@ -246,14 +246,20 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
             if (genDir.exists()) {
                 dir = genDir;
             } else {
-                dir = null;
+                if(genDir.mkdirs()) {
+                    dir = genDir;
+                } else {
+                    dir = null;
+                }
             }
         } else {
             dir = this.generatedFeatures;
         }
         if (dir != null) {
             if (!dir.exists()) {
-                throw new MojoExecutionException("Directory does not exists: " + dir);
+                if(!dir.mkdirs()) {
+                    throw new MojoExecutionException("Directory does not exists: " + dir);
+                }
             }
             if (!dir.isDirectory()) {
                 throw new MojoExecutionException(
