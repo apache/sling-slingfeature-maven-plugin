@@ -52,6 +52,31 @@ public class SubstitutionTest {
         }
     }
 
+    /**
+     * SLING-10060 Verify that the additional properties prefer the system property 
+     * value (if available) over the project property value
+     */
+    @Test
+    public void testReplaceAdditionalPropertiesMavenVarsWithSystemProperties() {
+        Properties storedProps = new Properties();
+        storedProps.putAll(System.getProperties());
+
+        try {
+            MavenProject proj = new MavenProject();
+            Properties p = proj.getProperties();
+            p.put("test", "foo");
+            p.put("test2", "foo2");
+
+            // set system property to override the project property
+            System.setProperty("test", "bar");
+
+            assertEquals("hellobargoodbyefoo2", Substitution.replaceMavenVars(proj, false, false, new String[] {"test", "test2"}, "hello${test}goodbye${test2}"));
+        } finally {
+            // Restore the system properties
+            System.setProperties(storedProps);
+        }
+    }
+
     @Test
     public void testOSGiVersion() {
     	assertEquals("1.2.3", Substitution.getOSGiVersion("1.2.3"));
