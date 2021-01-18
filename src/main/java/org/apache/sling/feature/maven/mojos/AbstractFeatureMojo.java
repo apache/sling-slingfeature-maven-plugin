@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -241,12 +243,21 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     private void handleGeneratedFeatures() throws MojoExecutionException {
         final File dir;
         if (this.generatedFeatures == null) {
-            final File targetDir = new File(this.project.getBasedir(), this.project.getBuild().getDirectory());
+            Path targetPath = null;
+            File basedir = this.project.getBasedir();
+            if (basedir == null) {
+                // no basedir? use the build directory instead.
+                targetPath = Paths.get(this.project.getBuild().getDirectory());
+            } else {
+                // resolve build directory relative to the basedir path
+                targetPath = basedir.toPath().resolve(this.project.getBuild().getDirectory());
+            }
+            final File targetDir = targetPath == null ? null : targetPath.toFile();
             final File genDir = new File(targetDir, "generated-features");
             if (genDir.exists()) {
                 dir = genDir;
             } else {
-                if(genDir.mkdirs()) {
+                if (genDir.mkdirs()) {
                     dir = genDir;
                 } else {
                     dir = null;
@@ -257,7 +268,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
         }
         if (dir != null) {
             if (!dir.exists()) {
-                if(!dir.mkdirs()) {
+                if (!dir.mkdirs()) {
                     throw new MojoExecutionException("Directory does not exists: " + dir);
                 }
             }
