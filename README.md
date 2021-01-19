@@ -99,7 +99,7 @@ The below configuration sets the start-order to 5 and foo to bar for bundles, an
 * featuresIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
 * featuresExcludes : The exclude pattern for feature files from the above directory. Empty by default.
 * includeArtifact : Include an feature specified as a Maven artifact.
-* includeClassifier : Include a feature generated as aggreate with a classifier in this project.
+* includeClassifier : Include a feature generated as aggregate with a classifier in this project.
 * validateFeatures : Boolean switch defining whether the feature files should be validated against the schema. This is enabled by default.
 
 This global configuration specifies the initial set of feature files used for the current project, the other goals can then refine this subset.
