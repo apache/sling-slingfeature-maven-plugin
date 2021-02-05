@@ -37,8 +37,6 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
-import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
-import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 
 /**
  * Context for creating the api jars
@@ -117,17 +115,17 @@ public class ApisJarContext {
             return includes.toArray(new String[includes.size()]);
         }
 
-        public Set<Clause> getUsedExportedPackages(final ApiRegion region) {
-            return this.usedExportedPackagesRegion.get(region.getName());
+        public Set<Clause> getUsedExportedPackages(final String regionName) {
+            return this.usedExportedPackagesRegion.get(regionName);
         }
 
-        public void setUsedExportedPackages(final ApiRegion region, final Set<Clause> usedExportedPackages, final boolean useAsDependency) {
-            this.usedExportedPackagesRegion.put(region.getName(), usedExportedPackages);
-            this.useAsDependencyPerRegion.put(region.getName(), useAsDependency);
+        public void setUsedExportedPackages(final String regionName, final Set<Clause> usedExportedPackages, final boolean useAsDependency) {
+            this.usedExportedPackagesRegion.put(regionName, usedExportedPackages);
+            this.useAsDependencyPerRegion.put(regionName, useAsDependency);
         }
 
-        public String[] getUsedExportedPackageIncludes(final ApiRegion region) {
-            final Set<Clause> clauses = this.getUsedExportedPackages(region);
+        public String[] getUsedExportedPackageIncludes(final String regionName) {
+            final Set<Clause> clauses = this.getUsedExportedPackages(regionName);
             final Set<String> includes = new HashSet<>();
             for(final Clause clause : clauses) {
                 includes.add(clause.getName().replace('.', '/').concat("/*"));
@@ -135,8 +133,8 @@ public class ApisJarContext {
             return includes.toArray(new String[includes.size()]);
         }
 
-        public boolean isUseAsDependencyPerRegion(final ApiRegion region) {
-            return this.useAsDependencyPerRegion.get(region.getName());
+        public boolean isUseAsDependencyPerRegion(final String regionName) {
+            return this.useAsDependencyPerRegion.get(regionName);
         }
 
         public Set<File> getIncludedResources() {
@@ -229,14 +227,12 @@ public class ApisJarContext {
 
     private final Feature feature;
 
-    private final ApiRegions apiRegions;
-
     private final Map<ArtifactId, Model> modelCache = new HashMap<>();
 
     /** The set of dependency repositories (URLs) */
     private Set<String> dependencyRepositories = new HashSet<>();
 
-    public ApisJarContext(final File mainDir, final Feature feature, final ApiRegions regions) throws MojoExecutionException {
+    public ApisJarContext(final File mainDir, final Feature feature) throws MojoExecutionException {
         this.config = new ApisConfiguration(feature);
         this.feature = feature;
 
@@ -244,7 +240,6 @@ public class ApisJarContext {
         this.deflatedBinDir = new File(mainDir, "deflated-bin");
         this.deflatedSourcesDir = new File(mainDir, "deflated-sources");
         this.checkedOutSourcesDir = new File(mainDir, "checkouts");
-        this.apiRegions = regions;
     }
 
     public ApisConfiguration getConfig() {
@@ -257,10 +252,6 @@ public class ApisJarContext {
 
     public Feature getFeature() {
         return this.feature;
-    }
-
-    public ApiRegions getApiRegions() {
-        return this.apiRegions;
     }
 
     public File getDeflatedBinDir() {
@@ -314,11 +305,11 @@ public class ApisJarContext {
         return this.modelCache;
     }
 
-    public Collection<ArtifactInfo> getArtifactInfos(final ApiRegion region, final boolean omitDependencyArtifacts) {
+    public Collection<ArtifactInfo> getArtifactInfos(final String regionName, final boolean omitDependencyArtifacts) {
         final Map<ArtifactId, ArtifactInfo> result = new TreeMap<>();
         for(final ArtifactInfo info : this.infos) {
-            if ( !info.getUsedExportedPackages(region).isEmpty() ) {
-                if ( !omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(region) ) {
+            if ( !info.getUsedExportedPackages(regionName).isEmpty() ) {
+                if ( !omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(regionName) ) {
                     result.put(info.getId(), info);
                 }
             }

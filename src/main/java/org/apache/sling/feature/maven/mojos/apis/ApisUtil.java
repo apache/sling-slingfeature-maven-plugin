@@ -44,7 +44,6 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
-import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.spi.Processor;
 import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
@@ -199,12 +198,12 @@ public class ApisUtil {
             final RepositorySystem repositorySystem,
             final MavenSession mavenSession,
             final ApisJarContext ctx,
-            final ApiRegion region) throws MojoExecutionException {
+            final String regionName) throws MojoExecutionException {
         // classpath - reverse order to have highest versions first
         final Map<ArtifactId, String> classpathMapping = new TreeMap<>(Comparator.reverseOrder());
         classpathMapping.putAll(ctx.getJavadocClasspath());
 
-        for(final ArtifactInfo info : ctx.getArtifactInfos(region, false)) {
+        for(final ArtifactInfo info : ctx.getArtifactInfos(regionName, false)) {
             final String ids = info.getArtifact().getMetadata().get(ApisUtil.JAVADOC_CLASSPATH);
             if ( ids != null ) {
                 for(final String s : ids.split(",")) {
