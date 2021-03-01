@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +56,6 @@ import org.mockito.internal.util.reflection.Whitebox;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
 
 public class FeatureLauncherMojoTest {
 
@@ -108,7 +108,7 @@ public class FeatureLauncherMojoTest {
         doNothing().when(mojo).checkPreconditions();
         final List<String> arguments = new ArrayList<>();
         doAnswer(
-            new Answer() {
+            new Answer<Object>() {
                 @Override
                 public Object answer(InvocationOnMock invocation) throws Throwable {
                     String[] args = (String[]) invocation.getArguments()[0];
@@ -167,7 +167,7 @@ public class FeatureLauncherMojoTest {
         doNothing().when(mojo).checkPreconditions();
         final List<String> arguments = new ArrayList<>();
         doAnswer(
-            new Answer() {
+            new Answer<Object>() {
                 @Override
                 public Object answer(InvocationOnMock invocation) throws Throwable {
                     String[] args = (String[]) invocation.getArguments()[0];

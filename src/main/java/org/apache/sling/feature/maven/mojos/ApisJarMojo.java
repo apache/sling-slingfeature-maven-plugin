@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.felix.utils.manifest.Clause;
-import org.apache.felix.utils.manifest.Parser;
 import org.apache.maven.archiver.MavenArchiveConfiguration;
 import org.apache.maven.archiver.MavenArchiver;
 import org.apache.maven.execution.MavenSession;
@@ -91,6 +90,7 @@ import org.apache.sling.feature.maven.mojos.apis.DirectorySource;
 import org.apache.sling.feature.maven.mojos.apis.FileSource;
 import org.apache.sling.feature.maven.mojos.apis.JavadocExecutor;
 import org.apache.sling.feature.maven.mojos.apis.JavadocLinks;
+import org.apache.sling.feature.maven.mojos.apis.RegionSupport;
 import org.apache.sling.feature.maven.mojos.apis.spi.Processor;
 import org.apache.sling.feature.maven.mojos.apis.spi.ProcessorContext;
 import org.apache.sling.feature.maven.mojos.apis.spi.Source;
@@ -156,6 +156,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      */
     @Parameter(defaultValue = "true")
     private boolean incrementalApis;
+
+    /**
+     * If set to true the apis jar will only contain api which is behind
+     * the enabled toggles. All other public api is not included. If set to
+     * false (the default) all public api is included per region.
+     * @since 1.4.26
+     */
+    @Parameter(defaultValue = "false")
+    private boolean toggleApiOnly;
 
     /**
      * Additional resources for the api jar
@@ -410,96 +419,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Check if the region is included
-     *
-     * @param name The region name
-     * @return {@code true} if the region is included
-     */
-    private boolean isRegionIncluded(final String name) {
-        boolean included = false;
-        for (final String i : this.includeRegions) {
-            if ("*".equals(i) || i.equals(name)) {
-                included = true;
-                break;
-            }
-        }
-        if (included && this.excludeRegions != null) {
-            for (final String e : this.excludeRegions) {
-                if (name.equals(e)) {
-                    included = false;
-                    break;
-                }
-            }
-        }
-
-        return included;
-    }
-
-    /**
-     * Get the api regions for a feature If the feature does not have an api region
-     * an artificial global region is returned.
-     *
-     * @param feature The feature
-     * @return The api regions or {@code null} if the feature is wrongly configured
-     *         or all regions are excluded
-     * @throws MojoExecutionException If an error occurs
-     */
-    private ApiRegions getApiRegions(final Feature feature) throws MojoExecutionException {
-        ApiRegions regions = new ApiRegions();
-
-        final ApiRegions sourceRegions;
-        try {
-            sourceRegions = ApiRegions.getApiRegions(feature);
-        } catch (final IllegalArgumentException iae) {
-            throw new MojoExecutionException(iae.getMessage(), iae);
-        }
-        if (sourceRegions != null) {
-            // calculate all api-regions first, taking the inheritance in account
-            for (final ApiRegion r : sourceRegions.listRegions()) {
-                if (r.getParent() != null && !this.incrementalApis) {
-                    for (final ApiExport exp : r.getParent().listExports()) {
-                        r.add(exp);
-                    }
-                }
-                if (isRegionIncluded(r.getName())) {
-                    getLog().debug("API Region " + r.getName()
-                            + " will not processed due to the configured include/exclude list");
-                    regions.add(r);
-                }
-            }
-
-            if (regions.isEmpty()) {
-                getLog().info("Feature file " + feature.getId().toMvnId()
-                        + " has no included api regions, no API JAR will be created");
-                regions = null;
-            }
-        } else {
-            // create exports on the fly
-            regions.add(new ApiRegion(ApiRegion.GLOBAL) {
-
-                @Override
-                public ApiExport getExportByName(final String name) {
-                    ApiExport exp = super.getExportByName(name);
-                    if (exp == null) {
-                        exp = new ApiExport(name);
-                        this.add(exp);
-                    }
-                    return exp;
-                }
-            });
-        }
-
-        return regions;
-    }
-
-    /**
      * Create api jars for a feature
      */
     private void onFeature(final Feature feature) throws MojoExecutionException {
         getLog().info(MessageUtils.buffer().a("Creating API JARs for Feature ").strong(feature.getId().toMvnId())
                 .a(" ...").toString());
 
-        final ApiRegions regions = getApiRegions(feature);
+        final RegionSupport regionSupport = new RegionSupport(this.getLog(), this.incrementalApis, this.toggleApiOnly, this.includeRegions, this.excludeRegions);
+        final ApiRegions regions = regionSupport.getApiRegions(feature);
         if (regions == null) {
             // wrongly configured api regions - skip execution, info is logged already so we
             // can just return
@@ -531,7 +458,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // for each bundle included in the feature file and record directories
         for (final Artifact artifact : feature.getBundles()) {
-            onArtifact(regions, ctx, artifact);
+            onArtifact(regions, ctx, regionSupport, artifact);
         }
 
         if (this.generateSourceJar || this.generateJavadocJar) {
@@ -715,22 +642,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         return bundleFile;
     }
 
-    private Manifest getManifest(final ArtifactId artifactId, final File bundleFile) throws MojoExecutionException {
-        try (JarInputStream jis = new JarInputStream(new FileInputStream(bundleFile))) {
-            getLog().debug("Reading Manifest headers from bundle " + bundleFile);
-
-            final Manifest manifest = jis.getManifest();
-
-            if (manifest == null) {
-                throw new MojoExecutionException("Artifact + " + artifactId.toMvnId() + " does not  have a manifest.");
-            }
-            return manifest;
-        } catch (final IOException e) {
-            throw new MojoExecutionException("An error occurred while reading manifest from file " + bundleFile
-                    + " for artifact " + artifactId.toMvnId(), e);
-        }
-    }
-
     private boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
             final Set<Clause> usedExportedPackagesPerRegion) {
         // check whether all packages are exported in this region
@@ -767,17 +678,20 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * @param artifact The artifact
      * @throws MojoExecutionException
      */
-    private void onArtifact(final ApiRegions apiRegions, final ApisJarContext ctx, Artifact artifact) throws MojoExecutionException {
+    private void onArtifact(final ApiRegions apiRegions, 
+            final ApisJarContext ctx,
+            final RegionSupport regionSupport, 
+            Artifact artifact) throws MojoExecutionException {
         final File bundleFile = getArtifactFile(artifact.getId());
 
-        final Manifest manifest = getManifest(artifact.getId(), bundleFile);
+        final Manifest manifest = regionSupport.getManifest(artifact.getId(), bundleFile);
 
         // check if the bundle is exporting packages?
-        final Clause[] exportedPackageClauses = this.getExportedPackages(manifest);
+        final Clause[] exportedPackageClauses = regionSupport.getExportedPackages(manifest);
         if (exportedPackageClauses.length > 0) {
 
             // calculate the exported packages in the manifest file for all regions
-            final Set<String> usedExportedPackages = computeUsedExportPackages(apiRegions, ctx, exportedPackageClauses, artifact);
+            final Set<String> usedExportedPackages = regionSupport.computeAllUsedExportPackages(apiRegions, ctx.getConfig().getEnabledToggles(), exportedPackageClauses, artifact);
 
             if (!usedExportedPackages.isEmpty()) {
                 // check for previous version of artifact due to toggles
@@ -814,8 +728,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
                 // calculate per region packages
                 for (final ApiRegion region : apiRegions.listRegions()) {
-                    final Set<Clause> usedExportedPackagesPerRegion = computeUsedExportPackages(region,
-                            exportedPackageClauses, artifact);
+                    final Set<Clause> usedExportedPackagesPerRegion = regionSupport.computeUsedExportPackagesPerRegion(region,
+                            exportedPackageClauses, usedExportedPackages);
 
                     // check whether packages are included in api jars - or added as a dependency
                     boolean useAsDependency = this.useApiDependencies
@@ -1427,75 +1341,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     + " which does not specify a valid or supported SCM provider", nsspe);
             return null;
         }
-    }
-
-    private Clause[] getExportedPackages(final Manifest manifest) {
-        final String exportPackageHeader = manifest.getMainAttributes().getValue(Constants.EXPORT_PACKAGE);
-        final Clause[] exportPackages = Parser.parseHeader(exportPackageHeader);
-
-        return exportPackages;
-    }
-
-    /**
-     * Compute exports based on a single region
-     *
-     * @return List of packages exported by this bundle and used in the region
-     */
-    private Set<Clause> computeUsedExportPackages(final ApiRegion apiRegion, final Clause[] exportedPackages,
-            final Artifact bundle) throws MojoExecutionException {
-
-        final Set<Clause> result = new HashSet<>();
-
-        final Set<String> ignoredPackages = ApisUtil.getIgnoredPackages(bundle);
-
-        // filter for each region
-        for (final Clause exportedPackage : exportedPackages) {
-            final String packageName = exportedPackage.getName();
-
-            if (!ignoredPackages.contains(packageName)) {
-                final ApiExport exp = apiRegion.getExportByName(packageName);
-                if (exp != null) {
-                    result.add(exportedPackage);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Compute exports based on all regions
-     *
-     * @return Set of packages exported by this bundle and used in any region
-     */
-    private Set<String> computeUsedExportPackages(final ApiRegions apiRegions, final ApisJarContext ctx, final Clause[] exportedPackages,
-            final Artifact bundle) throws MojoExecutionException {
-        final Set<String> result = new HashSet<>();
-
-        // filter for each region
-        for (final Clause exportedPackage : exportedPackages) {
-            final String packageName = exportedPackage.getName();
-
-            for (ApiRegion apiRegion : apiRegions.listRegions()) {
-                final ApiExport exp = apiRegion.getExportByName(packageName);
-                if (exp != null) {
-                    boolean include = true;
-                    // if the package is behind a toggle, don't include it
-                    if (exp.getToggle() != null && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle())
-                            && exp.getPrevious() == null) {
-                        include = false;
-                    }
-                    if (include) {
-                        result.add(exportedPackage.getName());
-                    }
-                }
-            }
-        }
-
-        // check ignored packages configuration
-        result.removeAll(ApisUtil.getIgnoredPackages(bundle));
-
-        return result;
     }
 
     private String getApiExportClause(final ApiRegion region, final Collection<ArtifactInfo> infos) {
