@@ -24,6 +24,7 @@ import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.extension.apiregions.api.config.ConfigurationApi;
 import org.apache.sling.feature.extension.apiregions.api.config.validation.FeatureValidationResult;
 import org.apache.sling.feature.extension.apiregions.api.config.validation.FeatureValidator;
 import org.apache.sling.feature.maven.ProjectHelper;
@@ -52,17 +53,20 @@ public class ApplyDefaultConfigMojo extends AbstractIncludingFeatureMojo {
         for (Map.Entry<String, Feature> entry : selFeat.entrySet()) {
             final Feature f = entry.getValue();
 
-            final FeatureValidator validator = new FeatureValidator();
-            validator.setFeatureProvider(new BaseFeatureProvider());
+            // check if configuration api is set
+            if ( ConfigurationApi.getConfigurationApi(f) != null ) {
+                final FeatureValidator validator = new FeatureValidator();
+                validator.setFeatureProvider(new BaseFeatureProvider());
 
-            final FeatureValidationResult result = validator.validate(f);
-            if ( !result.isValid() && failOnValidationError ) {
-                throw new MojoExecutionException("Unable to apply default configuration to invalid feature ".concat(f.getId().toMvnId()));
-            }
+                final FeatureValidationResult result = validator.validate(f);
+                if ( !result.isValid() && failOnValidationError ) {
+                    throw new MojoExecutionException("Unable to apply default configuration to invalid feature ".concat(f.getId().toMvnId()));
+                }
 
-            if ( validator.applyDefaultValues(f, result) ) {
-                getLog().info("Applied default configurations to feature ".concat(f.getId().toMvnId()));
-                ProjectHelper.createTmpFeatureFile(project, f, true);
+                if ( validator.applyDefaultValues(f, result) ) {
+                    getLog().info("Applied default configurations to feature ".concat(f.getId().toMvnId()));
+                    ProjectHelper.createTmpFeatureFile(project, f, true);
+                }
             }
         }
     }
