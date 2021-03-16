@@ -266,7 +266,7 @@ public abstract class ProjectHelper {
         }
         return values.isEmpty() ? null : values.iterator().next();
     }
-    
+
     private static Artifact findArtifact(final ArtifactId id, final Collection<Artifact> artifacts) {
         if (artifacts != null) {
             for(final Artifact artifact : artifacts) {
@@ -288,10 +288,27 @@ public abstract class ProjectHelper {
         return dir;
     }
 
+    /**
+     * Create a temporary file for the feature
+     * @param project The Maven project
+     * @param feature The feature
+     * @return Return a temporary file
+     */
     public static File createTmpFeatureFile(final MavenProject project, final Feature feature) {
+        return createTmpFeatureFile(project, feature, false);
+    }
+
+    /**
+     * Create a temporary file for the feature
+     * @param project The Maven project
+     * @param feature The feature
+     * @param overwrite If set to {@code true} the feature is always written even if the file already exists
+     * @return Return a temporary file
+     */
+    public static File createTmpFeatureFile(final MavenProject project, final Feature feature, final boolean overwrite) {
         final String classifier = feature.getId().getClassifier();
         final File outputFile = new File(getTmpDir(project), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
-        if ( !outputFile.exists() ) {
+        if ( overwrite || !outputFile.exists() ) {
             outputFile.getParentFile().mkdirs();
 
             try ( final Writer writer = new FileWriter(outputFile)) {
