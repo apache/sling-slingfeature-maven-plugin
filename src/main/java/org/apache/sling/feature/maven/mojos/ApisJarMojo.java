@@ -546,7 +546,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             throw new MojoExecutionException("API generation has errors, please see report files for more information");
         }
 
-        getLog().info(MessageUtils.buffer().a("APIs JARs for Feature ").debug(feature.getId().toMvnId())
+        getLog().info(MessageUtils.buffer().a("APIs JARs for Feature ").project(feature.getId().toMvnId())
                 .a(" succesfully created").toString());
     }
 

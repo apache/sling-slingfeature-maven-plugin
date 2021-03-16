@@ -169,7 +169,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                                     + "'. See log output for error messages.");
                             hasErrors = true;
                         } else {
-                            getLog().debug(MessageUtils.buffer().a("feature ").debug(f.getId().toMvnId())
+                            getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
                                     .a(" succesfully passed all analysis").toString());
                         }
                     } catch (Exception t) {
