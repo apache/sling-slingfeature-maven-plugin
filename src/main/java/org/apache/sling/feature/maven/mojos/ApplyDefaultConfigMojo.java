@@ -54,11 +54,12 @@ public class ApplyDefaultConfigMojo extends AbstractIncludingFeatureMojo {
             final Feature f = entry.getValue();
 
             // check if configuration api is set
-            if ( ConfigurationApi.getConfigurationApi(f) != null ) {
+            final ConfigurationApi api = ConfigurationApi.getConfigurationApi(f);
+            if ( api != null ) {
                 final FeatureValidator validator = new FeatureValidator();
                 validator.setFeatureProvider(new BaseFeatureProvider());
 
-                final FeatureValidationResult result = validator.validate(f);
+                final FeatureValidationResult result = validator.validate(f, api);
                 if ( !result.isValid() && failOnValidationError ) {
                     throw new MojoExecutionException("Unable to apply default configuration to invalid feature ".concat(f.getId().toMvnId()));
                 }
