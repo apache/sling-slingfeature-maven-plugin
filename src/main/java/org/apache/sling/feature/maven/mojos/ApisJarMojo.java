@@ -30,11 +30,12 @@ import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
@@ -379,6 +380,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter(property = "enabled.toggles")
     private String enabledToggles;
 
+    /**
+     * A list of configurations to add additional artifacts to a region
+     * for javadoc generation. The value is a comma separated list of extension names
+     * from the feature model. If such an extension exists, it must be of type artifacts.
+     * The list of names can be prefixed with a region name separated by a colon from
+     * the list of names. In that case, the artifacts are only added to that region.
+     *
+     * @since 1.5.0
+     */
+    @Parameter
+    private List<String> javadocAdditionalExtensions;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -453,8 +466,23 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         ctx.getConfig().setManifestEntries(manifestProperties);
         ctx.getConfig().logConfiguration(getLog());
         ctx.getConfig().setEnabledToggles(this.enabledToggles);
+        ctx.getConfig().setAdditionalJavadocExtensions(this.javadocAdditionalExtensions);
 
         ctx.setDependencyRepositories(this.apiRepositoryUrls);
+
+        // check additional extension configuration first to fail fast
+        if ( this.generateJavadocJar ) {
+            for (final ApiRegion apiRegion : regions.listRegions()) {
+                final String regionName = apiRegion.getName();
+
+                final List<Artifact> artifacts = ApisUtil.getAdditionalJavadocArtifacts(ctx, regionName);
+                for(final Artifact artifact : artifacts ) {
+                    if ( ctx.getFeature().getBundles().getExact(artifact.getId() ) != null ) {
+                        throw new MojoExecutionException("Additional javadoc artifact is also listed as a bundle " + artifact.getId().toMvnId());
+                    }
+                }
+            }
+        }
 
         // for each bundle included in the feature file and record directories
         for (final Artifact artifact : feature.getBundles()) {
@@ -513,7 +541,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 links.calculateLinks(ctx.getConfig().getJavadocLinks(), ctx.getArtifactInfos(regionName, false),
                         ext != null ? ext.getFramework() : null);
 
-                final Collection<ArtifactInfo> infos = generateJavadoc(ctx, regionName, links, javadocsDir);
+                final Collection<ArtifactInfo> infos = generateJavadoc(ctx, regionName, links, javadocsDir, regionSupport);
                 if (infos != null) {
                     ctx.setJavadocDir(javadocsDir);
                     final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
@@ -553,7 +581,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private void report(final ApisJarContext ctx, final File jarFile, final ArtifactType artifactType,
             final ApiRegion apiRegion, final boolean omitDependencyArtifacts, final List<String> report,
             final JavadocLinks links) throws MojoExecutionException {
-        final Map.Entry<Set<String>, Set<String>> packageResult = getPackages(ctx, jarFile,
+        final Map.Entry<Set<String>, Set<String>> packageResult = ApisUtil.getPackages(ctx, jarFile,
                 artifactType.getContentExtension());
         final Set<String> apiPackages = packageResult.getKey();
         final Set<String> otherPackages = packageResult.getValue();
@@ -590,6 +618,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
         if (artifactType == ArtifactType.JAVADOC) {
             otherPackages.removeAll(ctx.getPackagesWithoutSources());
+            // handle additional artifacts
+            for(final Artifact artifact : ApisUtil.getAdditionalJavadocArtifacts(ctx, apiRegion.getName()) ) {
+                final ArtifactInfo info = ctx.getArtifactInfo(artifact.getId());
+                if ( info != null ) {
+                    for(final Clause clause : info.getUsedExportedPackages(apiRegion.getName())) {
+                        if ( !apiPackages.remove(clause.getName()) ) {
+                            final ApiExport export = new ApiExport(clause.getName());
+                            missing.add(export);
+                        }
+                    }
+                }
+            }
         }
         otherPackages.removeAll(ctx.getPackagesWithoutJavaClasses());
 
@@ -621,7 +661,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         .concat(String.join(",", candidates)));
             }
             for (final String m : apiPackages) {
-                report.add("- Wrong package ".concat(m));
+                report.add("- Unwanted package ".concat(m));
             }
         }
     }
@@ -678,9 +718,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      * @param artifact The artifact
      * @throws MojoExecutionException
      */
-    private void onArtifact(final ApiRegions apiRegions, 
+    private void onArtifact(final ApiRegions apiRegions,
             final ApisJarContext ctx,
-            final RegionSupport regionSupport, 
+            final RegionSupport regionSupport,
             Artifact artifact) throws MojoExecutionException {
         final File bundleFile = getArtifactFile(artifact.getId());
 
@@ -1390,53 +1430,55 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
              final JarArchiver jarArchiver,
              final List<Source> sources) {
         for (final ArtifactInfo info : infos) {
-            final int prefixLength = info.getBinDirectory().getAbsolutePath().length() + 1;
-            for (final File resource : info.getIncludedResources()) {
-                final String name = resource.getAbsolutePath().substring(prefixLength);
-                getLog().debug("Adding resource " + name);
+            if ( info.getBinDirectory() != null ) {
+                final int prefixLength = info.getBinDirectory().getAbsolutePath().length() + 1;
+                for (final File resource : info.getIncludedResources()) {
+                    final String name = resource.getAbsolutePath().substring(prefixLength);
+                    getLog().debug("Adding resource " + name);
 
-                if ( jarArchiver != null ) {
-                    jarArchiver.addFile(resource, name);
+                    if ( jarArchiver != null ) {
+                        jarArchiver.addFile(resource, name);
 
-                }
-                if ( sources != null ) {
-                    sources.add(new FileSource(info.getBinDirectory(), resource));
+                    }
+                    if ( sources != null ) {
+                        sources.add(new FileSource(info.getBinDirectory(), resource));
+                    }
                 }
             }
         }
 
-       // add additional resources
-       if (resources != null) {
-        for (final File rsrc : resources) {
-            getLog().debug("Adding resource " + rsrc);
-            if (rsrc.isDirectory()) {
-                DirectoryScanner ds = new DirectoryScanner();
-                ds.setBasedir(rsrc);
-                ds.setIncludes("**/*.*");
-                ds.scan();
+        // add additional resources
+        if (resources != null) {
+            for (final File rsrc : resources) {
+                getLog().debug("Adding resource " + rsrc);
+                if (rsrc.isDirectory()) {
+                    DirectoryScanner ds = new DirectoryScanner();
+                    ds.setBasedir(rsrc);
+                    ds.setIncludes("**/*.*");
+                    ds.scan();
 
-                if ( jarArchiver != null ) {
-                    for (String includedFile : ds.getIncludedFiles()) {
-                        jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
+                    if ( jarArchiver != null ) {
+                        for (String includedFile : ds.getIncludedFiles()) {
+                            jarArchiver.addFile(new File(rsrc, includedFile), includedFile);
+                        }
                     }
-                }
-                if (sources != null) {
-                    final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
-                    fileSet.setIncludingEmptyDirectories(false);
-                    fileSet.setIncludes(new String[] { "**/*.*" });
-                    sources.add(new DirectorySource(fileSet));
-                }
-            } else {
-                if ( jarArchiver != null ) {
-                    jarArchiver.addFile(rsrc, rsrc.getName());
-                }
-                if (sources != null) {
-                    sources.add(new FileSource(rsrc.getParentFile(), rsrc));
+                    if (sources != null) {
+                        final DefaultFileSet fileSet = new DefaultFileSet(rsrc);
+                        fileSet.setIncludingEmptyDirectories(false);
+                        fileSet.setIncludes(new String[] { "**/*.*" });
+                        sources.add(new DirectorySource(fileSet));
+                    }
+                } else {
+                    if ( jarArchiver != null ) {
+                        jarArchiver.addFile(rsrc, rsrc.getName());
+                    }
+                    if (sources != null) {
+                        sources.add(new FileSource(rsrc.getParentFile(), rsrc));
+                    }
                 }
             }
         }
     }
-}
 
     private void runProcessor(final ApisJarContext ctx,
         final ApiRegion apiRegion,
@@ -1636,13 +1678,19 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /**
      * Generate the javadoc
      * @param ctx The generation context
-     * @param region The region
+     * @param regionName The region name
+     * @param links The links used for javadoc generation
      * @param javadocDir The output directory
-     * @return {@code true} if generation succeeded
+     * @param regionSupport The region support
+     * @return A collection of artifacts used for the generation or {@code null} if no packages found
      * @throws MojoExecutionException on error
      */
-    private Collection<ArtifactInfo> generateJavadoc(final ApisJarContext ctx, final String regionName, final JavadocLinks links, final File javadocDir)
-            throws MojoExecutionException {
+    private Collection<ArtifactInfo> generateJavadoc(final ApisJarContext ctx,
+            final String regionName,
+            final JavadocLinks links,
+            final File javadocDir,
+            final RegionSupport regionSupport)
+    throws MojoExecutionException {
         final Collection<ArtifactInfo> usedInfos = new ArrayList<>();
 
         final List<String> sourceDirectories = new ArrayList<>();
@@ -1665,6 +1713,41 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             return null;
         }
 
+        // handle additional packages
+        for(final Artifact artifact : ApisUtil.getAdditionalJavadocArtifacts(ctx, regionName) ) {
+            final boolean infoExists = ctx.getArtifactInfo(artifact.getId()) != null;
+            final ArtifactInfo info = infoExists ?  ctx.getArtifactInfo(artifact.getId()) : ctx.addArtifactInfo(artifact);
+
+            final Set<Clause> exportedPackages = regionSupport.getAllPublicPackages(ctx, artifact, getArtifactFile(artifact.getId()));
+            final Iterator<Clause> iter = exportedPackages.iterator();
+            final Set<String> exportedPackageNames = new LinkedHashSet<>();
+            while ( iter.hasNext() ) {
+                final Clause c = iter.next();
+                if ( javadocPackages.contains(c.getName()) ) {
+                    iter.remove();
+                } else {
+                    javadocPackages.add(c.getName());
+                    exportedPackageNames.add(c.getName());
+                }
+            }
+
+            if ( !exportedPackages.isEmpty() ) {
+                info.setUsedExportedPackages(regionName, exportedPackages, false);
+                if ( !infoExists ) {
+                    info.setUsedExportedPackages(exportedPackageNames);
+                    info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
+                    final boolean skipSourceDeflate = info.getSourceDirectory().exists();
+                    if (skipSourceDeflate) {
+                        getLog().debug("Source for artifact " + info.getId().toMvnName() + " already deflated");
+                    } else {
+                        this.downloadSources(ctx, info, artifact);
+                    }
+                }
+
+                usedInfos.add(info);
+                sourceDirectories.add(info.getSourceDirectory().getAbsolutePath());
+            }
+        }
         javadocDir.mkdirs();
 
         final JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
@@ -1735,57 +1818,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         javadocExecutor.execute(javadocDir, getLog(), this.ignoreJavadocErrors);
 
         return usedInfos;
-    }
-
-    /**
-     * Get all packages contained in the archive
-     * @param file The archive to check
-     * @param extension The extension to check for
-     * @return A tuple of packages containing files with the extension and packages with files not having the extension
-     * @throws MojoExecutionException
-     */
-    private Map.Entry<Set<String>, Set<String>> getPackages(final ApisJarContext ctx, final File file, final String extension) throws MojoExecutionException {
-        final Set<String> packages = new TreeSet<>();
-        final Set<String> otherPackages = new TreeSet<>();
-
-        final Set<String> excludes = new HashSet<>();
-        for(final String v : ctx.getConfig().getBundleResourceFolders()) {
-            excludes.add(v.concat("/"));
-        }
-
-        try (final JarInputStream jis = new JarInputStream(new FileInputStream(file))) {
-            JarEntry entry;
-            while ((entry = jis.getNextJarEntry()) != null) {
-                if ( !entry.isDirectory() ) {
-                    boolean exclude = false;
-                    for(final String v : excludes) {
-                        if ( entry.getName().startsWith(v)) {
-                            exclude = true;
-                            break;
-                        }
-                    }
-                    if ( !exclude ) {
-                        final int lastPos = entry.getName().lastIndexOf('/');
-                        if (lastPos != -1) {
-                            final String packageName = entry.getName().substring(0, lastPos).replace('/', '.');
-
-                            if (entry.getName().endsWith(extension)) {
-                                packages.add(packageName);
-                            } else {
-                                otherPackages.add(packageName);
-                            }
-                        }
-                    }
-                }
-                jis.closeEntry();
-            }
-        } catch (final IOException ioe) {
-            throw new MojoExecutionException("Unable to scan file " + file + " : " + ioe.getMessage());
-        }
-
-        otherPackages.removeAll(packages);
-
-        return Collections.singletonMap(packages, otherPackages).entrySet().iterator().next();
     }
 
     private File createLicenseReport(final ApisJarContext ctx,

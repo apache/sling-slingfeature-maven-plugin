@@ -297,6 +297,15 @@ public class ApisJarContext {
         return info;
     }
 
+    public ArtifactInfo getArtifactInfo(final ArtifactId artifactId) {
+        for(final ArtifactInfo i : this.infos) {
+            if ( i.getArtifact().getId().equals(artifactId)) {
+                return i;
+            }
+        }
+        return null;
+    }
+    
     public List<ArtifactInfo> getArtifactInfos() {
         return this.infos;
     }

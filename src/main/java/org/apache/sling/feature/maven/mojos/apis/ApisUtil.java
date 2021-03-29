@@ -16,6 +16,8 @@
  */
 package org.apache.sling.feature.maven.mojos.apis;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
@@ -33,6 +35,9 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.jar.JarEntry;
+import java.util.jar.JarInputStream;
 
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionRequest;
@@ -44,6 +49,8 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.repository.RepositorySystem;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
+import org.apache.sling.feature.Extension;
+import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.maven.mojos.apis.ApisJarContext.ArtifactInfo;
 import org.apache.sling.feature.maven.mojos.apis.spi.Processor;
 import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
@@ -390,6 +397,81 @@ public class ApisUtil {
         for(final Processor p : loader) {
             result.add(p);
         }
+        return result;
+    }
+
+    /**
+     * Get all packages contained in the archive
+     * @param ctx The generation context
+     * @param file The archive to check
+     * @param extension The extension to check for
+     * @return A tuple of packages containing files with the extension and packages with files not having the extension
+     * @throws MojoExecutionException If processing fails
+     */
+    public static Map.Entry<Set<String>, Set<String>> getPackages(final ApisJarContext ctx, final File file, final String extension)
+            throws MojoExecutionException {
+        final Set<String> packages = new TreeSet<>();
+        final Set<String> otherPackages = new TreeSet<>();
+
+        final Set<String> excludes = new HashSet<>();
+        for(final String v : ctx.getConfig().getBundleResourceFolders()) {
+            excludes.add(v.concat("/"));
+        }
+
+        try (final JarInputStream jis = new JarInputStream(new FileInputStream(file))) {
+            JarEntry entry;
+            while ((entry = jis.getNextJarEntry()) != null) {
+                if ( !entry.isDirectory() ) {
+                    boolean exclude = false;
+                    for(final String v : excludes) {
+                        if ( entry.getName().startsWith(v)) {
+                            exclude = true;
+                            break;
+                        }
+                    }
+                    if ( !exclude ) {
+                        final int lastPos = entry.getName().lastIndexOf('/');
+                        if (lastPos != -1) {
+                            final String packageName = entry.getName().substring(0, lastPos).replace('/', '.');
+
+                            if (entry.getName().endsWith(extension)) {
+                                packages.add(packageName);
+                            } else {
+                                otherPackages.add(packageName);
+                            }
+                        }
+                    }
+                }
+                jis.closeEntry();
+            }
+        } catch (final IOException ioe) {
+            throw new MojoExecutionException("Unable to scan file " + file + " : " + ioe.getMessage());
+        }
+
+        otherPackages.removeAll(packages);
+
+        return Collections.singletonMap(packages, otherPackages).entrySet().iterator().next();
+    }
+
+    /**
+     * Get all artifacts from the configured extensions
+     * @param context The context
+     * @param regionName The name of the region
+     * @return A list of artifacts, might be empty
+     * @throws MojoExecutionException If processing fails or configuration is invalid
+     */
+    public static List<Artifact> getAdditionalJavadocArtifacts(final ApisJarContext context, final String regionName) throws MojoExecutionException {
+        final List<Artifact> result = new ArrayList<>();
+        for(final String extensionName : context.getConfig().getAdditionalJavadocExtensions(regionName)) {
+            final Extension extension = context.getFeature().getExtensions().getByName(extensionName);
+            if ( extension != null ) {
+                if ( extension.getType() != ExtensionType.ARTIFACTS ) {
+                    throw new MojoExecutionException("Extension " + extensionName + " must be of type artifacts.");
+                }
+                result.addAll(extension.getArtifacts());
+            }
+        }
+
         return result;
     }
 }

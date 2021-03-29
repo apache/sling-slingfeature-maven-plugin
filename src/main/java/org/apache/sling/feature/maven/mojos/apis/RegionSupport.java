@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
@@ -37,7 +38,7 @@ import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.osgi.framework.Constants;
 
 public class RegionSupport {
-    
+
     private final Log log;
 
     private final boolean incrementalApis;
@@ -148,7 +149,7 @@ public class RegionSupport {
      *
      * @return Set of packages exported by this bundle and used in any region
      */
-    public Set<String> computeAllUsedExportPackages(final ApiRegions apiRegions, 
+    public Set<String> computeAllUsedExportPackages(final ApiRegions apiRegions,
             final Set<String> enabledToggles,
             final Clause[] exportedPackages,
             final Artifact bundle) throws MojoExecutionException {
@@ -188,7 +189,7 @@ public class RegionSupport {
      *
      * @return List of packages exported by this bundle and used in the region
      */
-    public Set<Clause> computeUsedExportPackagesPerRegion(final ApiRegion apiRegion, 
+    public Set<Clause> computeUsedExportPackagesPerRegion(final ApiRegion apiRegion,
             final Clause[] exportedPackages,
             final Set<String> allPackages) throws MojoExecutionException {
 
@@ -232,4 +233,30 @@ public class RegionSupport {
         }
     }
 
+    /**
+     * Get all packages for an artifact. If the artifact is a bundle use the export header, otherwise scan contents
+     * @param ctx The generation context
+     * @param artifact The artifact
+     * @param artifactFile The file
+     * @return A set of clauses
+     * @throws MojoExecutionException If processing fails
+     */
+    public Set<Clause> getAllPublicPackages(final ApisJarContext ctx, final Artifact artifact, final File artifactFile)
+            throws MojoExecutionException {
+        final Set<Clause> packages = new LinkedHashSet<>();
+
+        final Manifest manifest = getManifest(artifact.getId(), artifactFile);
+        if (  manifest.getMainAttributes().getValue(Constants.BUNDLE_MANIFESTVERSION) != null ) {
+            for(final Clause c : getExportedPackages(manifest)) {
+                packages.add(c);
+            }
+        } else {
+            final Set<String> names = ApisUtil.getPackages(ctx, artifactFile, ArtifactType.APIS.getContentExtension()).getKey();
+            for(final String n : names) {
+                packages.add(new Clause(n, null, null));
+            }
+        }
+
+        return packages;
+    }
 }

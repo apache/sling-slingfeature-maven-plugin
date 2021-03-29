@@ -17,8 +17,10 @@
 package org.apache.sling.feature.maven.mojos.apis;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -65,7 +67,10 @@ import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
  *   },
  *   "manifest-entries" : {
  *     "key" : "value"
- *   }
+ *   },
+ *   "javadoc-extensions" : [
+ *     "[[REGION_NAME]:][COMMA_SEPARATED_LIST_OF_ARTIFACT_EXTENSIONS"
+ *   ]
  * }
  * </pre>
  */
@@ -103,7 +108,7 @@ public class ApisConfiguration {
 
     private static final String PROP_LICENSE_HEADER = "license-header";
 
-
+    private static final String PROP_ADDITIONAL_JAVADOC_EXTENSIONS = "javadoc-extensions";
 
     private String licenseReport;
 
@@ -136,7 +141,14 @@ public class ApisConfiguration {
     private final Map<String, String> manifestEntries = new HashMap<>();
 
     private final Set<String> enabledToggles = new HashSet<>();
-    
+
+    /**
+     * A map for additional extensions used for javadoc generation.
+     * The key is the region name, "*" is used to indicate that these
+     * extensions should be added to all regions.
+     */
+    private final Map<String, Set<String>> additionJavadocExtensionNames = new HashMap<>();
+
     public ApisConfiguration(final Feature feature) throws MojoExecutionException {
         // check for extension
         final Extension ext = feature.getExtensions().getByName(EXTENSION_NAME);
@@ -165,6 +177,10 @@ public class ApisConfiguration {
             add(this.regionMappings, json, PROP_REGION_MAPPINGS);
             add(this.classifierMappings, json, PROP_CLASSIFIER_MAPPINGS);
             add(this.manifestEntries, json, PROP_MANIFEST_ENTRIES);
+
+            final List<String> additionalExtensions = new ArrayList<>();
+            add(additionalExtensions, json, PROP_ADDITIONAL_JAVADOC_EXTENSIONS);
+            this.setAdditionalJavadocExtensions(additionalExtensions);
         }
     }
 
@@ -186,6 +202,7 @@ public class ApisConfiguration {
             log.info("- " + PROP_LICENSE_DEFAULTS + " : " + this.licenseDefaults);
             log.info("- " + PROP_LICENSE_HEADER + " : " + this.licenseReportHeader);
             log.info("- " + PROP_LICENSE_FOOTER + " : " + this.licenseReportFooter);
+            log.info("- " + PROP_ADDITIONAL_JAVADOC_EXTENSIONS + " : " + this.additionJavadocExtensionNames);
         }
     }
 
@@ -411,10 +428,40 @@ public class ApisConfiguration {
             for(final String name : value.split(",")) {
                 enabledToggles.add(name.trim());
             }
-        }        
+        }
     }
 
     public Set<String> getEnabledToggles() {
         return this.enabledToggles;
+    }
+
+    /**
+     * Add the additional extensions for javadoc generation
+     * @param javadocAdditionalExtensions A list of strings
+     */
+    public void setAdditionalJavadocExtensions(final List<String> javadocAdditionalExtensions) {
+        if ( javadocAdditionalExtensions != null ) {
+            for(final String val : javadocAdditionalExtensions) {
+                final int sepPos = val.indexOf(":");
+                final String regionName = sepPos == -1 ? "*" : val.substring(0, sepPos);
+                for(final String name : val.substring(sepPos+1).split(",")) {
+                    if ( !name.trim().isEmpty() ) {
+                        this.additionJavadocExtensionNames.computeIfAbsent(regionName, key -> new LinkedHashSet<>()).add(name.trim());
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the map for additional javadoc extensions for a region
+     * @param regionName the region
+     * @return The set of extension names, might be empty
+     */
+    public Set<String> getAdditionalJavadocExtensions(final String regionName) {
+        final Set<String> result = new LinkedHashSet<>();
+        result.addAll(this.additionJavadocExtensionNames.getOrDefault("*", Collections.emptySet()));
+        result.addAll(this.additionJavadocExtensionNames.getOrDefault(regionName, Collections.emptySet()));
+        return result;
     }
 }
