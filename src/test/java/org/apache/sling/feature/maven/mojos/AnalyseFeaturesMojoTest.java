@@ -28,23 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class AnalyseFeaturesMojoTest {
-    @Test
-    public void testTaskConfiguration() {
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn("/some-build-dir");
-
-        MavenProject mockProject = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProject.getBuild()).thenReturn(mockBuild);
-
-        AnalyseFeaturesMojo afm = new AnalyseFeaturesMojo();
-        afm.project = mockProject;
-
-        Map<String, Map<String, String>> cfg = new HashMap<String, Map<String,String>>();
-        afm.addTaskConfigurationDefaults(cfg);
-
-        Map<String, String> allCfg = cfg.get("all");
-        assertTrue(allCfg.get("fileStorage").startsWith("/some-build-dir/"));
-    }
 
     @Test
     public void testTaskConfigurationOverridden() {
@@ -64,8 +47,6 @@ public class AnalyseFeaturesMojoTest {
         allMap.put("x", "y");
         cfg.put("all", allMap);
 
-        afm.addTaskConfigurationDefaults(cfg);
-
         Map<String, String> allCfg = cfg.get("all");
         assertEquals("/my-location", allCfg.get("fileStorage"));
         assertEquals("y", allCfg.get("x"));
@@ -74,7 +55,6 @@ public class AnalyseFeaturesMojoTest {
     @Test
     public void testTaskConfigurationSupplied() {
         Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn("/some-build-dir");
 
         MavenProject mockProject = Mockito.mock(MavenProject.class);
         Mockito.when(mockProject.getBuild()).thenReturn(mockBuild);
@@ -88,10 +68,7 @@ public class AnalyseFeaturesMojoTest {
         allMap.put("x", "y");
         cfg.put("all", allMap);
 
-        afm.addTaskConfigurationDefaults(cfg);
-
         Map<String, String> allCfg = cfg.get("all");
-        assertTrue(allCfg.get("fileStorage").startsWith("/some-build-dir/"));
         assertEquals("y", allCfg.get("x"));
     }
 }

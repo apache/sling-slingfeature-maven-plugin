@@ -16,13 +16,11 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,10 +52,6 @@ import org.apache.sling.feature.scanner.Scanner;
       threadSafe = true
     )
 public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
-
-    private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
-
-    private static final String ANALYSER_CONFIG_WILDCARD = "all";
 
     /**
      * The scans for the analyser
@@ -110,7 +104,6 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
         for (final Scan an : list) {
             try {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
-                addTaskConfigurationDefaults(taskConfiguration);
 
                 getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("analyser")
                         .a(" with following configuration:").toString());
@@ -212,18 +205,5 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     protected FeatureProvider getFeatureProvider() {
         return new BaseFeatureProvider();
-    }
-
-    void addTaskConfigurationDefaults(Map<String, Map<String, String>> taskConfiguration) {
-        String featureModelFileStorage = project.getBuild().getDirectory() + "/sling-slingfeature-maven-plugin-fmtmp";
-        Map<String, String> wildCardCfg = taskConfiguration.get(ANALYSER_CONFIG_WILDCARD);
-        if (wildCardCfg == null) {
-            wildCardCfg = new HashMap<String, String>();
-            taskConfiguration.put(ANALYSER_CONFIG_WILDCARD, wildCardCfg);
-        }
-        if (!wildCardCfg.containsKey(FILE_STORAGE_CONFIG_KEY)) {
-            new File(featureModelFileStorage).mkdirs();
-            wildCardCfg.put(FILE_STORAGE_CONFIG_KEY, featureModelFileStorage);
-        }
     }
 }

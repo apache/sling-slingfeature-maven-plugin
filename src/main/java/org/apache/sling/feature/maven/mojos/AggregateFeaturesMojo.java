@@ -16,8 +16,6 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,8 +48,6 @@ import org.apache.sling.feature.maven.ProjectHelper;
     threadSafe = true
 )
 public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
-    private static final String FILE_STORAGE_CONFIG_KEY = "fileStorage";
-    private static final String HANDLER_CONFIG_WILDCARD = "all";
 
     /* A context flag to track if we have already been processed */
     private static final String PROPERTY_HANDLED_AGGREGATE_FEATURES = AggregateFeaturesMojo.class.getName() + "/generated";
@@ -135,24 +131,11 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
             builderContext.addConfigsOverrides(aggregate.getConfigurationOverrideRules());
 
-            boolean wildcardSet = false;
             for (final Map.Entry<String, Properties> entry : handlerConfiguration.entrySet()) {
                 String key = entry.getKey();
                 Properties props = entry.getValue();
 
-                if (HANDLER_CONFIG_WILDCARD.equals(key)) {
-                    if (!props.containsKey(FILE_STORAGE_CONFIG_KEY)) {
-                        props.put(FILE_STORAGE_CONFIG_KEY, getFeatureModelStorage());
-                    }
-                    wildcardSet = true;
-                }
-
                 builderContext.setHandlerConfiguration(key, ProjectHelper.propertiesToMap(props));
-            }
-
-            if (!wildcardSet) {
-                builderContext.setHandlerConfiguration(HANDLER_CONFIG_WILDCARD,
-                        Collections.singletonMap(FILE_STORAGE_CONFIG_KEY, getFeatureModelStorage()));
             }
 
             final ArtifactId newFeatureID = new ArtifactId(project.getGroupId(), project.getArtifactId(),
@@ -191,11 +174,5 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             final Map<String, Feature> selection) {
         return FeatureBuilder.assemble(newFeatureID, builderContext,
                 selection.values().toArray(new Feature[selection.size()]));
-    }
-
-    private String getFeatureModelStorage() {
-        String featureModelFileStorage = project.getBuild().getDirectory() + "/sling-slingfeature-maven-plugin-fmtmp";
-        new File(featureModelFileStorage).mkdirs();
-        return featureModelFileStorage;
     }
 }

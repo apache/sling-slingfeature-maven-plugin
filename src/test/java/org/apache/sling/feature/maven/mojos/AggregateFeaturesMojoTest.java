@@ -594,10 +594,6 @@ public class AggregateFeaturesMojoTest {
         afm.execute();
         assertEquals(1, capturedBuilderContext.size());
         BuilderContext bc = capturedBuilderContext.iterator().next();
-
-        Map hc = (Map) invokePrivateMethod(bc, "getHandlerConfigurations");
-        Map allConfig = (Map) hc.get("all");
-        assertTrue(((String) allConfig.get("fileStorage")).length() > 0);
     }
 
     @SuppressWarnings("rawtypes")
@@ -661,7 +657,6 @@ public class AggregateFeaturesMojoTest {
         Map hc = (Map) invokePrivateMethod(bc, "getHandlerConfigurations");
         Map allConfig = (Map) hc.get("all");
         assertEquals("a aa a", allConfig.get("a"));
-        assertTrue(((String) allConfig.get("fileStorage")).length() > 0);
         assertEquals("z", ((Map) hc.get("specific")).get("zz"));
     }
 
