@@ -702,7 +702,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             // check deprecation - if deprecation is set, artifact can't be used as a
             // dependency
             final ApiExport exp = region.getAllExportByName(c.getName());
-            if (exp != null && exp.getDeprecation() != null) {
+            if (exp != null && (exp.getDeprecation().getPackageInfo() != null || !exp.getDeprecation().getMemberInfos().isEmpty())) {
                 fullUsage = false;
                 break;
             }
