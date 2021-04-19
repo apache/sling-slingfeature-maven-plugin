@@ -23,6 +23,7 @@ import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -473,5 +474,43 @@ public class ApisUtil {
         }
 
         return result;
+    }
+
+    public static void writeSourceReport(final boolean write, final Log log, final File reportFile, final List<ArtifactInfo> infos) throws MojoExecutionException {
+        if (write) {
+            Collections.sort(infos, new Comparator<ArtifactInfo>(){
+
+                @Override
+                public int compare(ArtifactInfo o1, ArtifactInfo o2) {
+                    return o1.getId().compareTo(o2.getId());
+                }
+                
+            });
+            final List<String> output = new ArrayList<>();
+            for (final ArtifactInfo info : infos) {
+                if (info.getSources().isEmpty()) {
+                    output.add("- ".concat(info.getId().toMvnId()).concat(" : NO SOURCES FOUND"));
+                } else {
+                    output.add(
+                            "- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getSources().toString()));
+                }
+            }
+            if ( output.isEmpty() ) {
+                output.add("NO SOURCES FOUND");
+            }
+            log.info("--------------------------------------------------------");
+            log.info("Used sources:");
+            log.info("--------------------------------------------------------");
+            output.stream().forEach(msg -> log.info(msg));
+            try {
+                Files.write(reportFile.toPath(), output);
+            } catch (final IOException e) {
+                throw new MojoExecutionException("Unable to write " + reportFile, e);
+            }
+        } else {
+            if ( reportFile.exists() ) {
+                reportFile.delete();
+            }
+        }        
     }
 }

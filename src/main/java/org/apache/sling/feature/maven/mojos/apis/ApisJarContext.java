@@ -62,7 +62,7 @@ public class ApisJarContext {
         private final Map<String, Set<Clause>> usedExportedPackagesRegion = new HashMap<>();
 
         /** Flag if used as dependency */
-        private final Map<String, Boolean> useAsDependencyPerRegion = new HashMap<>();
+        private final Map<String, String> useAsDependencyPerRegion = new HashMap<>();
 
         private final Set<File> includedResources = new HashSet<>();
 
@@ -120,9 +120,11 @@ public class ApisJarContext {
             return this.usedExportedPackagesRegion.get(regionName);
         }
 
-        public void setUsedExportedPackages(final String regionName, final Set<Clause> usedExportedPackages, final boolean useAsDependency) {
+        public void setUsedExportedPackages(final String regionName, final Set<Clause> usedExportedPackages, final String useAsDependency) {
             this.usedExportedPackagesRegion.put(regionName, usedExportedPackages);
-            this.useAsDependencyPerRegion.put(regionName, useAsDependency);
+            if ( useAsDependency != null ) {
+                this.useAsDependencyPerRegion.put(regionName, useAsDependency);
+            }
         }
 
         public String[] getUsedExportedPackageIncludes(final String regionName) {
@@ -135,6 +137,10 @@ public class ApisJarContext {
         }
 
         public boolean isUseAsDependencyPerRegion(final String regionName) {
+            return this.useAsDependencyPerRegion.get(regionName) == null;
+        }
+
+        public String getNotUseAsDependencyPerRegionReason(final String regionName) {
             return this.useAsDependencyPerRegion.get(regionName);
         }
 

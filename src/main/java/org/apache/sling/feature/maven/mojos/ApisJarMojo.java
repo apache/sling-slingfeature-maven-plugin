@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -513,19 +514,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             onArtifact(regions, ctx, regionSupport, artifact);
         }
 
-        if (this.generateSourceJar || this.generateJavadocJar) {
-            getLog().info("--------------------------------------------------------");
-            getLog().info("Used sources:");
-            for (final ArtifactInfo info : ctx.getArtifactInfos()) {
-                if (info.getSources().isEmpty()) {
-                    getLog().info("- ".concat(info.getId().toMvnId()).concat(" : NO SOURCES FOUND"));
-                } else {
-                    getLog().info(
-                            "- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getSources().toString()));
-                }
+        final List<ArtifactInfo> additionalInfos = new ArrayList<>();
+        if ( this.generateJavadocJar ) {
+            for (final ApiRegion apiRegion : regions.listRegions()) {
+                additionalInfos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));  
             }
-            getLog().info("--------------------------------------------------------");
         }
+
+        // sources report
+        final List<ArtifactInfo> allInfos = new ArrayList<>(ctx.getArtifactInfos());
+        allInfos.addAll(additionalInfos);
+        final File sourcesReport = new File(mainOutputDir, this.project.getArtifactId().concat("-sources-report.txt"));
+        ApisUtil.writeSourceReport(this.generateSourceJar || this.generateJavadocJar, getLog(), sourcesReport, allInfos);
 
         boolean hasErrors = false;
 
@@ -545,7 +545,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             // run processor on sources
             if ( generateSourceJar || generateJavadocJar ) {
-                final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, false);
+                final List<ArtifactInfo> infos = new ArrayList<>(ctx.getArtifactInfos(regionName, false));
+                if ( generateJavadocJar ) {
+                    infos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));
+                }
                 this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, infos);
             }
 
@@ -594,6 +597,35 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
 
+            // write dependency report
+            final ArtifactId dependencyReportId = this.buildArtifactId(ctx, apiRegion, ArtifactType.DEPENDENCY_REPORT);
+            final File dependencyReportFile = new File(mainOutputDir, dependencyReportId.toMvnName());
+            if ( this.useApiDependencies ) {
+                final List<String> output = new ArrayList<>();
+                for(final ArtifactInfo info : ctx.getArtifactInfos(regionName, false)) {
+                    if ( !info.isUseAsDependencyPerRegion(regionName) && !"".equals(info.getNotUseAsDependencyPerRegionReason(regionName))) {
+                        output.add("- ".concat(info.getId().toMvnId()).concat(" : ").concat(info.getNotUseAsDependencyPerRegionReason(regionName)));
+                    }
+                }
+                Collections.sort(output);
+                if ( output.isEmpty() ) {
+                    output.add("All artifacts are used as a dependency");
+                } else {
+                    output.add(0, "The following artifacts are not used as a dependency:");
+                }
+                output.stream().forEach(msg -> getLog().info(msg));
+                try {
+                    Files.write(dependencyReportFile.toPath(), output);
+                } catch (final IOException e) {
+                    throw new MojoExecutionException("Unable to write " + dependencyReportFile, e);
+                }
+             } else {
+                if ( dependencyReportFile.exists() ) {
+                    dependencyReportFile.delete();
+                }
+            }
+            
+            // write report
             final ArtifactId reportId = this.buildArtifactId(ctx, apiRegion, ArtifactType.REPORT);
             final File reportFile = new File(mainOutputDir, reportId.toMvnName());
             if (!report.isEmpty()) {
@@ -788,18 +820,20 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                             exportedPackageClauses, usedExportedPackages);
 
                     // check whether packages are included in api jars - or added as a dependency
-                    boolean useAsDependency = ctx.getConfig().isUseApiDependencies()
-                            ? regionSupport.calculateOmitDependenciesFlag(region, exportedPackageClauses,
-                                    usedExportedPackagesPerRegion)
-                            : false;
-                    if (useAsDependency) {
-                        useAsDependency = ctx.findDependencyArtifact(getLog(), info);
-                        if (useAsDependency) {
+                    String useAsDependency = "";
+                    if ( ctx.getConfig().isUseApiDependencies() ) {
+                        useAsDependency = regionSupport.calculateOmitDependenciesFlag(region, exportedPackageClauses,
+                                     usedExportedPackagesPerRegion);
+                    }
+                    if (useAsDependency == null ) {
+                        if (ctx.findDependencyArtifact(getLog(), info)) {                            
                             // check scm info
                             if (artifact.getMetadata().get(ApisUtil.SCM_LOCATION) != null) {
                                 throw new MojoExecutionException("Dependency artifact must not specify "
                                         + ApisUtil.SCM_LOCATION + " : " + artifact.getId().toMvnId());
                             }
+                        } else {
+                            useAsDependency = "Unable to find artifact in maven repository.";
                         }
                     }
                     info.setUsedExportedPackages(region.getName(), usedExportedPackagesPerRegion, useAsDependency);
@@ -1538,8 +1572,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     }
                 };
                 if ( archiveType == ArtifactType.APIS ) {
+                    getLog().info("Running processor " + p.getName() + " on binaries...");
                     p.processBinaries(pc, sources);
                 } else {
+                    getLog().info("Running processor " + p.getName() + " on sources...");
                     p.processSources(pc, sources);
                 }
             }
@@ -1751,16 +1787,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
     
                 if ( !exportedPackages.isEmpty() ) {
-                    info.setUsedExportedPackages(regionName, exportedPackages, false);
+                    info.setUsedExportedPackages(regionName, exportedPackages, "");
                     if ( !infoExists ) {
                         info.setUsedExportedPackages(exportedPackageNames);
                         info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
-                        final boolean skipSourceDeflate = info.getSourceDirectory().exists();
-                        if (skipSourceDeflate) {
-                            getLog().debug("Source for artifact " + info.getId().toMvnName() + " already deflated");
-                        } else {
-                            this.downloadSources(ctx, info, artifact);
-                        }
                     }
     
                     usedInfos.add(info);
@@ -1944,6 +1974,41 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             info.setLicenses(result);
         }
         getLog().debug("License for " + info.getId().toMvnId() + " = " + result);
+        return result;
+    }
+
+    private List<ArtifactInfo> getAdditionalJavadocArtifacts(final ApisJarContext ctx, final ApiRegion region, final RegionSupport regionSupport)
+    throws MojoExecutionException {
+        final List<ArtifactInfo> result = new ArrayList<>();
+        for(final Artifact artifact : ApisUtil.getAdditionalJavadocArtifacts(ctx, region.getName()) ) {
+            final ArtifactInfo info = new ArtifactInfo(artifact);
+
+            final Set<Clause> exportedPackages = regionSupport.getAllPublicPackages(ctx, artifact, getArtifactFile(artifact.getId()));
+            final Set<String> exportedPackageNames = new LinkedHashSet<>();
+            final Iterator<Clause> clauseIter = exportedPackages.iterator();
+            while ( clauseIter.hasNext() ) {
+                final Clause c = clauseIter.next();
+                if ( region.getAllExportByName(c.getName()) == null ) {
+                    exportedPackageNames.add(c.getName());
+                } else {
+                    clauseIter.remove();
+                }
+            }
+
+            if ( !exportedPackages.isEmpty() ) {
+                info.setUsedExportedPackages(region.getName(), exportedPackages, "");
+                info.setUsedExportedPackages(exportedPackageNames);
+                info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
+                final boolean skipSourceDeflate = info.getSourceDirectory().exists();
+                if (skipSourceDeflate) {
+                    getLog().debug("Source for artifact " + info.getId().toMvnName() + " already deflated");
+                    info.addSourceInfo("USE CACHE FROM PREVIOUS BUILD");
+                } else {
+                    this.downloadSources(ctx, info, artifact);
+                }
+                result.add(info);
+            }
+        }
         return result;
     }
 }

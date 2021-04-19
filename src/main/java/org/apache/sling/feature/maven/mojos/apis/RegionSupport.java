@@ -265,12 +265,12 @@ public class RegionSupport {
      * @param region The api region
      * @param exportedPackageClauses All exported packages
      * @param usedExportedPackagesPerRegion Used exported packages
-     * @return {@code true} if the artifact can be used as a dependency
+     * @return {@code null} if the artifact can be used as a dependency
      */
-    public boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
+    public String calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
             final Set<Clause> usedExportedPackagesPerRegion) {
         // check whether all packages are exported in this region
-        boolean fullUsage = true;
+        String reason = null;
         for (final Clause c : exportedPackageClauses) {
             boolean found = false;
             for (final Clause current : usedExportedPackagesPerRegion) {
@@ -281,18 +281,19 @@ public class RegionSupport {
             }
 
             if (!found) {
-                fullUsage = false;
-                break;
-            }
-            // check deprecation - if deprecation is set, artifact can't be used as a
-            // dependency
-            final ApiExport exp = region.getAllExportByName(c.getName());
-            if (exp != null && (exp.getDeprecation().getPackageInfo() != null || !exp.getDeprecation().getMemberInfos().isEmpty())) {
-                fullUsage = false;
-                break;
+                final String msg = "Package ".concat(c.getName()).concat(" not exported.");
+                reason = reason == null ? msg : reason.concat(" ").concat(msg);
+            } else {
+                // check deprecation - if deprecation is set, artifact can't be used as a
+                // dependency
+                final ApiExport exp = region.getAllExportByName(c.getName());
+                if (exp != null && (exp.getDeprecation().getPackageInfo() != null || !exp.getDeprecation().getMemberInfos().isEmpty())) {
+                    final String msg = "Package (or parts) ".concat(c.getName()).concat(" marked as deprecated.");
+                    reason = reason == null ? msg : reason.concat(" ").concat(msg);
+                }
             }
         }
 
-        return fullUsage;
+        return reason;
     }
 }

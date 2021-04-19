@@ -23,7 +23,8 @@ public enum ArtifactType {
     JAVADOC_ALL("javadoc-all", "html", "jar"),
     DEPENDENCIES("apideps", "txt", "ref"),
     CND("cnd", "cnd", "jar"),
-    REPORT("report", "txt", "txt");
+    REPORT("report", "txt", "txt"),
+    DEPENDENCY_REPORT("dependency-report", "txt", "txt");
 
     private final String id;
 
