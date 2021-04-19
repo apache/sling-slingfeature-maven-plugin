@@ -259,4 +259,40 @@ public class RegionSupport {
 
         return packages;
     }
+
+    /**
+     * Calculate whether the artifact can be omitted and a dependency can be used instead
+     * @param region The api region
+     * @param exportedPackageClauses All exported packages
+     * @param usedExportedPackagesPerRegion Used exported packages
+     * @return {@code true} if the artifact can be used as a dependency
+     */
+    public boolean calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
+            final Set<Clause> usedExportedPackagesPerRegion) {
+        // check whether all packages are exported in this region
+        boolean fullUsage = true;
+        for (final Clause c : exportedPackageClauses) {
+            boolean found = false;
+            for (final Clause current : usedExportedPackagesPerRegion) {
+                if (current.getName().equals(c.getName())) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                fullUsage = false;
+                break;
+            }
+            // check deprecation - if deprecation is set, artifact can't be used as a
+            // dependency
+            final ApiExport exp = region.getAllExportByName(c.getName());
+            if (exp != null && (exp.getDeprecation().getPackageInfo() != null || !exp.getDeprecation().getMemberInfos().isEmpty())) {
+                fullUsage = false;
+                break;
+            }
+        }
+
+        return fullUsage;
+    }
 }

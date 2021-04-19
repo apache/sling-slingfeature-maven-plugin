@@ -333,6 +333,11 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     }
 
     protected class BaseFeatureProvider implements FeatureProvider {
+
+        public BaseFeatureProvider() {
+            // public constructor
+        }
+
         @Override
         public Feature provide(ArtifactId id) {
             // Check for the feature in the local context
@@ -353,6 +358,11 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     }
 
     protected class BaseArtifactProvider implements ArtifactProvider {
+
+        public BaseArtifactProvider() {
+            // public constructor
+        }
+
         @Override
         public URL provide(final ArtifactId id) {
             try {

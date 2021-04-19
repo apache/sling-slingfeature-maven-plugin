@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -205,6 +206,29 @@ public class ApisJarContext {
         public Set<String> getSources() {
             return this.sources;
         }
+
+        /* (non-Javadoc)
+         * @see java.lang.Object#hashCode()
+         */
+        
+        @Override
+        public int hashCode() {
+            return Objects.hash(artifact);
+        }
+
+        /* (non-Javadoc)
+         * @see java.lang.Object#equals(java.lang.Object)
+         */
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (!(obj instanceof ArtifactInfo))
+                return false;
+            ArtifactInfo other = (ArtifactInfo) obj;
+            return Objects.equals(artifact, other.artifact);
+        }
     }
 
     private final ApisConfiguration config;
@@ -228,9 +252,6 @@ public class ApisJarContext {
     private final Feature feature;
 
     private final Map<ArtifactId, Model> modelCache = new HashMap<>();
-
-    /** The set of dependency repositories (URLs) */
-    private Set<String> dependencyRepositories = new HashSet<>();
 
     public ApisJarContext(final File mainDir, final Feature feature) throws MojoExecutionException {
         this.config = new ApisConfiguration(feature);
@@ -327,23 +348,6 @@ public class ApisJarContext {
     }
 
     /**
-     * Set the dependency repositories
-     * @param list Comma separated list or {@code null}
-     */
-    public void setDependencyRepositories(final String list) {
-        this.dependencyRepositories.clear();
-        if ( list != null ) {
-            for(String val : list.split(",") ) {
-                val = val.trim();
-                if ( !val.endsWith("/") ) {
-                    val = val.concat("/");
-                }
-                this.dependencyRepositories.add(val);
-            }
-        }
-    }
-
-    /**
      * Find a an artifact
      * If dependency repositories are configured, one of them must provide the artifact
      * @param log Logger
@@ -353,10 +357,10 @@ public class ApisJarContext {
      */
     private boolean findDependencyArtifact(final Log log, final ArtifactId id) throws MojoExecutionException {
         boolean result = true;
-        if ( !this.dependencyRepositories.isEmpty() ) {
+        if ( !this.getConfig().getDependencyRepositories().isEmpty() ) {
             result = false;
-            log.debug("Trying to resolve ".concat(id.toMvnId()).concat(" from ").concat(this.dependencyRepositories.toString()));
-            for(final String server : this.dependencyRepositories) {
+            log.debug("Trying to resolve ".concat(id.toMvnId()).concat(" from ").concat(this.getConfig().getDependencyRepositories().toString()));
+            for(final String server : this.getConfig().getDependencyRepositories()) {
                 try {
                     final URL url = new URL(server.concat(id.toMvnPath()));
                     try {

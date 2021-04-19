@@ -142,6 +142,15 @@ public class ApisConfiguration {
 
     private final Set<String> enabledToggles = new HashSet<>();
 
+    private boolean useApiDependencies;
+
+    /** The set of dependency repositories (URLs) */
+    private final Set<String> dependencyRepositories = new HashSet<>();
+
+    private boolean useApiDependenciesForJavadoc;
+
+    private boolean generateJavadocForAllApi;
+
     /**
      * A map for additional extensions used for javadoc generation.
      * The key is the region name, "*" is used to indicate that these
@@ -187,6 +196,12 @@ public class ApisConfiguration {
     public void logConfiguration(final Log log) {
         if ( log.isInfoEnabled() ) {
             log.info("Using configuration:");
+            log.info("- useApiDependencies : " + this.useApiDependencies);
+            if ( this.useApiDependencies ) {
+                log.info("- dependencyRepositories : " + (this.dependencyRepositories.isEmpty() ? "NONE" : this.dependencyRepositories.toString()));
+                log.info("- useApiDependenciesForJavadoc : " + this.useApiDependenciesForJavadoc);
+                log.info("- generateJavadocForAllApi : " + this.generateJavadocForAllApi);
+            }
             log.info("- " + PROP_JAVADOC_SOURCE_LEVEL + " : " + this.javadocSourceLevel);
             log.info("- " + PROP_JAVADOC_LINKS + " : " + this.javadocLinks);
             log.info("- " + PROP_API_VERSION + " : " + this.apiVersion);
@@ -464,4 +479,67 @@ public class ApisConfiguration {
         result.addAll(this.additionJavadocExtensionNames.getOrDefault(regionName, Collections.emptySet()));
         return result;
     }
+
+    /**
+     * @return the useApiDependencies
+     */
+    public boolean isUseApiDependencies() {
+        return useApiDependencies;
+    }
+
+    /**
+     * @param useApiDependencies the useApiDependencies to set
+     */
+    public void setUseApiDependencies(final boolean flag) {
+        this.useApiDependencies = flag;
+    }
+
+    /**
+     * @return the useApiDependenciesForJavadoc
+     */
+    public boolean isUseApiDependenciesForJavadoc() {
+        return useApiDependenciesForJavadoc;
+    }
+
+    /**
+     * @param useApiDependenciesForJavadoc the useApiDependenciesForJavadoc to set
+     */
+    public void setUseApiDependenciesForJavadoc(final boolean flag) {
+        this.useApiDependenciesForJavadoc = flag;
+    }
+
+    /**
+     * @return the generateJavadocForAllApi
+     */
+    public boolean isGenerateJavadocForAllApi() {
+        return generateJavadocForAllApi;
+    }
+
+    /**
+     * @param generateJavadocForAllApi the generateJavadocForAllApi to set
+     */
+    public void setGenerateJavadocForAllApi(boolean generateJavadocForAllApi) {
+        this.generateJavadocForAllApi = generateJavadocForAllApi;
+    }
+
+    public Set<String> getDependencyRepositories() {
+        return this.dependencyRepositories;
+    }
+
+   /**
+     * Set the dependency repositories
+     * @param list Comma separated list or {@code null}
+     */
+    public void setDependencyRepositories(final String list) {
+        this.dependencyRepositories.clear();
+        if ( list != null ) {
+            for(String val : list.split(",") ) {
+                val = val.trim();
+                if ( !val.endsWith("/") ) {
+                    val = val.concat("/");
+                }
+                this.dependencyRepositories.add(val);
+            }
+        }
+    }    
 }

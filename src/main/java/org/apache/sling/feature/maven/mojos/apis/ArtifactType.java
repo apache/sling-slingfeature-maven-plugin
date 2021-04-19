@@ -20,6 +20,7 @@ public enum ArtifactType {
     APIS("apis", "class", "jar"),
     SOURCES("sources", "java", "jar"),
     JAVADOC("javadoc", "html", "jar"),
+    JAVADOC_ALL("javadoc-all", "html", "jar"),
     DEPENDENCIES("apideps", "txt", "ref"),
     CND("cnd", "cnd", "jar"),
     REPORT("report", "txt", "txt");
