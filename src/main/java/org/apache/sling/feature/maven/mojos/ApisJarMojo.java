@@ -539,7 +539,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
                 this.runProcessor(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos);
                 final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos, report);
-                report(ctx, apiJar, ArtifactType.APIS, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
+                report(ctx, apiJar, ArtifactType.APIS, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
             }
 
             // run processor on sources
@@ -554,7 +554,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             if (generateSourceJar) {
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
                 final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, report);
-                report(ctx, sourceJar, ArtifactType.SOURCES, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
+                report(ctx, sourceJar, ArtifactType.SOURCES, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
             }
 
             if (ctx.getConfig().isUseApiDependencies() && (this.generateApiJar || this.generateSourceJar)) {
@@ -574,7 +574,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     ctx.setJavadocDir(javadocsDir);
                     final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
                             this.apiJavadocResources, infos, report);
-                    report(ctx, javadocJar, ArtifactType.JAVADOC, apiRegion, ctx.getConfig().isUseApiDependenciesForJavadoc(), report, links);
+                    report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, ctx.getConfig().isUseApiDependenciesForJavadoc(), report, links);
                 } else {
                     getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
                             + " was empty or contained no Java files!");
@@ -587,7 +587,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         ctx.setJavadocDir(javadocsAllDir);
                         final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC_ALL,
                                 this.apiJavadocResources, infosForAll, report);
-                        report(ctx, javadocJar, ArtifactType.JAVADOC, apiRegion, false, report, links);
+                        report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);
                     } else {
                         getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
                                 + " was empty or contained no Java files!");
@@ -653,6 +653,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     private void report(final ApisJarContext ctx, 
             final File jarFile, 
             final ArtifactType artifactType,
+            final RegionSupport regionSupport,
             final ApiRegion apiRegion, 
             final boolean omitDependencyArtifacts, 
             final List<String> report,
@@ -682,7 +683,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
         final List<ApiExport> missing = new ArrayList<>();
 
-        for (final ApiExport exp : apiRegion.listExports()) {
+        for (final ApiExport exp : regionSupport.getAllExports(apiRegion, ctx.getConfig().getEnabledToggles())) {
             final String packageName = exp.getName();
             if (!apiPackages.remove(packageName) && !otherPackages.remove(packageName)) {
                 missing.add(exp);

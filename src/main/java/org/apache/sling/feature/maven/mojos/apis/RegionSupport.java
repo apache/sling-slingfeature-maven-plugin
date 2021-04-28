@@ -19,8 +19,10 @@ package org.apache.sling.feature.maven.mojos.apis;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.jar.JarInputStream;
 import java.util.jar.Manifest;
@@ -144,6 +146,29 @@ public class RegionSupport {
         return included;
     }
 
+    public List<ApiExport> getAllExports(final ApiRegion region, final Set<String> enabledToggles) {
+        final List<ApiExport> result = new ArrayList<>();
+        for (final ApiExport exp : region.listExports()) {
+            if ( this.include(exp, enabledToggles) ) {
+                result.add(exp);
+            }
+        }
+        return result;
+    }
+
+    private boolean include(final ApiExport exp, final Set<String> enabledToggles) {
+        boolean include = !toggleApiOnly;
+        if ( toggleApiOnly ) {
+            include = exp.getToggle() != null && enabledToggles.contains(exp.getToggle());
+        } else {
+            // if the package is behind a toggle,  only include if toggle is enabled or if previous artifact is set
+            if (exp.getToggle() != null && !enabledToggles.contains(exp.getToggle()) && exp.getPrevious() == null) {
+                include = false;
+            }
+        }
+        return include;
+    }
+
     /**
      * Compute exports based on all regions
      *
@@ -162,16 +187,7 @@ public class RegionSupport {
             for (ApiRegion apiRegion : apiRegions.listRegions()) {
                 final ApiExport exp = apiRegion.getExportByName(packageName);
                 if (exp != null) {
-                    boolean include = !toggleApiOnly;
-                    if ( toggleApiOnly ) {
-                        include = exp.getToggle() != null && enabledToggles.contains(exp.getToggle());
-                    } else {
-                        // if the package is behind a toggle,  only include if toggle is enabled or if previous artifact is set
-                        if (exp.getToggle() != null && !enabledToggles.contains(exp.getToggle()) && exp.getPrevious() == null) {
-                            include = false;
-                        }
-                    }
-                    if (include) {
+                    if ( this.include(exp, enabledToggles) ) {
                         result.add(exportedPackage.getName());
                     }
                 }
