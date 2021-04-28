@@ -202,6 +202,7 @@ public class ApisConfiguration {
                 log.info("- useApiDependenciesForJavadoc : " + this.useApiDependenciesForJavadoc);
                 log.info("- generateJavadocForAllApi : " + this.generateJavadocForAllApi);
             }
+            log.info("- enabledToggles : " + this.getEnabledToggles());
             log.info("- " + PROP_JAVADOC_SOURCE_LEVEL + " : " + this.javadocSourceLevel);
             log.info("- " + PROP_JAVADOC_LINKS + " : " + this.javadocLinks);
             log.info("- " + PROP_API_VERSION + " : " + this.apiVersion);
