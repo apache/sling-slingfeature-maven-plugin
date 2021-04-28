@@ -570,29 +570,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         ext != null ? ext.getFramework() : null);
 
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, regionName, links, javadocsDir, regionSupport, ctx.getConfig().isUseApiDependenciesForJavadoc());
-                if (infos != null) {
-                    ctx.setJavadocDir(javadocsDir);
-                    final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
-                            this.apiJavadocResources, infos, report);
-                    report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, ctx.getConfig().isUseApiDependenciesForJavadoc(), report, links);
-                } else {
-                    getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
-                            + " was empty or contained no Java files!");
-                }
+                ctx.setJavadocDir(javadocsDir);
+                final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
+                        this.apiJavadocResources, infos, report);
+                report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, ctx.getConfig().isUseApiDependenciesForJavadoc(), report, links);
 
                 if ( ctx.getConfig().isUseApiDependencies() && ctx.getConfig().isGenerateJavadocForAllApi() ) {
                     final File javadocsAllDir = new File(regionDir, ArtifactType.JAVADOC_ALL.getId());
                     final Collection<ArtifactInfo> infosForAll = generateJavadoc(ctx, regionName, links, javadocsAllDir, regionSupport, false);
-                    if (infosForAll != null) {
-                        ctx.setJavadocDir(javadocsAllDir);
-                        final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC_ALL,
-                                this.apiJavadocResources, infosForAll, report);
-                        report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);
-                    } else {
-                        getLog().warn("Javadoc JAR will NOT be generated - sources directory " + ctx.getDeflatedSourcesDir()
-                                + " was empty or contained no Java files!");
-                    }
-    
+                    ctx.setJavadocDir(javadocsAllDir);
+                    final File javadocAllJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC_ALL,
+                            this.apiJavadocResources, infosForAll, report);
+                    report(ctx, javadocAllJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);    
                 }
             }
 
@@ -1745,6 +1734,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final RegionSupport regionSupport,
             final boolean useDependencies)
     throws MojoExecutionException {
+        javadocDir.mkdirs();
+
         final Collection<ArtifactInfo> usedInfos = new ArrayList<>();
 
         final List<String> sourceDirectories = new ArrayList<>();
@@ -1764,7 +1755,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         if (javadocPackages.isEmpty()) {
-            return null;
+            return Collections.emptyList();
         }
 
         // handle additional packages
@@ -1813,7 +1804,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
-        javadocDir.mkdirs();
 
         final JavadocExecutor javadocExecutor = new JavadocExecutor(javadocDir.getParentFile())
                                           .addArgument("-public")
