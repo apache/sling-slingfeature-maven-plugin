@@ -175,7 +175,7 @@ public class ApisJarContext {
          * <li>The artifact itself is used
          * </ol>
          * @return The list of dependency artifacts
-         * @throws MojoExecutionException
+         * @throws MojoExecutionException If an incorrect configuration is found
          */
         public List<ArtifactId> getDependencyArtifacts() throws MojoExecutionException {
             final List<ArtifactId> dependencies = new ArrayList<>();
@@ -216,7 +216,7 @@ public class ApisJarContext {
         /* (non-Javadoc)
          * @see java.lang.Object#hashCode()
          */
-        
+
         @Override
         public int hashCode() {
             return Objects.hash(artifact);
@@ -225,7 +225,7 @@ public class ApisJarContext {
         /* (non-Javadoc)
          * @see java.lang.Object#equals(java.lang.Object)
          */
-        
+
         @Override
         public boolean equals(Object obj) {
             if (this == obj)
@@ -332,7 +332,7 @@ public class ApisJarContext {
         }
         return null;
     }
-    
+
     public List<ArtifactInfo> getArtifactInfos() {
         return this.infos;
     }
@@ -391,7 +391,7 @@ public class ApisJarContext {
      * @param log The logger
      * @param info The artifact info
      * @return {@code true} if all artifacts are publically available
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException If an incorrect configuration is found
      */
     public boolean findDependencyArtifact(final Log log, final ArtifactInfo info) throws MojoExecutionException {
         boolean result = true;

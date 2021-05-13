@@ -123,7 +123,11 @@ public class JSONFeatures {
     private static final String FILE_PREFIX = "@file";
 
     /**
-     * Check for extensions of type text and if they reference a file
+     * Check for extensions of type text and if they reference a file.
+     *
+     * @param feature The feature to check
+     * @param file The file to check for
+     * @throws IOException when an IO Exception occurs
      */
 	public static void handleExtensions(final Feature feature, final File file) throws IOException {
         for(final Extension ext : feature.getExtensions()) {

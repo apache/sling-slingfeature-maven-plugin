@@ -19,6 +19,8 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,16 +35,13 @@ import org.apache.sling.feature.io.IOUtils;
 import org.apache.sling.feature.maven.ProjectHelper;
 import org.codehaus.plexus.util.AbstractScanner;
 
-import edu.emory.mathcs.backport.java.util.Arrays;
-import edu.emory.mathcs.backport.java.util.Collections;
-
 public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
 
     /**
      * Get all selected features for the provided configuration
      * @param config The selection configuration
      * @return An ordered map of features
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException If an incorrect configuration is found
      */
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {
@@ -79,7 +78,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
     /**
      * Select all feature files from the project
      * @return Ordered map of feature files
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException If an incorrect configuration is found
      */
     protected Map<String, Feature> selectAllFeatureFiles() throws MojoExecutionException {
         final FeatureSelectionConfig config = new FeatureSelectionConfig();
@@ -91,7 +90,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
     /**
      * Select all features including aggregates from the project
      * @return Ordered map of features
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException If an incorrect configuration is found
      */
     protected Map<String, Feature> selectAllFeatureFilesAndAggregates() throws MojoExecutionException {
         final FeatureSelectionConfig config = new FeatureSelectionConfig();

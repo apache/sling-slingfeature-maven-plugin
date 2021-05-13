@@ -172,7 +172,12 @@ public class RegionSupport {
     /**
      * Compute exports based on all regions
      *
+     * @param apiRegions The API Regions to use
+     * @param enabledToggles The enabled toggles
+     * @param exportedPackages The exported packages
+     * @param bundle The bundle
      * @return Set of packages exported by this bundle and used in any region
+     * @throws MojoExecutionException when the calculation cannot be made
      */
     public Set<String> computeAllUsedExportPackages(final ApiRegions apiRegions,
             final Set<String> enabledToggles,
@@ -203,7 +208,11 @@ public class RegionSupport {
    /**
      * Compute exports based on a single region
      *
+     * @param apiRegion The API Region to use
+     * @param exportedPackages The exported packages
+     * @param allPackages All the packages
      * @return List of packages exported by this bundle and used in the region
+     * @throws MojoExecutionException When the computation cannot be done.
      */
     public Set<Clause> computeUsedExportPackagesPerRegion(final ApiRegion apiRegion,
             final Clause[] exportedPackages,

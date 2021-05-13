@@ -219,7 +219,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     /**
      * This method needs to be invoked by each mojo that deals with features
      *
-     * @throws MojoExecutionException
+     * @throws MojoExecutionException If the project has no features defined
      */
     protected void checkPreconditions() throws MojoExecutionException {
         final String errorMessage = ProjectHelper.checkPreprocessorRun(this.project);
@@ -299,7 +299,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
                         // Default metadata
                         JSONFeatures.handleDefaultMetadata(feature, ProjectHelper.getDefaultMetadata(project));
-        
+
                         ProjectHelper.setFeatureInfo(project, feature);
 
                         // Add feature to map of features

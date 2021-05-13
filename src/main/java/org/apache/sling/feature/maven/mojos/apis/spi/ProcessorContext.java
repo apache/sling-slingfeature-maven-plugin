@@ -47,11 +47,13 @@ public interface ProcessorContext {
 
     /**
      * Get the session
+     * @return The session
      */
     MavenSession getSession();
 
     /**
      * The logger
+     * @return The log
      */
     Log getLog();
 }

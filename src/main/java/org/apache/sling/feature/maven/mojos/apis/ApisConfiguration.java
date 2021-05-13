@@ -489,7 +489,7 @@ public class ApisConfiguration {
     }
 
     /**
-     * @param useApiDependencies the useApiDependencies to set
+     * @param flag The value for useApiDependencies
      */
     public void setUseApiDependencies(final boolean flag) {
         this.useApiDependencies = flag;
@@ -503,7 +503,7 @@ public class ApisConfiguration {
     }
 
     /**
-     * @param useApiDependenciesForJavadoc the useApiDependenciesForJavadoc to set
+     * @param flag The value for useApiDependenciesForJavadoc
      */
     public void setUseApiDependenciesForJavadoc(final boolean flag) {
         this.useApiDependenciesForJavadoc = flag;
@@ -542,5 +542,5 @@ public class ApisConfiguration {
                 this.dependencyRepositories.add(val);
             }
         }
-    }    
+    }
 }

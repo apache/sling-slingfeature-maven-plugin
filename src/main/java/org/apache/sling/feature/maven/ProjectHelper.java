@@ -515,6 +515,7 @@ public abstract class ProjectHelper {
      * Validate the classifiers in a project
      * @param project The maven project
      * @param additionalClassifier Optional additional classifier
+     * @param attachFeature Set to true to attach the feature
      */
     public static void validateFeatureClassifiers(final MavenProject project,
             final String additionalClassifier, final boolean attachFeature) {
@@ -593,7 +594,12 @@ public abstract class ProjectHelper {
     /**
      * Read the json file, minify it, add id if missing and replace variables
      *
+     * @param project The Maven project to use
      * @param file The json file
+     * @param suggestedClassifier The suggested classifier
+     * @param legacyReplace if the old replace is enabled
+     * @param enableProjectVars is the project variables are enabled
+     * @param additionalVars any additional variables
      * @return The read and minified JSON
      */
     public static String readFeatureFile(final MavenProject project,

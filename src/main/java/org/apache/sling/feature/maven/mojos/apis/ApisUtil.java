@@ -200,7 +200,13 @@ public class ApisUtil {
 
     /**
      * Build the classpath for javadoc
-     * @throws MojoExecutionException
+     *
+     * @param log The log to use
+     * @param repositorySystem The repository system to use
+     * @param mavenSession The maven session to use
+     * @param ctx The Apis Jar Context to use
+     * @param regionName The region name to use
+     * @throws MojoExecutionException When an invalid artifact ID is found
      */
     public static Collection<String> getJavadocClassPath(final Log log,
             final RepositorySystem repositorySystem,
@@ -484,7 +490,7 @@ public class ApisUtil {
                 public int compare(ArtifactInfo o1, ArtifactInfo o2) {
                     return o1.getId().compareTo(o2.getId());
                 }
-                
+
             });
             final List<String> output = new ArrayList<>();
             for (final ArtifactInfo info : infos) {
@@ -511,6 +517,6 @@ public class ApisUtil {
             if ( reportFile.exists() ) {
                 reportFile.delete();
             }
-        }        
+        }
     }
 }
