@@ -162,7 +162,7 @@ public class RegionSupport {
             include = exp.getToggle() != null && enabledToggles.contains(exp.getToggle());
         } else {
             // if the package is behind a toggle,  only include if toggle is enabled or if previous artifact is set
-            if (exp.getToggle() != null && !enabledToggles.contains(exp.getToggle()) && exp.getPrevious() == null) {
+            if (exp.getToggle() != null && !enabledToggles.contains(exp.getToggle()) && exp.getPreviousPackageVersion() == null) {
                 include = false;
             }
         }

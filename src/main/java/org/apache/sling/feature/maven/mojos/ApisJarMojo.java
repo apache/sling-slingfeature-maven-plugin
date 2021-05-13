@@ -779,14 +779,14 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         if (exp != null) {
                             if (exp.getToggle() != null
                                     && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle())
-                                    && exp.getPrevious() != null) {
-                                if (previous != null && previous.compareTo(exp.getPrevious()) != 0) {
+                                    && exp.getPreviousPackageVersion() != null) {
+                                if (previous != null && previous.compareTo(exp.getPreviousArtifactId()) != 0) {
                                     throw new MojoExecutionException(
                                             "More than one previous version artifact configured for "
                                                     + artifact.getId().toMvnId() + " : " + previous.toMvnId() + ", "
-                                                    + exp.getPrevious().toMvnId());
+                                                    + exp.getPreviousArtifactId().toMvnId());
                                 }
-                                previous = exp.getPrevious();
+                                previous = exp.getPreviousArtifactId();
                             }
                             break;
                         }

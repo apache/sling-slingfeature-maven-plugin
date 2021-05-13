@@ -155,7 +155,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[2]));
 
         // no toggle set, but toggle uses previous version
-        e2.setPrevious(ArtifactId.parse("g:b:0.1"));
+        e2.setPreviousArtifactId(ArtifactId.parse("g:b:0.1"));
+        e2.setPreviousPackageVersion("1.0");
         used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertEquals(3, used.size());
         assertTrue(used.contains("p1"));
@@ -206,7 +207,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[1]));
 
         // no toggle set, but toggle uses previous version -> empty result
-        e2.setPrevious(ArtifactId.parse("g:b:0.1"));
+        e2.setPreviousArtifactId(ArtifactId.parse("g:b:0.1"));
+        e2.setPreviousPackageVersion("1.0");
         used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertTrue(used.isEmpty());
 
