@@ -177,7 +177,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.extension.apiregions</artifactId>
-            <version>1.2.4</version>
+            <version>1.2.10</version>
         </dependency>
         <!-- aux dependencies for Content-Package check -->
         <dependency>
