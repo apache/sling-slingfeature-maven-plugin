@@ -92,6 +92,8 @@ public class ApisConfiguration {
 
     private static final String PROP_API_VERSION = "api-version";
 
+    private static final String PROP_API_NAME = "api-name";
+
     private static final String PROP_JAVADOC_SOURCE_LEVEL = "javadoc-source-level";
 
     private static final String PROP_JAVADOC_CLASSPATH_TOPS = "javadoc-classpath-tops";
@@ -129,6 +131,8 @@ public class ApisConfiguration {
     private String javadocSourceLevel;
 
     private String apiVersion;
+
+    private String apiName;
 
     private final List<String> bundleResourceFolders = new ArrayList<>();
 
@@ -179,6 +183,7 @@ public class ApisConfiguration {
 
             this.javadocSourceLevel = json.getString(PROP_JAVADOC_SOURCE_LEVEL, null);
             this.apiVersion = json.getString(PROP_API_VERSION, null);
+            this.apiName = json.getString(PROP_API_NAME, null);
 
             add(this.bundleResourceFolders, json, PROP_BUNDLE_RESOURCE_FOLDERS);
             add(this.bundleResources, json, PROP_BUNDLE_RESOURCES);
@@ -206,6 +211,7 @@ public class ApisConfiguration {
             log.info("- " + PROP_JAVADOC_SOURCE_LEVEL + " : " + this.javadocSourceLevel);
             log.info("- " + PROP_JAVADOC_LINKS + " : " + this.javadocLinks);
             log.info("- " + PROP_API_VERSION + " : " + this.apiVersion);
+            log.info("- " + PROP_API_NAME + " : " + this.apiName);
             log.info("- " + PROP_BUNDLE_RESOURCE_FOLDERS + " : " + this.bundleResourceFolders);
             log.info("- " + PROP_BUNDLE_RESOURCES + " : " + this.bundleResources);
             log.info("- " + PROP_REGION_MAPPINGS + " : " + this.regionMappings);
@@ -272,6 +278,10 @@ public class ApisConfiguration {
 
     public String getApiVersion() {
         return apiVersion;
+    }
+
+    public String getApiName() {
+        return apiName;
     }
 
     public List<String> getBundleResourceFolders() {
@@ -541,6 +551,12 @@ public class ApisConfiguration {
                 }
                 this.dependencyRepositories.add(val);
             }
+        }
+    }
+
+    public void setApiName(final String value) {
+        if ( this.apiName == null ) {
+            this.apiName = value;
         }
     }
 }

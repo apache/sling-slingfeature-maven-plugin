@@ -412,6 +412,15 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private List<String> javadocAdditionalExtensions;
 
+    /**
+     * Optional artifact name which is used instead of the generated artifact name
+     * to set some headers in the manifest.
+     * 
+     * @since 1.5.6
+     */
+    @Parameter 
+    private String apiName;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -478,6 +487,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         ctx.getConfig().setJavadocClasspathHighestVersions(this.javadocClasspathHighestVersions);
         ctx.getConfig().setJavadocClasspathTops(this.javadocClasspathTops);
         ctx.getConfig().setApiVersion(this.apiVersion);
+        ctx.getConfig().setApiName(this.apiName);
         ctx.getConfig().setJavadocSourceLevel(this.javadocSourceLevel);
         ctx.getConfig().setBundleResourceFolders(this.resourceFolders);
         ctx.getConfig().setBundleResources(this.includeResources);
@@ -1595,7 +1605,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         }
 
         final ArtifactId targetId = this.buildArtifactId(ctx, apiRegion, archiveType);
-        final String artifactName = String.format("%s-%s", targetId.getArtifactId(), targetId.getClassifier());
+        final String artifactName = ctx.getConfig().getApiName() != null ? ctx.getConfig().getApiName() :
+                String.format("%s-%s", targetId.getArtifactId(), targetId.getClassifier());
 
         MavenArchiveConfiguration archiveConfiguration = new MavenArchiveConfiguration();
         archiveConfiguration.setAddMavenDescriptor(false);
