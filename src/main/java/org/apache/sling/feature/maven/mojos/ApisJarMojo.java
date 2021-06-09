@@ -454,6 +454,8 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         } else {
             getLog().debug("Starting APIs JARs creation...");
 
+            this.mainOutputDir.mkdirs();
+            
             for (final Feature feature : features) {
                 onFeature(feature);
             }
@@ -1647,7 +1649,6 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // replace/add manifest entries with the one provided in manifestProperties configuration
         archiveConfiguration.addManifestEntries(ctx.getConfig().getManifestEntries());
-
         final File target = new File(mainOutputDir, targetId.toMvnName());
         MavenArchiver archiver = new MavenArchiver();
         archiver.setArchiver(jarArchiver);
