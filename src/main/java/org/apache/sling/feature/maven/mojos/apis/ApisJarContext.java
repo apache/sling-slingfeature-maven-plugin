@@ -344,7 +344,8 @@ public class ApisJarContext {
     public Collection<ArtifactInfo> getArtifactInfos(final String regionName, final boolean omitDependencyArtifacts) {
         final Map<ArtifactId, ArtifactInfo> result = new TreeMap<>();
         for(final ArtifactInfo info : this.infos) {
-            if ( !info.getUsedExportedPackages(regionName).isEmpty() ) {
+            final Set<Clause> pcks = info.getUsedExportedPackages(regionName);
+            if ( pcks != null && !pcks.isEmpty() ) {
                 if ( !omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(regionName) ) {
                     result.put(info.getId(), info);
                 }
