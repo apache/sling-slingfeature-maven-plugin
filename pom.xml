@@ -17,7 +17,7 @@
     <parent>
         <groupId>org.apache.sling</groupId>
         <artifactId>sling</artifactId>
-        <version>43</version>
+        <version>44</version>
         <relativePath />
     </parent>
 
@@ -36,6 +36,7 @@
         <maven.version>3.6.3</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
+        <project.build.outputTimestamp>1</project.build.outputTimestamp>
     </properties>
 
     <scm>
@@ -142,7 +143,7 @@
         <dependency>
             <groupId>org.apache.johnzon</groupId>
             <artifactId>johnzon-core</artifactId>
-            <version>1.2.3</version>
+            <version>1.2.14</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -172,7 +173,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.3.30</version>
+            <version>1.3.31-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
