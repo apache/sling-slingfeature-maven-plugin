@@ -94,8 +94,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
             final Map<String, Feature> selection = this.getSelectedFeatures(aggregate);
             if (selection.isEmpty()) {
-                throw new MojoExecutionException(
-                        "No features found for aggregate with classifier " + aggregate.classifier);
+                getLog().warn("No features found for aggregate with classifier " + aggregate.classifier);
             }
 
             final Map<String,String> variablesOverwrites = new HashMap<>();
