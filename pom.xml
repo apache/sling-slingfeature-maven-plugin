@@ -173,7 +173,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.4.0</version>
+            <version>1.5.2</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
@@ -183,13 +183,19 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.extension.apiregions</artifactId>
-            <version>1.4.0</version>
+            <version>1.4.2</version>
         </dependency>
         <!-- aux dependencies for Content-Package check -->
         <dependency>
             <groupId>org.apache.jackrabbit.vault</groupId>
             <artifactId>org.apache.jackrabbit.vault</artifactId>
-            <version>3.2.6</version>
+            <version>3.5.4</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.jackrabbit.vault</groupId>
+            <artifactId>vault-validation</artifactId>
+            <version>3.5.4</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
