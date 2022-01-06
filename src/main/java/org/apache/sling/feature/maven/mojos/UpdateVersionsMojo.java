@@ -570,6 +570,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 container = rawFeature.getExtensions().getByName(update.extension.getName()).getArtifacts();
             }
             final int pos = container.indexOf(update.artifact);
+            final Artifact oldArtifact = pos == -1 ? null : container.get(pos);
             if (!container.removeExact(update.artifact.getId())) {
                 // check if property is used
                 final Artifact same = container.getSame(update.artifact.getId());
@@ -599,13 +600,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 }
                 iter.remove();
             } else {
-                if (pos == -1) {
-                    throw new MojoExecutionException("MIST " + update.artifact.getId().toMvnId());
-                }
-                final Artifact newArtifact = new Artifact(new ArtifactId(update.artifact.getId().getGroupId(),
-                        update.artifact.getId().getArtifactId(), update.newVersion,
-                        update.artifact.getId().getClassifier(), update.artifact.getId().getType()));
-                newArtifact.getMetadata().putAll(update.artifact.getMetadata());
+                final Artifact newArtifact = new Artifact(update.artifact.getId().changeVersion(update.newVersion));
+                newArtifact.getMetadata().putAll(oldArtifact.getMetadata());
                 container.add(pos, newArtifact);
             }
         }
