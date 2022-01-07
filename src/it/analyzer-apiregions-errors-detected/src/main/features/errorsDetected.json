@@ -3,7 +3,7 @@
   "bundles":[
     {
       "id":"org.apache.aries.versioning:org.apache.aries.versioning.checker:0.3.1",
-      "start-level":"20"
+      "start-order":"20"
     }
   ],
   "api-regions:JSON|false": [

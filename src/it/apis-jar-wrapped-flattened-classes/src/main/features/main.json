@@ -3,11 +3,11 @@
   "bundles":[
     {
       "id":"org.apache.jackrabbit:oak-lucene:1.10.2",
-      "start-level":"4"
+      "start-order":"4"
     },
     {
       "id":"org.apache.jackrabbit:oak-solr-osgi:1.10.2",
-      "start-level":"5"
+      "start-order":"5"
     }
   ],
   "api-regions:JSON|false": [

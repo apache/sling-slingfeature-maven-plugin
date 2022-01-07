@@ -15,7 +15,7 @@
   "bundles":[
     {
       "id":"org.osgi:org.osgi.framework:${osgi.framework.version}",
-      "start-level":"20"
+      "start-order":"20"
     }
   ]
 }

@@ -3,7 +3,7 @@
   "bundles":[
     {
       "id":"org.apache.aries:org.apache.aries.util:1.1.3",
-      "start-level":"20"
+      "start-order":"20"
     }
   ],
   "extension1:JSON|false": [

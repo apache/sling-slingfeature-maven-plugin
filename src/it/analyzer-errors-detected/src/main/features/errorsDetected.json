@@ -3,7 +3,7 @@
   "bundles":[
     {
       "id":"org.osgi:org.osgi.framework:1.9.0",
-      "start-level":"20"
+      "start-order":"20"
     }
   ],
   "api-regions:JSON|false": [

@@ -3,7 +3,7 @@
   "bundles":[
     {
       "id":"io.wcm.osgi.wrapper:io.wcm.osgi.wrapper.gson:2.8.4-0000",
-      "start-level":"4"
+      "start-order":"4"
     }
   ],
   "api-regions:JSON|false": [
