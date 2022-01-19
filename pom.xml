@@ -22,7 +22,7 @@
     </parent>
 
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>1.5.19-SNAPSHOT</version>
+    <version>1.6.0-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <name>Apache Sling OSGi Feature Maven Plugin</name>
@@ -173,7 +173,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.5.2</version>
+            <version>1.6.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
@@ -183,7 +183,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.extension.apiregions</artifactId>
-            <version>1.4.4</version>
+            <version>1.5.0-SNAPSHOT</version>
         </dependency>
         <!-- aux dependencies for Content-Package check -->
         <dependency>

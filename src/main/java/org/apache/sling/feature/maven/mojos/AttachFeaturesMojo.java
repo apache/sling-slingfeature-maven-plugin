@@ -108,7 +108,8 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
                             final String symbolicName = jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_SYMBOLICNAME);
                             final String version = jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_VERSION);
                             if ( symbolicName != null && version != null ) {
-                                value = new AbstractMap.SimpleImmutableEntry<>(symbolicName, version);
+                                final int idx = symbolicName.indexOf(";");
+                                value = new AbstractMap.SimpleImmutableEntry<>(idx == -1 ? symbolicName : symbolicName.substring(0, idx), version);
                             }
                         } catch (final IOException e) {
                             // we ignore this
