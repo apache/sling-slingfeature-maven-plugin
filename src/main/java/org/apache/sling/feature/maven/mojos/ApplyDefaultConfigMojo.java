@@ -18,11 +18,13 @@ package org.apache.sling.feature.maven.mojos;
 
 import java.util.Map;
 
+import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.extension.apiregions.api.config.ConfigurationApi;
 import org.apache.sling.feature.extension.apiregions.api.config.validation.FeatureValidationResult;
@@ -37,24 +39,87 @@ import org.apache.sling.feature.maven.ProjectHelper;
     threadSafe = true)
 public class ApplyDefaultConfigMojo extends AbstractIncludingFeatureMojo {
 
+    /**
+     * The features to apply the default configuration to.
+     */
     @Parameter(name = "selection", required = true)
     FeatureSelectionConfig selection;
 
+    /**
+     * If enabled (default) the build fails if the configuration is invalid
+     */
     @Parameter(defaultValue = "true")
     boolean failOnValidationError;
+
+    /**
+     * Optional feature model dependency containing the configuration api to validate against.
+     * @since 1.6
+     */
+    @Parameter
+    Dependency configurationApiDependency;
+
+    /**
+     * Optional classifier for a feature from the local project containing the configuration api to validate against
+     * @since 1.6
+     */
+    @Parameter
+    String configurationApiClassifier;
+
+    private ConfigurationApi getDefaultConfigurationApi() throws MojoExecutionException {
+        if ( this.configurationApiClassifier != null && this.configurationApiDependency != null ) {
+            throw new MojoExecutionException("Only one of configurationApiDependency or configurationApiClassifier can be specified, but not both.");
+        }
+        ConfigurationApi defaultApi = null;
+        if ( this.configurationApiClassifier != null ) {
+            final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
+            for(final Feature f : projectFeatures.values()) {
+                if ( this.configurationApiClassifier.equals(f.getId().getClassifier()) ) {
+                    defaultApi = ConfigurationApi.getConfigurationApi(f);
+                    if ( defaultApi == null ) {
+                        throw new MojoExecutionException("Specified feature with classifier " + this.configurationApiClassifier + " does not contain configuration api");
+                    }
+                    break;
+                }
+            }
+            if ( defaultApi == null ) {
+                throw new MojoExecutionException("Specified feature with classifier + " + this.configurationApiClassifier + " does not exist in project.");
+            }
+
+        } else if ( this.configurationApiDependency != null ) {
+            final ArtifactId depId = ProjectHelper.toArtifactId(this.configurationApiDependency);
+            if (ProjectHelper.isLocalProjectArtifact(this.project, depId)) {
+                throw new MojoExecutionException(
+                            "configurationApiDependency configuration is used to select a local feature: " + depId.toMvnId());
+            }
+            final Feature f = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
+                    this.artifactHandlerManager, this.artifactResolver, depId);
+            defaultApi = ConfigurationApi.getConfigurationApi(f);
+            if ( defaultApi == null ) {
+                throw new MojoExecutionException("Specified feature " + depId.toMvnId() + " does not contain configuration api");
+            }
+        }
+        if ( defaultApi != null ) {
+            getLog().info("Using configured configuration-api from " + 
+                (this.configurationApiClassifier != null ? "classifier " + this.configurationApiClassifier
+                                                         : " dependency " + ProjectHelper.toString(this.configurationApiDependency)));
+        }
+
+        return defaultApi;
+    }
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         checkPreconditions();
-
         getLog().info("Feature Selection: " + selection);
 
-        Map<String, Feature> selFeat = getSelectedFeatures(selection);
-        for (Map.Entry<String, Feature> entry : selFeat.entrySet()) {
+        final ConfigurationApi defaultApi = this.getDefaultConfigurationApi();
+
+        final Map<String, Feature> selFeat = getSelectedFeatures(selection);
+        for (final Map.Entry<String, Feature> entry : selFeat.entrySet()) {
             final Feature f = entry.getValue();
 
             // check if configuration api is set
-            final ConfigurationApi api = ConfigurationApi.getConfigurationApi(f);
+            final ConfigurationApi api = defaultApi != null ? defaultApi : ConfigurationApi.getConfigurationApi(f);
             if ( api != null ) {
                 final FeatureValidator validator = new FeatureValidator();
                 validator.setFeatureProvider(new BaseFeatureProvider());

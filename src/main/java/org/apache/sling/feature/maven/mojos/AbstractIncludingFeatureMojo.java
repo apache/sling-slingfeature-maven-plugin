@@ -194,7 +194,6 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             throw new MojoExecutionException("RefsInclude " + selection + " not found.");
         }
         // sort result
-        @SuppressWarnings("unchecked")
         final List<String> includedFiles = new ArrayList<>(Arrays.asList(scanner.getIncludedFiles()));
         Collections.sort(includedFiles);
         for(final String path : includedFiles) {
