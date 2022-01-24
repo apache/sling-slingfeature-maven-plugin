@@ -173,7 +173,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.6.0-SNAPSHOT</version>
+            <version>1.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
@@ -183,7 +183,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.extension.apiregions</artifactId>
-            <version>1.5.0-SNAPSHOT</version>
+            <version>1.5.0</version>
         </dependency>
         <!-- aux dependencies for Content-Package check -->
         <dependency>
