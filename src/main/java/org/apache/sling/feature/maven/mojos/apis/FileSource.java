@@ -17,11 +17,11 @@
 package org.apache.sling.feature.maven.mojos.apis;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.sling.feature.maven.mojos.apis.spi.Source;
 
-import edu.emory.mathcs.backport.java.util.Collections;
 
 public class FileSource implements Source {
 
@@ -39,7 +39,6 @@ public class FileSource implements Source {
         return directory;
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public List<File> getFiles() {
         return Collections.singletonList(this.file);
