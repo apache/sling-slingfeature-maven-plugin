@@ -150,10 +150,10 @@
             <artifactId>commons-text</artifactId>
             <version>1.9</version>
         </dependency>
-         <dependency>
-            <groupId>org.apache.felix</groupId>
-            <artifactId>org.apache.felix.converter</artifactId>
-            <version>1.0.18</version>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.util.converter</artifactId>
+            <version>1.0.9</version>
         </dependency>
         <dependency>
             <groupId>org.apache.felix</groupId>
