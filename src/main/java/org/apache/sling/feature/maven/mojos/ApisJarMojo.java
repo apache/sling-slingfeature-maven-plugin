@@ -771,12 +771,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final ApisJarContext ctx,
             final RegionSupport regionSupport,
             Artifact artifact) throws MojoExecutionException {
-        final File bundleFile = getArtifactFile(artifact.getId());
+        File bundleFile = getArtifactFile(artifact.getId());
 
-        final Manifest manifest = regionSupport.getManifest(artifact.getId(), bundleFile);
+        Manifest manifest = regionSupport.getManifest(artifact.getId(), bundleFile);
 
         // check if the bundle is exporting packages?
-        final Clause[] exportedPackageClauses = regionSupport.getExportedPackages(manifest);
+        Clause[] exportedPackageClauses = regionSupport.getExportedPackages(manifest);
         if (exportedPackageClauses.length > 0) {
 
             // calculate the exported packages in the manifest file for all regions
@@ -810,6 +810,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     getLog().debug("Using " + previous.toMvnId() + " instead of " + artifact.getId().toMvnId()
                             + " due to disabled toggle(s)");
                     artifact = previousArtifact;
+                    bundleFile = getArtifactFile(artifact.getId());
+                    manifest = regionSupport.getManifest(artifact.getId(), bundleFile);
+                    exportedPackageClauses = regionSupport.getExportedPackages(manifest);
                 }
 
                 final ArtifactInfo info = ctx.addArtifactInfo(artifact);
