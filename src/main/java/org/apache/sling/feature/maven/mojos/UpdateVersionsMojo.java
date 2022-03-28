@@ -31,19 +31,28 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
-import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
+import org.apache.maven.artifact.ArtifactUtils;
+import org.apache.maven.artifact.DefaultArtifact;
+import org.apache.maven.artifact.handler.ArtifactHandler;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
-import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
-import org.apache.maven.model.Dependency;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.repository.legacy.metadata.ArtifactMetadataSource;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Artifacts;
@@ -53,17 +62,11 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.JSONFeatures;
 import org.apache.sling.feature.maven.ProjectHelper;
-import org.codehaus.mojo.versions.api.ArtifactVersions;
-import org.codehaus.mojo.versions.api.DefaultVersionsHelper;
-import org.codehaus.mojo.versions.api.UpdateScope;
-import org.codehaus.mojo.versions.api.VersionsHelper;
-import org.codehaus.mojo.versions.utils.DependencyComparator;
 import org.codehaus.plexus.util.StringUtils;
 
 /**
  * Update the bundles/artifact versions
  */
-@SuppressWarnings("deprecation")
 @Mojo(
         name = "update-feature-versions",
         threadSafe = true
@@ -108,23 +111,11 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     @Parameter(property = "classifiers")
     private String classifiers;
 
-    @Component
-    protected org.apache.maven.artifact.factory.ArtifactFactory artifactFactory;
-
-    @Component
+    @Component(role = org.apache.maven.artifact.metadata.ArtifactMetadataSource.class)
     protected ArtifactMetadataSource artifactMetadataSource;
 
     @Parameter(defaultValue = "${project.remoteArtifactRepositories}", readonly = true)
     protected List<ArtifactRepository> remoteArtifactRepositories;
-
-    @Parameter(defaultValue = "${localRepository}", readonly = true)
-    protected ArtifactRepository localRepository;
-
-    private VersionsHelper getHelper() throws MojoExecutionException {
-        return new DefaultVersionsHelper(artifactFactory, artifactResolver, artifactMetadataSource,
-                remoteArtifactRepositories, null, localRepository, null, null, null,
-                null, getLog(), this.mavenSession, null);
-    }
 
     private List<String[]> parseMatches(final String value, final String matchType) throws MojoExecutionException {
         List<String[]> matches = null;
@@ -177,22 +168,39 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         return features;
     }
 
-    private void addDependencies(final Set<Dependency> dependencies, final List<Artifact> artifacts,
+    /**
+     * Get all dependencies to check for a list of artifacts
+     * @param dependencies The result
+     * @param artifacts The artifacts to check
+     * @param cfg The configuration
+     */
+    private void addDependencies(final Set<ArtifactHolder> dependencies, 
+            final List<Artifact> artifacts,
             final UpdateConfig cfg) {
         for (final Artifact a : artifacts) {
-            final String versionInfo = shouldHandle(a.getId(), cfg);
-            if (versionInfo != null) {
-                final Dependency dep = ProjectHelper.toDependency(a.getId(),
-                        org.apache.maven.artifact.Artifact.SCOPE_PROVIDED);
-                // we store the version info as system path as this seems to be very useful...
-                dep.setSystemPath(versionInfo);
-                dependencies.add(dep);
+            final String include = shouldHandle(a.getId(), cfg);
+            if (include != null) {
+                String newVersion = null;
+                Scope scope = cfg.defaultScope;
+                if (!include.trim().isEmpty()) {
+                    scope = getScope(include);
+                    if (scope == null) {
+                        newVersion = include;
+                    }
+                }
+                dependencies.add(this.createArtifactHolder(a, scope, newVersion));
             }
         }
     }
 
-    private Set<Dependency> getDependencies(final Map<String, Feature> features, final UpdateConfig cfg) {
-        final Set<Dependency> dependencies = new TreeSet<>(new DependencyComparator());
+    /**
+     * Get all dependencies to check
+     * @param features The map of features
+     * @param cfg The configuration
+     * @return The set of dependencies
+     */
+    private Set<ArtifactHolder> getDependencies(final Map<String, Feature> features, final UpdateConfig cfg) {
+        final Set<ArtifactHolder> dependencies = new TreeSet<>();
         for (final Map.Entry<String, Feature> entry : features.entrySet()) {
             addDependencies(dependencies, entry.getValue().getBundles(), cfg);
             for (final Extension ext : entry.getValue().getExtensions()) {
@@ -216,6 +224,11 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
+    /**
+     * Create the update configuration
+     * @return The configuration
+     * @throws MojoExecutionException If configuration is invalid
+     */
     private UpdateConfig createConfiguration() throws MojoExecutionException {
         final UpdateConfig cfg = new UpdateConfig();
 
@@ -237,6 +250,11 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
         cfg.excludes = parseMatches(updatesExcludesList, "excludes");
 
+        cfg.defaultScope = getScope(this.versionScope);
+        if (cfg.defaultScope == null) {
+            throw new MojoExecutionException("Invalid update scope specified: " + this.versionScope);
+        }
+
         return cfg;
     }
 
@@ -250,16 +268,9 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         // Create config
         final UpdateConfig cfg = this.createConfiguration();
 
-        // Calculate dependencies for features
-        final Set<Dependency> dependencies = getDependencies(features, cfg);
-
-        // Get updates
-        try {
-            cfg.updateInfos = calculateUpdateInfos(getHelper().lookupDependenciesUpdates(dependencies, false));
-        } catch (ArtifactMetadataRetrievalException
-                | InvalidVersionSpecificationException e) {
-            throw new MojoExecutionException("Unable to calculate updates", e);
-        }
+        // Calculate dependencies for features and get updates
+        cfg.updateInfos = this.getDependencies(features, cfg);
+        this.lookupVersionUpdates(cfg.updateInfos);
 
         final Map<String, UpdateResult> results = new LinkedHashMap<>();
 
@@ -418,28 +429,20 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         return null;
     }
 
-    private String update(final Artifact artifact, final List<Map.Entry<Dependency, String>> updates)
+    private String update(final Artifact artifact, final Set<ArtifactHolder> updates)
             throws MojoExecutionException {
 		getLog().debug("Searching for updates of " + artifact.getId().toMvnId());
 
-		String updated = null;
-
         // check updates
         String found = null;
-        for (final Map.Entry<Dependency, String> entry : updates) {
-            if (artifact.getId().getGroupId().equals(entry.getKey().getGroupId())
-                    && artifact.getId().getArtifactId().equals(entry.getKey().getArtifactId())
-                    && artifact.getId().getType().equals(entry.getKey().getType())
-                    && !artifact.getId().getVersion().equals(entry.getValue())
-                    && ((artifact.getId().getClassifier() == null && entry.getKey().getClassifier() == null)
-                            || (artifact.getId().getClassifier() != null
-                                    && artifact.getId().getClassifier().equals(entry.getKey().getClassifier())))) {
-                found = entry.getValue();
+        for (final ArtifactHolder entry : updates) {
+            if (artifact.getId().equals(entry.getArtifact().getId()) ) {
+                found = entry.getUpdate();
                 break;
             }
-
 		}
 
+		String updated = null;
 		if ( found != null ) {
             getLog().debug("Updating " + artifact.getId().toMvnId() + " to " + found);
 
@@ -457,7 +460,9 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
         public List<String> includeVersionInfo;
 
-        List<Map.Entry<Dependency, String>> updateInfos;
+        Set<ArtifactHolder> updateInfos;
+
+        public Scope defaultScope;
 	}
 
 	public static final class ArtifactUpdate {
@@ -469,91 +474,6 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     public static final class UpdateResult {
         public List<ArtifactUpdate> updates;
         public Map<String, String> propertyUpdates = new HashMap<>();
-    }
-
-    private String getVersion(final Map.Entry<Dependency, ArtifactVersions> entry, final UpdateScope scope) {
-        ArtifactVersion latest;
-        if (entry.getValue().isCurrentVersionDefined()) {
-            latest = entry.getValue().getNewestUpdate(scope, false);
-        } else {
-            ArtifactVersion newestVersion = entry.getValue()
-                    .getNewestVersion(entry.getValue().getArtifact().getVersionRange(), false);
-            latest = newestVersion == null ? null
-                    : entry.getValue().getNewestUpdate(newestVersion, scope, false);
-            if (latest != null
-                    && ArtifactVersions.isVersionInRange(latest, entry.getValue().getArtifact().getVersionRange())) {
-                latest = null;
-            }
-        }
-        return latest != null ? latest.toString() : null;
-    }
-
-    private UpdateScope getScope(final String versionInfo) {
-        final UpdateScope scope;
-        if (versionInfo == null || "ANY".equalsIgnoreCase(versionInfo)) {
-            scope = UpdateScope.ANY;
-        } else if ("MAJOR".equalsIgnoreCase(versionInfo)) {
-            scope = UpdateScope.MAJOR;
-        } else if ("MINOR".equalsIgnoreCase(versionInfo)) {
-            scope = UpdateScope.MINOR;
-        } else if ("INCREMENTAL".equalsIgnoreCase(versionInfo)) {
-            scope = UpdateScope.INCREMENTAL;
-        } else if ("SUBINCREMENTAL".equalsIgnoreCase(versionInfo)) {
-            scope = UpdateScope.SUBINCREMENTAL;
-        } else {
-            scope = null;
-        }
-        return scope;
-    }
-
-    private List<Map.Entry<Dependency, String>> calculateUpdateInfos(
-            final Map<Dependency, ArtifactVersions> updateInfos) throws MojoExecutionException {
-        final UpdateScope defaultScope = getScope(this.versionScope);
-        if (defaultScope == null) {
-            throw new MojoExecutionException("Invalid update scope specified: " + this.versionScope);
-        }
-        final List<Map.Entry<Dependency, String>> updates = new ArrayList<>();
-        for (final Map.Entry<Dependency, ArtifactVersions> entry : updateInfos.entrySet()) {
-            UpdateScope scope = defaultScope;
-            final String versionInfo = entry.getKey().getSystemPath();
-            String newVersion = null;
-            if (versionInfo != null && !versionInfo.trim().isEmpty()) {
-                scope = getScope(versionInfo);
-                if (scope == null) {
-                    getLog().debug(
-                            "Using provided version " + versionInfo + " for " + ProjectHelper.toString(entry.getKey()));
-                    newVersion = versionInfo;
-                }
-            }
-            if (newVersion == null) {
-                newVersion = getVersion(entry, scope);
-                getLog().debug("Detected new version " + newVersion + " using scope " + scope.toString() + " for "
-                        + ProjectHelper.toString(entry.getKey()));
-
-            }
-            if (newVersion != null) {
-                final String version = newVersion;
-                updates.add(new Map.Entry<Dependency, String>() {
-
-                    @Override
-                    public String setValue(final String value) {
-                        throw new IllegalStateException();
-                    }
-
-                    @Override
-                    public String getValue() {
-                        return version;
-                    }
-
-                    @Override
-                    public Dependency getKey() {
-                        return entry.getKey();
-                    }
-                });
-            }
-        }
-
-        return updates;
     }
 
     private boolean updateVersions(final String fileName, final Feature rawFeature, final UpdateResult result,
@@ -655,5 +575,447 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
 
         return updates;
+    }
+
+    /**
+     * Create a holder 
+     * @param artifact The artifact
+     * @param scope The scope
+     * @param newVersion The optional new version
+     * @return The holder
+     */
+    private ArtifactHolder createArtifactHolder(final Artifact artifact, 
+            final Scope scope,
+            final String newVersion) {
+        return new ArtifactHolder(artifact, scope, newVersion);
+    }
+
+    /**
+     * Lookup the version updates
+     * @param dependencies The set of dependencies to check for version updates
+     */
+    private void lookupVersionUpdates( final Set<ArtifactHolder> dependencies )
+        throws MojoExecutionException {
+
+        final List<Callable<Void>> requestsForDetails = new ArrayList<>( dependencies.size() );
+        for ( final ArtifactHolder dependency : dependencies ) {
+            requestsForDetails.add( () -> {
+                final ArtifactId id = dependency.getArtifact().getId();
+
+                getLog().debug( "Checking " + id.getGroupId() + ":" + id.getArtifactId() + " for updates newer than " + id.getVersion() );
+
+                final ArtifactHandler handler = artifactHandlerManager.getArtifactHandler( id.getType() );
+
+                final org.apache.maven.artifact.Artifact artifact = new DefaultArtifact( id.getGroupId(), id.getArtifactId(), id.getVersion(), org.apache.maven.artifact.Artifact.SCOPE_PROVIDED, 
+                                                            id.getType(), id.getClassifier(), handler);
+                dependency.setVersions(artifactMetadataSource.retrieveAvailableVersions( artifact, 
+                        this.mavenSession.getLocalRepository(), this.remoteArtifactRepositories ));
+                return null;
+            });
+        }
+
+        // Lookup details in parallel...
+        final ExecutorService executor = Executors.newFixedThreadPool( 5 );
+        try {
+            final List<Future<Void>> responseForDetails = executor.invokeAll( requestsForDetails );
+
+            // Construct the final results...
+            for ( final Future<Void> details : responseForDetails ) {
+                details.get();
+            }
+        } catch ( final ExecutionException | InterruptedException ie ) {
+            throw new MojoExecutionException( "Unable to acquire metadata for dependencies " + dependencies
+                + ": " + ie.getMessage(), ie );
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /** Enumeration for the update scopes */
+    public enum Scope {
+        ANY,
+        MAJOR,
+        MINOR,
+        INCREMENTAL,
+        SUBINCREMENTAL
+    }
+
+    /**
+     * Get the update scope
+     * @param versionInfo The version info
+     * @return The scope or {@code null}
+     */
+    private static Scope getScope(final String versionInfo) {
+        final Scope scope;
+        if (versionInfo == null || "ANY".equalsIgnoreCase(versionInfo)) {
+            scope = Scope.ANY;
+        } else if ("MAJOR".equalsIgnoreCase(versionInfo)) {
+            scope = Scope.MAJOR;
+        } else if ("MINOR".equalsIgnoreCase(versionInfo)) {
+            scope = Scope.MINOR;
+        } else if ("INCREMENTAL".equalsIgnoreCase(versionInfo)) {
+            scope = Scope.INCREMENTAL;
+        } else if ("SUBINCREMENTAL".equalsIgnoreCase(versionInfo)) {
+            scope = Scope.SUBINCREMENTAL;
+        } else {
+            scope = null;
+        }
+        return scope;
+    }
+    /**
+     * Holds the results of a search for versions of an artifact.
+     */
+    private static class ArtifactHolder implements Comparable<ArtifactHolder> {
+
+        /**
+         * All versions - this is updated dynamically
+         */
+        private final SortedSet<ArtifactVersion> versions = new TreeSet<>();
+
+        /**
+         * The current version.
+         */
+        private final ArtifactVersion currentVersion;
+ 
+        /**
+         * The update scope to use
+         */
+        private final Scope updateScope;
+
+        /**
+         * The artifact
+         */
+        private final Artifact artifact;
+
+        /**
+         * Optional version to use for the update
+         */
+        private final String newVersion;
+
+        /**
+         * Constructor
+         * @param artifact The artifact.
+         * @param updateScope The update scope.
+         * @param newVersion optional new version info
+         */
+        public ArtifactHolder( final Artifact artifact, final Scope updateScope, final String newVersion ) {
+            this.artifact = artifact;
+            this.updateScope = updateScope;
+            this.currentVersion = new DefaultArtifactVersion(artifact.getId().getVersion());
+            this.newVersion = newVersion;
+        }
+
+        /**
+         * Get the artifact
+         * @return The artifact
+         */
+        public Artifact getArtifact() {
+            return this.artifact;
+        }
+
+        /**
+         * Set the versions
+         * @param versions List of versions
+         */
+        public void setVersions(final List<ArtifactVersion> versions) {
+            // filter out snapshots
+            for ( final ArtifactVersion candidate : versions ) {
+                if ( ArtifactUtils.isSnapshot( candidate.toString() ) ) {
+                    continue;
+                }
+                this.versions.add( candidate );
+            }
+        }
+
+        private final ArtifactVersion getNewestVersion( ArtifactVersion lowerBound,
+                                                        ArtifactVersion upperBound,
+                                                        boolean includeLower, boolean includeUpper ) {
+            ArtifactVersion latest = null;
+            for ( final ArtifactVersion candidate : this.versions ) {
+                final int lower = lowerBound == null ? -1 : lowerBound.compareTo( candidate );
+                final int upper = upperBound == null ? +1 : upperBound.compareTo( candidate );
+                if ( lower > 0 || upper < 0 ) {
+                    continue;
+                }
+                if ( ( !includeLower && lower == 0 ) || ( !includeUpper && upper == 0 ) ) {
+                    continue;
+                }
+                if ( ArtifactUtils.isSnapshot( candidate.toString() ) ) {
+                    continue;
+                }
+                if ( latest == null ) {
+                    latest = candidate;
+                } else if ( latest.compareTo( candidate ) < 0 ) {
+                    latest = candidate;
+                }
+
+            }
+            return latest;
+        }
+
+        public final String getUpdate() {
+            if ( this.newVersion != null ) {
+                return this.newVersion;
+            }
+            ArtifactVersion v = null;
+            switch ( updateScope ) {
+                case SUBINCREMENTAL :
+                    v = getSegmentCount( currentVersion ) < 3 ? null
+                                : this.getNewestVersion( currentVersion,
+                                                incrementSegment( currentVersion, 2 ),
+                                                false, false );
+                    break;
+                case INCREMENTAL :
+                    v = getSegmentCount( currentVersion ) < 3 ? null
+                                : this.getNewestVersion( incrementSegment( currentVersion, 2 ),
+                                                incrementSegment( currentVersion, 1 ),
+                                                true, false );
+                    break;
+                case MINOR :
+                    v = getSegmentCount( currentVersion ) < 2 ? null
+                                : this.getNewestVersion( incrementSegment( currentVersion, 1 ),
+                                                                incrementSegment( currentVersion, 0 ),
+                                                                true, false );
+                    break;
+                case MAJOR :
+                    v = getSegmentCount( currentVersion ) < 1 ? null
+                                : this.getNewestVersion( incrementSegment( currentVersion, 0 ),
+                                                                null, true, false );
+                    break;
+                case ANY :
+                    v = this.getNewestVersion( currentVersion, null, false, false );
+                    break;
+            }
+            return v != null ? v.toString() : null;
+        }
+
+        @Override
+        public int compareTo(final ArtifactHolder o) {
+            return this.artifact.compareTo(o.getArtifact());
+        }
+    }
+
+    private static final Pattern SNAPSHOT_PATTERN = Pattern.compile( "(-((\\d{8}\\.\\d{6})-(\\d+))|(SNAPSHOT))$" );
+
+    private static final int getSegmentCount( final ArtifactVersion v ) {
+        if ( v == null ) {
+            return 0;
+        }
+        if ( ArtifactUtils.isSnapshot( v.toString() ) ) {
+            return innerGetSegmentCount( stripSnapshot( v ) );
+        }
+        return innerGetSegmentCount( v );
+    }
+
+    private static ArtifactVersion incrementSegment( final ArtifactVersion v, final int segment ) {
+        if ( ArtifactUtils.isSnapshot( v.toString() ) ) {
+            return copySnapshot( v, innerIncrementSegment( stripSnapshot( v ), segment ) );
+        }
+        return innerIncrementSegment( v, segment );
+    }
+
+    private static int innerGetSegmentCount( final ArtifactVersion v ) {
+        // if the version does not match the maven rules, then we have only one segment
+        // i.e. the qualifier
+        if ( v.getBuildNumber() != 0 ) {
+            // the version was successfully parsed, and we have a build number
+            // have to have four segments
+            return 4;
+        }
+        if ( ( v.getMajorVersion() != 0 || v.getMinorVersion() != 0 || v.getIncrementalVersion() != 0 )
+            && v.getQualifier() != null ) {
+            // the version was successfully parsed, and we have a qualifier
+            // have to have four segments
+            return 4;
+        }
+        final String version = v.toString();
+        if ( version.indexOf( '-' ) != -1 ) {
+            // the version has parts and was not parsed successfully
+            // have to have one segment
+            return version.equals( v.getQualifier() ) ? 1 : 4;
+        }
+        if ( version.indexOf( '.' ) != -1 ) {
+            // the version has parts and was not parsed successfully
+            // have to have one segment
+            return version.equals( v.getQualifier() ) ? 1 : 3;
+        }
+        if ( StringUtils.isEmpty( version ) ) {
+            return 3;
+        }
+        try {
+            Integer.parseInt( version );
+            return 3;
+        } catch ( final NumberFormatException e ) {
+            return 1;
+        }
+    }
+
+    private static ArtifactVersion innerIncrementSegment( final ArtifactVersion v, final int segment ) {
+        int segmentCount = innerGetSegmentCount( v );
+        if ( segment < 0 || segment >= segmentCount ) {
+            throw new IllegalArgumentException( v.toString() );
+        }
+        String version = v.toString();
+        if ( segmentCount == 1 ) {
+            // only the qualifier
+            version = alphaNumIncrement( version );
+            return new DefaultArtifactVersion( version );
+        } else {
+            int major = v.getMajorVersion();
+            int minor = v.getMinorVersion();
+            int incremental = v.getIncrementalVersion();
+            int build = v.getBuildNumber();
+            String qualifier = v.getQualifier();
+
+            int minorIndex = version.indexOf( '.' );
+            boolean haveMinor = minorIndex != -1;
+            int incrementalIndex = haveMinor ? version.indexOf( '.', minorIndex + 1 ) : -1;
+            boolean haveIncremental = incrementalIndex != -1;
+            int buildIndex = version.indexOf( '-' );
+            boolean haveBuild = buildIndex != -1 && qualifier == null;
+            boolean haveQualifier = buildIndex != -1 && qualifier != null;
+
+            switch ( segment ) {
+                case 0:
+                    major++;
+                    minor = 0;
+                    incremental = 0;
+                    build = 0;
+                    qualifier = null;
+                    break;
+                case 1:
+                    minor++;
+                    incremental = 0;
+                    build = 0;
+                    if ( haveQualifier && qualifier.endsWith( "SNAPSHOT" ) ) {
+                        qualifier = "SNAPSHOT";
+                    }
+                    break;
+                case 2:
+                    incremental++;
+                    build = 0;
+                    qualifier = null;
+                    break;
+                case 3:
+                    if ( haveQualifier ) {
+                        qualifier = qualifierIncrement( qualifier );
+                    } else {
+                        build++;
+                    }
+                    break;
+            }
+            final StringBuilder result = new StringBuilder();
+            result.append( major );
+            if ( haveMinor || minor > 0 || incremental > 0 ) {
+                result.append( '.' );
+                result.append( minor );
+            }
+            if ( haveIncremental || incremental > 0 ) {
+                result.append( '.' );
+                result.append( incremental );
+            }
+            if ( haveQualifier && qualifier != null ) {
+                result.append( '-' );
+                result.append( qualifier );
+            } else if ( haveBuild || build > 0 ) {
+                result.append( '-' );
+                result.append( build );
+            }
+            return new DefaultArtifactVersion( result.toString() );
+        }
+    }
+
+    private static String qualifierIncrement( final String qualifier ) {
+        if ( qualifier.toLowerCase().startsWith( "alpha" ) ) {
+            return qualifier.substring( 0, 5 ) + alphaNumIncrement( qualifier.substring( 5 ) );
+        }
+        if ( qualifier.toLowerCase().startsWith( "beta" ) ) {
+            return qualifier.substring( 0, 4 ) + alphaNumIncrement( qualifier.substring( 4 ) );
+        }
+        if ( qualifier.toLowerCase().startsWith( "milestone" ) ) {
+            return qualifier.substring( 0, 8 ) + alphaNumIncrement( qualifier.substring( 8 ) );
+        }
+        if ( qualifier.toLowerCase().startsWith( "cr" ) || qualifier.toLowerCase().startsWith( "rc" ) || qualifier.toLowerCase().startsWith( "sp" ) ) {
+            return qualifier.substring( 0, 2 ) + alphaNumIncrement( qualifier.substring( 2 ) );
+        }
+        return alphaNumIncrement( qualifier );
+    }
+
+    private static String alphaNumIncrement( String token ) {
+        String newToken;
+        int i = token.length();
+        boolean done = false;
+        newToken = token;
+        while ( !done && i > 0 ) {
+            i--;
+            char c = token.charAt( i );
+            if ( '0' <= c && c < '9' ) {
+                c++;
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                done = true;
+            } else if ( c == '9' ) {
+                c = '0';
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+            } else if ( 'A' <= c && c < 'Z' ) {
+                c++;
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                done = true;
+            } else if ( c == 'Z' ) {
+                c = 'A';
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+            } else if ( 'a' <= c && c < 'z' ) {
+                c++;
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                done = true;
+            } else if ( c == 'z' ) {
+                c = 'a';
+                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+            }
+        }
+        if ( done ) {
+            return newToken;
+        } else {
+            // ok this is roll-over time
+            boolean lastNumeric = false;
+            boolean lastAlpha = false;
+            boolean lastUpper = false;
+            i = token.length();
+            while ( !lastAlpha && !lastNumeric && i > 0 ) {
+                i--;
+                char c = token.charAt( i );
+                lastAlpha = Character.isLetter( c );
+                lastUpper = c == Character.toUpperCase( c );
+                lastNumeric = Character.isDigit( c );
+            }
+            if ( lastAlpha ) {
+                if ( lastUpper ) {
+                    return token + 'A';
+                }
+                return token + 'a';
+            }
+            return token + '0';
+        }
+    }
+
+    private static ArtifactVersion stripSnapshot( ArtifactVersion v ) {
+        final String version = v.toString();
+        final Matcher matcher = SNAPSHOT_PATTERN.matcher( version );
+        if ( matcher.find() ) {
+            return new DefaultArtifactVersion( version.substring( 0, matcher.start( 1 ) - 1 ) );
+        }
+        return v;
+    }
+
+    private static ArtifactVersion copySnapshot( ArtifactVersion source, ArtifactVersion destination ) {
+        if ( ArtifactUtils.isSnapshot( destination.toString() ) ) {
+            destination = stripSnapshot( destination );
+        }
+        final Pattern matchSnapshotRegex = SNAPSHOT_PATTERN;
+        final Matcher matcher = matchSnapshotRegex.matcher( source.toString() );
+        if ( matcher.find() ) {
+            return new DefaultArtifactVersion( destination.toString() + "-" + matcher.group( 0 ) );
+        } else {
+            return new DefaultArtifactVersion( destination.toString() + "-SNAPSHOT" );
+        }
     }
 }
