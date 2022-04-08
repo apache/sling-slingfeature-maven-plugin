@@ -579,7 +579,7 @@ public class AggregateFeaturesMojoTest {
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
@@ -631,7 +631,7 @@ public class AggregateFeaturesMojoTest {
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
@@ -695,7 +695,7 @@ public class AggregateFeaturesMojoTest {
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) {
+            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
