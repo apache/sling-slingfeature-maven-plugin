@@ -176,7 +176,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                     selection.values().toArray(new Feature[selection.size()]));
         } catch ( final IllegalStateException | IllegalArgumentException e) {
             throw new MojoExecutionException("Unable to aggregate feature " +
-                newFeatureID.getClassifier() == null ? "<main artifact>" : newFeatureID.getClassifier()
+                (newFeatureID.getClassifier() == null ? "<main artifact>" : newFeatureID.getClassifier())
                 + " : " + e.getMessage(), e);
         }
     }
