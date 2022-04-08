@@ -170,8 +170,14 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
     }
 
     Feature assembleFeature(final ArtifactId newFeatureID, final BuilderContext builderContext,
-            final Map<String, Feature> selection) {
-        return FeatureBuilder.assemble(newFeatureID, builderContext,
-                selection.values().toArray(new Feature[selection.size()]));
+            final Map<String, Feature> selection) throws MojoExecutionException {
+        try {
+            return FeatureBuilder.assemble(newFeatureID, builderContext,
+                    selection.values().toArray(new Feature[selection.size()]));
+        } catch ( final IllegalStateException | IllegalArgumentException e) {
+            throw new MojoExecutionException("Unable to aggregate feature " +
+                newFeatureID.getClassifier() == null ? "<main artifact>" : newFeatureID.getClassifier()
+                + " : " + e.getMessage(), e);
+        }
     }
 }
