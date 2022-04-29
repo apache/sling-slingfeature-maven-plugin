@@ -291,7 +291,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /**
      * Comma separated list of Maven repository lists. If set, and
      * {@link #useApiDependencies} is enabled, then one of the listed repositories
-     * must provide the artifact. If it is not set, all artifacts are 
+     * must provide the artifact. If it is not set, all artifacts are
      * used as dependencies if {@link #useApiDependencies} is enabled.
      *
      * @since 1.3.0
@@ -308,12 +308,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
      */
     @Parameter(defaultValue = "false")
     private boolean useApiDependenciesForJavadoc;
-    
+
     /**
      * If {@link #useApiDependencies} is set to {@code true} and {@link #useApiDependenciesForJavadoc}
      * is set to {@code true} this can be set to {@code false} to generate an additional
      * javadoc API jar with all javadoc including the API from dependencies.
-     * @since 1.5.2 
+     * @since 1.5.2
      */
     @Parameter(defaultValue = "false")
     private boolean generateJavadocForAllApi;
@@ -415,10 +415,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     /**
      * Optional artifact name which is used instead of the generated artifact name
      * to set some headers in the manifest.
-     * 
+     *
      * @since 1.5.6
      */
-    @Parameter 
+    @Parameter
     private String apiName;
 
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
@@ -455,7 +455,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             getLog().debug("Starting APIs JARs creation...");
 
             this.mainOutputDir.mkdirs();
-            
+
             for (final Feature feature : features) {
                 onFeature(feature);
             }
@@ -528,7 +528,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final List<ArtifactInfo> additionalInfos = new ArrayList<>();
         if ( this.generateJavadocJar ) {
             for (final ApiRegion apiRegion : regions.listRegions()) {
-                additionalInfos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));  
+                additionalInfos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));
             }
         }
 
@@ -593,7 +593,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     ctx.setJavadocDir(javadocsAllDir);
                     final File javadocAllJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC_ALL,
                             this.apiJavadocResources, infosForAll, report);
-                    report(ctx, javadocAllJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);    
+                    report(ctx, javadocAllJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);
                 }
             }
 
@@ -624,7 +624,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     dependencyReportFile.delete();
                 }
             }
-            
+
             // write report
             final ArtifactId reportId = this.buildArtifactId(ctx, apiRegion, ArtifactType.REPORT);
             final File reportFile = new File(mainOutputDir, reportId.toMvnName());
@@ -651,12 +651,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 .a(" succesfully created").toString());
     }
 
-    private void report(final ApisJarContext ctx, 
-            final File jarFile, 
+    private void report(final ApisJarContext ctx,
+            final File jarFile,
             final ArtifactType artifactType,
             final RegionSupport regionSupport,
-            final ApiRegion apiRegion, 
-            final boolean omitDependencyArtifacts, 
+            final ApiRegion apiRegion,
+            final boolean omitDependencyArtifacts,
             final List<String> report,
             final JavadocLinks links) throws MojoExecutionException {
         final Map.Entry<Set<String>, Set<String>> packageResult = ApisUtil.getPackages(ctx, jarFile,
@@ -791,7 +791,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         if (exp != null) {
                             if (exp.getToggle() != null
                                     && !ctx.getConfig().getEnabledToggles().contains(exp.getToggle())
-                                    && exp.getPreviousPackageVersion() != null) {
+                                    && exp.getPreviousArtifactId() != null) {
                                 if (previous != null && previous.compareTo(exp.getPreviousArtifactId()) != 0) {
                                     throw new MojoExecutionException(
                                             "More than one previous version artifact configured for "
@@ -830,7 +830,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                                      usedExportedPackagesPerRegion);
                     }
                     if (useAsDependency == null ) {
-                        if (ctx.findDependencyArtifact(getLog(), info)) {                            
+                        if (ctx.findDependencyArtifact(getLog(), info)) {
                             // check scm info
                             if (artifact.getMetadata().get(ApisUtil.SCM_LOCATION) != null) {
                                 throw new MojoExecutionException("Dependency artifact must not specify "
@@ -1778,7 +1778,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             for(final Artifact artifact : ApisUtil.getAdditionalJavadocArtifacts(ctx, regionName) ) {
                 final boolean infoExists = ctx.getArtifactInfo(artifact.getId()) != null;
                 final ArtifactInfo info = infoExists ?  ctx.getArtifactInfo(artifact.getId()) : ctx.addArtifactInfo(artifact);
-    
+
                 final Set<Clause> exportedPackages = regionSupport.getAllPublicPackages(ctx, artifact, getArtifactFile(artifact.getId()));
                 final Iterator<Clause> iter = exportedPackages.iterator();
                 final Set<String> exportedPackageNames = new LinkedHashSet<>();
@@ -1791,18 +1791,18 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                         exportedPackageNames.add(c.getName());
                     }
                 }
-    
+
                 if ( !exportedPackages.isEmpty() ) {
                     info.setUsedExportedPackages(regionName, exportedPackages, "");
                     if ( !infoExists ) {
                         info.setUsedExportedPackages(exportedPackageNames);
                         info.setSourceDirectory(new File(ctx.getDeflatedSourcesDir(), info.getId().toMvnName()));
                     }
-    
+
                     usedInfos.add(info);
                     sourceDirectories.add(info.getSourceDirectory().getAbsolutePath());
                 }
-            }    
+            }
         } else {
             final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, true);
             for(final ArtifactInfo i : ctx.getArtifactInfos(regionName, false)) {
@@ -1815,7 +1815,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     }
                     if ( addDirectory && i.getSourceDirectory() != null ) {
                         sourceDirectories.add(i.getSourceDirectory().getAbsolutePath());
-                    }        
+                    }
                 }
             }
         }
