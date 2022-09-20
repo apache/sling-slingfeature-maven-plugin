@@ -22,7 +22,7 @@
     </parent>
 
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>1.6.7-SNAPSHOT</version>
+    <version>1.6.8</version>
     <packaging>maven-plugin</packaging>
 
     <name>Apache Sling OSGi Feature Maven Plugin</name>
@@ -36,14 +36,14 @@
         <maven.version>3.6.3</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
-        <project.build.outputTimestamp>1657751775</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1663699392</project.build.outputTimestamp>
     </properties>
 
     <scm>
         <connection>scm:git:https://gitbox.apache.org/repos/asf/sling-slingfeature-maven-plugin.git</connection>
         <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/sling-slingfeature-maven-plugin.git</developerConnection>
         <url>https://gitbox.apache.org/repos/asf?p=sling-slingfeature-maven-plugin.git</url>
-      <tag>slingfeature-maven-plugin-1.6.4</tag>
+      <tag>slingfeature-maven-plugin-1.6.8</tag>
   </scm>
 
     <build>
@@ -181,13 +181,13 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature.analyser</artifactId>
-            <version>1.6.7-SNAPSHOT</version>
+            <version>1.6.8</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.repoinit.parser</artifactId>
-            <version>1.7.1-SNAPSHOT</version>
+            <version>1.8.0</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
