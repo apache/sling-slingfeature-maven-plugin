@@ -489,8 +489,6 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             } else {
                 container = rawFeature.getExtensions().getByName(update.extension.getName()).getArtifacts();
             }
-            final int pos = container.indexOf(update.artifact);
-            final Artifact oldArtifact = pos == -1 ? null : container.get(pos);
             if (!container.removeExact(update.artifact.getId())) {
                 // check if property is used
                 final Artifact same = container.getSame(update.artifact.getId());
@@ -520,6 +518,9 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 }
                 iter.remove();
             } else {
+                // the artifact exists in the container (removeExact returned true)
+                final int pos = container.indexOf(update.artifact);
+                final Artifact oldArtifact = container.get(pos);
                 final Artifact newArtifact = new Artifact(update.artifact.getId().changeVersion(update.newVersion));
                 newArtifact.getMetadata().putAll(oldArtifact.getMetadata());
                 container.add(pos, newArtifact);
