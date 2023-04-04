@@ -2,8 +2,18 @@ github:
   description: "Apache Sling OSGi Feature Maven Plugin"
   homepage: "https://sling.apache.org/"
   labels:
-    - java
-    - sling
-    - maven
-    - osgi
-    - osgi-feature-model
+  - "java"
+  - "sling"
+  - "maven"
+  - "osgi"
+  - "osgi-feature-model"
+  autolink_jira:
+  - "SLING"
+  - "OAK"
+  - "JCR"
+  - "JCRVLT"
+  - "INFRA"
+  - "FELIX"
+  - "MNG"
+notifications:
+  jira_options: "link"
