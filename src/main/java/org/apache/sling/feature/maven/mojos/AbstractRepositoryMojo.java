@@ -121,29 +121,7 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
      * @return The file
      */
     private File getRepositoryFile(final File artifactDir, final org.apache.sling.feature.ArtifactId artifact) {
-        final StringBuilder artifactNameBuilder = new StringBuilder();
-        artifactNameBuilder.append(artifact.getArtifactId());
-        artifactNameBuilder.append('-');
-        artifactNameBuilder.append(artifact.getVersion());
-        if ( artifact.getClassifier() != null ) {
-            artifactNameBuilder.append('-');
-            artifactNameBuilder.append(artifact.getClassifier());
-        }
-        artifactNameBuilder.append('.');
-        artifactNameBuilder.append(artifact.getType());
-        final String artifactName = artifactNameBuilder.toString();
-
-        final StringBuilder sb = new StringBuilder();
-        sb.append(artifact.getGroupId().replace('.', File.separatorChar));
-        sb.append(File.separatorChar);
-        sb.append(artifact.getArtifactId());
-        sb.append(File.separatorChar);
-        sb.append(artifact.getVersion());
-        sb.append(File.separatorChar);
-        sb.append(artifactName);
-        final String destPath = sb.toString();
-
-        final File artifactFile = new File(artifactDir, destPath);
+        final File artifactFile = new File(artifactDir, artifact.toMvnPath().replace('/', File.separatorChar));
         artifactFile.getParentFile().mkdirs();
 
         return artifactFile;
@@ -157,24 +135,29 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
             final File artifactDir)
     throws MojoExecutionException {
         final File artifactFile = getRepositoryFile(artifactDir, artifactId);
-        // TODO - we could overwrite snapshots?
-        if ( artifactFile.exists() ) {
+        if (artifactFile.exists() && !artifactId.getVersion().endsWith("-SNAPSHOT")) {
             return;
         }
-        final Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
-                this.mavenSession,
-                this.artifactHandlerManager,
-                this.artifactResolver,
-                artifactId);
+        File source = ProjectHelper.getOrResolveArtifact(this.project,
+            this.mavenSession,
+            this.artifactHandlerManager,
+            this.artifactResolver,
+            artifactId).getFile();
+        if (ProjectHelper.isLocalProjectArtifact(this.project, artifactId) && source.isDirectory()) {
+            if (artifactId.getClassifier() != null) {
+                throw new MojoExecutionException("Classified project artifacts are not supported: " + artifactId.toMvnId());
+            }
+            source = this.project.getArtifact().getFile();
+        }
 
         try {
             if (decompress) {
-                copyAndDecompressArtifact(source.getFile(), artifactFile);
+                copyAndDecompressArtifact(source, artifactFile);
             } else {
-                copyArtifact(source.getFile(), artifactFile);
+                copyArtifact(source, artifactFile);
             }
-        } catch (IOException e) {
-            throw new MojoExecutionException("Unable to copy artifact from " + source.getFile(), e);
+        } catch (final IOException e) {
+            throw new MojoExecutionException("Unable to copy artifact from " + source, e);
         }
     }
 
