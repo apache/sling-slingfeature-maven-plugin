@@ -19,7 +19,7 @@ package org.apache.sling.feature.maven.mojos;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.reflect.FieldUtils;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Build;
@@ -52,7 +53,6 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -76,10 +76,10 @@ public class FeatureLauncherMojoTest {
     }
 
     @Test
-    public void testSimpleFeature() throws MojoExecutionException, IOException, MojoFailureException {
+    public void testSimpleFeature() throws MojoExecutionException, IOException, MojoFailureException, IllegalAccessException {
         final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setIncludeClassifier("example-runtime");
-        Whitebox.setInternalState(mojo, "selection", cfg);
+        FieldUtils.getField(FeatureLauncherMojo.class, "selection", true).set(mojo, cfg);
         Map<String, Feature> featureMap = new HashMap<>();
         File featureFile = new File(
             getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
@@ -124,10 +124,10 @@ public class FeatureLauncherMojoTest {
     }
 
     @Test
-    public void testFullLaunch() throws MojoFailureException, MojoExecutionException, IOException {
+    public void testFullLaunch() throws MojoFailureException, MojoExecutionException, IOException, IllegalAccessException {
         final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setIncludeClassifier("example-runtime");
-        Whitebox.setInternalState(mojo, "selection", cfg);
+        FieldUtils.getField(FeatureLauncherMojo.class, "selection", true).set(mojo, cfg);
         Map<String, Feature> featureMap = new HashMap<>();
         File featureFile = new File(
             getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
@@ -135,16 +135,16 @@ public class FeatureLauncherMojoTest {
         String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
         featureMap.put(feature.getId().toMvnId(), feature);
 
-        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
-        Whitebox.setInternalState(mojo, "repositoryUrl", "~/.m2/repository");
-        Whitebox.setInternalState(mojo, "frameworkProperties", new String[] { "one=two", "three=four" });
-        Whitebox.setInternalState(mojo, "variableValues", new String[] { "a=b" });
-        Whitebox.setInternalState(mojo, "verbose", true);
-        Whitebox.setInternalState(mojo, "cacheDirectory", new File("./launcher/cache"));
-        Whitebox.setInternalState(mojo, "homeDirectory", new File("./launcher"));
-        Whitebox.setInternalState(mojo, "extensionConfigurations", new String[] { "whatever" });
-        Whitebox.setInternalState(mojo, "frameworkVersion", "1.0.0");
-        Whitebox.setInternalState(mojo, "frameworkArtifacts", new String[] { "next-cool-thing" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "artifactClashOverrides", true).set(mojo, new String[] { "*:*:test" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "repositoryUrl", true).set(mojo, "~/.m2/repository");
+        FieldUtils.getField(FeatureLauncherMojo.class, "frameworkProperties", true).set(mojo, new String[] { "one=two", "three=four" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "variableValues", true).set(mojo, new String[] { "a=b" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "verbose", true).set(mojo, true);
+        FieldUtils.getField(FeatureLauncherMojo.class, "cacheDirectory", true).set(mojo, new File("./launcher/cache"));
+        FieldUtils.getField(FeatureLauncherMojo.class, "homeDirectory", true).set(mojo, new File("./launcher"));
+        FieldUtils.getField(FeatureLauncherMojo.class, "extensionConfigurations", true).set(mojo,  new String[] { "whatever" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "frameworkVersion", true).set(mojo,  "1.0.0");
+        FieldUtils.getField(FeatureLauncherMojo.class, "frameworkArtifacts", true).set(mojo,  new String[] { "next-cool-thing" } );
 
         Build mockBuild = mock(Build.class);
         when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -183,10 +183,10 @@ public class FeatureLauncherMojoTest {
     }
 
     @Test
-    public void testMainReflection() throws MojoFailureException, MojoExecutionException, IOException {
+    public void testMainReflection() throws MojoFailureException, MojoExecutionException, IOException, IllegalAccessException {
         final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setIncludeClassifier("example-runtime");
-        Whitebox.setInternalState(mojo, "selection", cfg);
+        FieldUtils.getField(FeatureLauncherMojo.class, "selection", true).set(mojo, cfg);
         Map<String, Feature> featureMap = new HashMap<>();
         File featureFile = new File(
             getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
@@ -194,7 +194,7 @@ public class FeatureLauncherMojoTest {
         String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
         featureMap.put(feature.getId().toMvnId(), feature);
 
-        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "artifactClashOverrides", true).set(mojo, new String[] { "*:*:test" });
         Build mockBuild = mock(Build.class);
         when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
@@ -221,10 +221,10 @@ public class FeatureLauncherMojoTest {
     }
 
     @Test
-    public void testMainReflectionFailure() throws MojoFailureException, MojoExecutionException, IOException {
+    public void testMainReflectionFailure() throws MojoFailureException, MojoExecutionException, IOException, IllegalAccessException {
         final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setIncludeClassifier("example-runtime");
-        Whitebox.setInternalState(mojo, "selection", cfg);
+        FieldUtils.getField(FeatureLauncherMojo.class, "selection", true).set(mojo, cfg);
         Map<String, Feature> featureMap = new HashMap<>();
         File featureFile = new File(
             getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
@@ -232,7 +232,7 @@ public class FeatureLauncherMojoTest {
         String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
         featureMap.put(feature.getId().toMvnId(), feature);
 
-        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "do-fail" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "artifactClashOverrides", true).set(mojo, new String[] { "do-fail" });
         Build mockBuild = mock(Build.class);
         when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
@@ -263,10 +263,10 @@ public class FeatureLauncherMojoTest {
     }
 
     @Test
-    public void testFeatureFileReadingIssue() throws MojoFailureException, MojoExecutionException, IOException {
+    public void testFeatureFileReadingIssue() throws MojoFailureException, MojoExecutionException, IOException, IllegalAccessException {
         final FeatureSelectionConfig cfg = new FeatureSelectionConfig();
         cfg.setIncludeClassifier("example-runtime");
-        Whitebox.setInternalState(mojo, "selection", cfg);
+        FieldUtils.getField(FeatureLauncherMojo.class, "selection", true).set(mojo, cfg);
         Map<String, Feature> featureMap = new HashMap<>();
         File featureFile = new File(
             getClass().getResource("/aggregate-features/test-aggregated-feature-example-runtime.json").getFile());
@@ -274,7 +274,7 @@ public class FeatureLauncherMojoTest {
         String cacheKey = ASSEMBLED_FEATURE_JSON + "-cache";
         featureMap.put(feature.getId().toMvnId(), feature);
 
-        Whitebox.setInternalState(mojo, "artifactClashOverrides", new String[] { "*:*:test" });
+        FieldUtils.getField(FeatureLauncherMojo.class, "artifactClashOverrides", true).set(mojo, new String[] { "*:*:test" });
         Build mockBuild = mock(Build.class);
         when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
 
