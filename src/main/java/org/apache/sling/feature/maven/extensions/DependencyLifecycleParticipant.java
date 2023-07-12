@@ -14,7 +14,11 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.sling.feature.maven.mojos;
+package org.apache.sling.feature.maven.extensions;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
 
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
@@ -26,14 +30,13 @@ import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.maven.Environment;
 import org.apache.sling.feature.maven.FeatureProjectInfo;
 import org.apache.sling.feature.maven.Preprocessor;
-import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.Logger;
 
 /**
  * Maven lifecycle participant which adds the artifacts of the model to the dependencies.
  */
-@Component(role = AbstractMavenLifecycleParticipant.class, hint = "featureparticipant")
+@Named("featureparticipant")
+@Singleton
 public class DependencyLifecycleParticipant extends AbstractMavenLifecycleParticipant {
 
     /**
@@ -41,18 +44,23 @@ public class DependencyLifecycleParticipant extends AbstractMavenLifecyclePartic
      */
     private static final String PLUGIN_ID = "org.apache.sling:slingfeature-maven-plugin";
 
-    @Requirement
-    private Logger logger;
+    private final Logger logger;
 
-    @Requirement
-    private ArtifactHandlerManager artifactHandlerManager;
+    private final ArtifactHandlerManager artifactHandlerManager;
 
     /**
      * Used to look up Artifacts in the remote repository.
      *
      */
-    @Requirement
-    private ArtifactResolver resolver;
+    private final ArtifactResolver resolver;
+
+    @Inject
+    public DependencyLifecycleParticipant(Logger logger, ArtifactHandlerManager artifactHandlerManager, ArtifactResolver resolver) {
+        super();
+        this.logger = logger;
+        this.artifactHandlerManager = artifactHandlerManager;
+        this.resolver = resolver;
+    }
 
     @Override
     public void afterProjectsRead(final MavenSession session) throws MavenExecutionException {
