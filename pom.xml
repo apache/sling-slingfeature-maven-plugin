@@ -49,14 +49,14 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.codehaus.plexus</groupId>
-                <artifactId>plexus-component-metadata</artifactId>
-                <version>2.1.0</version>
+                <groupId>org.eclipse.sisu</groupId>
+                <artifactId>sisu-maven-plugin</artifactId>
+                <version>0.3.5</version>
                 <executions>
                     <execution>
-                        <id>generate-metadata</id>
+                        <id>index-project</id>
                         <goals>
-                            <goal>generate-metadata</goal>
+                            <goal>main-index</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -100,6 +100,42 @@
 		        <exclude>src/test/resources/META-INF/services/*</exclude>
                         <exclude>src/it/**/*.json</exclude>
                     </excludes>
+                </configuration>
+            </plugin>
+            <plugin><!-- prepare site content by filtering ${project.*} values -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>filter-site</id>
+                        <phase>pre-site</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/site-src</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>src/site</directory>
+                                    <filtering>true</filtering>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>default-testResources</id>
+                        <configuration>
+                            <!-- copy .gitignore as well -->
+                            <addDefaultExcludes>false</addDefaultExcludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+                <configuration>
+                    <siteDirectory>${project.build.directory}/site-src</siteDirectory>
                 </configuration>
             </plugin>
             <plugin>
@@ -273,6 +309,11 @@
         <dependency>
             <groupId>org.apache.maven.plugin-tools</groupId>
             <artifactId>maven-plugin-annotations</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
             <scope>provided</scope>
         </dependency>
         <!-- for converting Maven to OSGi versions -->
