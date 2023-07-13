@@ -113,15 +113,16 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     private boolean validateFeatures;
 
     /**
-     * If set to {@code true} the artifacts from the feature are not as dependencies
-     * to the project.
+     * If set to {@code true} the artifacts from the feature are not added as dependencies
+     * with scope={@code provided} to the project.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_FEATURE_DEPENDENCIES,
             defaultValue="false")
     private boolean skipAddFeatureDependencies;
 
     /**
-     * If set to {@code true} the artifacts from the test feature are not as dependencies to the project.
+     * If set to {@code true} the artifacts from the test feature are not added as dependencies
+     * with scope={@code test} to the project.
      */
     @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES,
             defaultValue="true")
