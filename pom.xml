@@ -17,7 +17,7 @@
     <parent>
         <groupId>org.apache.sling</groupId>
         <artifactId>sling</artifactId>
-        <version>49</version>
+        <version>51</version>
         <relativePath />
     </parent>
 
@@ -64,7 +64,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-plugin</artifactId>
-                <version>3.9.0</version>
                 <executions>
                     <execution>
                         <id>mojo-descriptor</id>
@@ -74,7 +73,7 @@
                         </goals>
                         <configuration>
                             <externalJavadocBaseUrls>
-                                <externalJavadocBaseUrl>https://docs.oracle.com/javase/8/docs/api/</externalJavadocBaseUrl>
+                                <externalJavadocBaseUrl>https://docs.oracle.com/javase/${sling.java.version}/docs/api/</externalJavadocBaseUrl>
                                 <externalJavadocBaseUrl>https://www.javadoc.io/doc/org.apache.sling/org.apache.sling.feature/${sling.feature.version}/</externalJavadocBaseUrl>
                             </externalJavadocBaseUrls>
                             <internalJavadocBaseUrl>apidocs/</internalJavadocBaseUrl>
@@ -184,7 +183,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.feature</artifactId>
-            <version>2.0.0</version>
+            <version>${sling.feature.version}</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -406,7 +405,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-plugin-report-plugin</artifactId>
-                <version>3.9.0</version>
                 <configuration>
                     <hasExtensionsToLoad>true</hasExtensionsToLoad>
                 </configuration>
