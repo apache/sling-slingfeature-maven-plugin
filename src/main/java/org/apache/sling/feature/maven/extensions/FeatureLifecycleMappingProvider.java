@@ -61,6 +61,7 @@ public class FeatureLifecycleMappingProvider implements Provider<LifecycleMappin
                 return null;
             }
 
+            @SuppressWarnings("deprecation")
             @Override
             public Map<String, String> getPhases(String lifecycle) {
                 if (DEFAULT_LIFECYCLE_KEY.equals(lifecycle)) {

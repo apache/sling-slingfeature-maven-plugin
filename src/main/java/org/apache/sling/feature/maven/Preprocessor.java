@@ -214,7 +214,7 @@ public class Preprocessor {
                                                         {
                                                             return ProjectHelper
                                                                     .getOrResolveArtifact(info.project, env.session,
-                                                                            env.artifactHandlerManager, env.resolver, aid)
+                                                                            env.artifactHandlerManager, env.repoSystem, aid)
                                                                     .getFile().toURI().toURL();
                                                         }
                                                         catch (Exception e)
@@ -411,7 +411,7 @@ public class Preprocessor {
 	                    env.logger.debug("Found external " + id.getType() + " dependency: " + id);
 
 	                    // "external" dependency, we can already resolve it
-	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.resolver, id).getFile();
+	                    final File featureFile = ProjectHelper.getOrResolveArtifact(info.project, env.session, env.artifactHandlerManager, env.repoSystem, id).getFile();
 	                    try (final FileReader r = new FileReader(featureFile)) {
 	                        return FeatureJSONReader.read(r, featureFile.getAbsolutePath());
 	                    } catch ( final IOException ioe) {

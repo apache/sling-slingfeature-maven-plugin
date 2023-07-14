@@ -276,7 +276,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
                 getLog().info("Searching " + id.toMvnId());
                 try {
                     return ProjectHelper
-                            .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
+                            .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id)
                             .getFile().toURI().toURL();
                 } catch (final MalformedURLException e) {
                     getLog().debug("Malformed url " + e.getMessage(), e);

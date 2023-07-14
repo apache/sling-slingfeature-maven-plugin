@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -46,6 +45,7 @@ import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.FeatureProjectConfig;
 import org.apache.sling.feature.maven.JSONFeatures;
 import org.apache.sling.feature.maven.ProjectHelper;
+import org.eclipse.aether.RepositorySystem;
 
 /**
  * Base class for all mojos.
@@ -209,7 +209,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     ArtifactHandlerManager artifactHandlerManager;
 
     @Component
-    ArtifactResolver artifactResolver;
+    RepositorySystem repoSystem;
 
     protected File getTmpDir() {
         final File dir = new File(this.project.getBuild().getDirectory(), "slingfeature-tmp");
@@ -354,7 +354,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
 
             // Finally, look the feature up via Maven's dependency mechanism
             return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                artifactResolver, id);
+                repoSystem, id);
         }
     }
 
@@ -368,7 +368,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
         public URL provide(final ArtifactId id) {
             try {
                 return ProjectHelper
-                    .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id)
+                    .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id)
                     .getFile().toURI().toURL();
             } catch (Exception e) {
                 getLog().debug("Artifact " + id.toMvnId() + " not found");

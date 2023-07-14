@@ -101,7 +101,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
                         final org.apache.maven.artifact.Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
                              this.mavenSession,
                             this.artifactHandlerManager,
-                            this.artifactResolver,
+                            this.repoSystem,
                             bundle.getId());
         
                         try (final JarFile jarFile = new JarFile(source.getFile())) {

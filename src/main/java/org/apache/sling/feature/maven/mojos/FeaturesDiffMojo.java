@@ -24,17 +24,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Optional;
 
-import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.factory.ArtifactFactory;
-import org.apache.maven.artifact.metadata.ArtifactMetadataRetrievalException;
-import org.apache.maven.artifact.metadata.ArtifactMetadataSource;
-import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.RepositoryUtils;
+import org.apache.maven.artifact.ArtifactUtils;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.OverConstrainedVersionException;
 import org.apache.maven.artifact.versioning.VersionRange;
@@ -49,6 +42,14 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.diff.DiffRequest;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.artifact.DefaultArtifact;
+import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResult;
+import org.eclipse.aether.resolution.VersionRangeRequest;
+import org.eclipse.aether.resolution.VersionRangeResolutionException;
+import org.eclipse.aether.resolution.VersionRangeResult;
+import org.eclipse.aether.version.Version;
 
 /**
  * Compares different versions of the same Feature Model.
@@ -58,7 +59,6 @@ import org.apache.sling.feature.maven.FeatureConstants;
     requiresDependencyResolution = ResolutionScope.TEST,
     threadSafe = true
 )
-@SuppressWarnings("deprecation")
 public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
@@ -71,13 +71,7 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
     protected String comparisonVersion;
 
     @Component
-    protected ArtifactResolver resolver;
-
-    @Component
-    protected ArtifactFactory factory;
-
-    @Component
-    private ArtifactMetadataSource metadataSource;
+    protected RepositorySystem repoSystem;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -138,31 +132,26 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
             throw new MojoFailureException("Invalid comparison version: " + e.getMessage());
         }
 
-        Artifact previousArtifact;
-
-        try {
-            previousArtifact = factory.createDependencyArtifact(current.getId().getGroupId(),
+        org.eclipse.aether.artifact.Artifact previousArtifact = new DefaultArtifact(current.getId().getGroupId(),
                                                                 current.getId().getArtifactId(),
-                                                                range,
                                                                 current.getId().getType(),
                                                                 current.getId().getClassifier(),
-                                                                Artifact.SCOPE_COMPILE);
+                                                                comparisonVersion);
 
-            if (!previousArtifact.getVersionRange().isSelectedVersionKnown(previousArtifact)) {
-                getLog().debug("Searching for versions in range: " + previousArtifact.getVersionRange());
-                List<ArtifactVersion> availableVersions = metadataSource.retrieveAvailableVersions(previousArtifact,
-                                                                                                   mavenSession.getLocalRepository(),
-                                                                                                   project.getRemoteArtifactRepositories());
-                filterSnapshots(availableVersions);
-                ArtifactVersion version = range.matchVersion(availableVersions);
-                if (version != null) {
-                    previousArtifact.selectVersion(version.toString());
-                }
+        try {
+            
+            if (!range.isSelectedVersionKnown(RepositoryUtils.toArtifact(previousArtifact))) {
+                getLog().debug("Searching for versions in range: " + comparisonVersion);
+                VersionRangeRequest vrr = new VersionRangeRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
+                VersionRangeResult vrResult = repoSystem.resolveVersionRange(mavenSession.getRepositorySession(), vrr);
+                // filter out snapshots
+                Optional<Version> version = vrResult.getVersions().stream().filter(v -> !ArtifactUtils.isSnapshot(v.toString())).reduce((first, second) -> second);
+                previousArtifact.setVersion(version.map(Version::toString).orElse(null));
             }
         } catch (OverConstrainedVersionException ocve) {
             throw new MojoFailureException("Invalid comparison version: " + ocve.getMessage());
-        } catch (ArtifactMetadataRetrievalException amre) {
-            throw new MojoExecutionException("Error determining previous version: " + amre.getMessage(), amre);
+        } catch (VersionRangeResolutionException e) {
+            throw new MojoExecutionException("Error determining previous version: " + e.getMessage(), e);
         }
 
         if (previousArtifact.getVersion() == null) {
@@ -170,15 +159,14 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
             return null;
         }
 
+        File featureFile = null;
         try {
-            resolver.resolve(previousArtifact, project.getRemoteArtifactRepositories(), mavenSession.getLocalRepository());
-        } catch (ArtifactResolutionException are) {
-            getLog().warn("Artifact " + previousArtifact + " cannot be resolved : " + are.getMessage(), are);
-        } catch (ArtifactNotFoundException anfe) {
-            getLog().warn("Artifact " + previousArtifact + " does not exist on local/remote repositories", anfe);
+            ArtifactRequest artifactRequest = new ArtifactRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
+            ArtifactResult artifactResult = repoSystem.resolveArtifact(mavenSession.getRepositorySession(), artifactRequest);
+            featureFile = artifactResult.getArtifact().getFile();
+        } catch (org.eclipse.aether.resolution.ArtifactResolutionException e) {
+            getLog().warn("Artifact " + previousArtifact + " cannot be resolved : " + e.getMessage(), e);
         }
-
-        File featureFile = previousArtifact.getFile();
 
         if (featureFile == null || !featureFile.exists()) {
             return null;
@@ -188,16 +176,6 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
             return FeatureJSONReader.read(reader, featureFile.getAbsolutePath());
         } catch (IOException e) {
             throw new MojoExecutionException("An error occurred while reading the " + featureFile + " Feature file:", e);
-        }
-    }
-
-    private void filterSnapshots(List<ArtifactVersion> versions) {
-        Iterator<ArtifactVersion> versionIterator = versions.iterator();
-        while (versionIterator.hasNext()) {
-            ArtifactVersion version = versionIterator.next();
-            if (version.getQualifier() != null && version.getQualifier().endsWith("SNAPSHOT")) {
-                versionIterator.remove();
-            }
         }
     }
 

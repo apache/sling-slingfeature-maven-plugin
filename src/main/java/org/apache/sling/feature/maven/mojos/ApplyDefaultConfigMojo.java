@@ -92,7 +92,7 @@ public class ApplyDefaultConfigMojo extends AbstractIncludingFeatureMojo {
                             "configurationApiDependency configuration is used to select a local feature: " + depId.toMvnId());
             }
             final Feature f = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                    this.artifactHandlerManager, this.artifactResolver, depId);
+                    this.artifactHandlerManager, this.repoSystem, depId);
             defaultApi = ConfigurationApi.getConfigurationApi(f);
             if ( defaultApi == null ) {
                 throw new MojoExecutionException("Specified feature " + depId.toMvnId() + " does not contain configuration api");

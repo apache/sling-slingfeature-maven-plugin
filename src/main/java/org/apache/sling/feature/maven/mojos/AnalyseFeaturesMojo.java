@@ -193,7 +193,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             @Override
             public URL provide(final ArtifactId id) {
                 try {
-                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, artifactResolver, id).getFile().toURI().toURL();
+                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id).getFile().toURI().toURL();
                 } catch (final MalformedURLException e) {
                     getLog().debug("Malformed url " + e.getMessage(), e);
                     // ignore

@@ -45,7 +45,6 @@ import java.util.Set;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Build;
@@ -60,6 +59,7 @@ import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.Preprocessor;
+import org.eclipse.aether.RepositorySystem;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -464,7 +464,7 @@ public class AggregateFeaturesMojoTest {
         af.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
         af.features = featureFile.getParentFile();
 
-        af.artifactResolver = Mockito.mock(ArtifactResolver.class);
+        af.repoSystem = Mockito.mock(RepositorySystem.class);
         af.execute();
 
         Feature genFeat = featureMap.get(":aggregate:mynewfeature:T");
