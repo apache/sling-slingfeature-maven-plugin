@@ -43,6 +43,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
 import org.apache.sling.feature.maven.mojos.reports.ContentsReporter;
 import org.apache.sling.feature.maven.mojos.reports.DuplicatesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ExportPackagesReporter;
+import org.apache.sling.feature.maven.mojos.reports.ImportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ReportContext;
 import org.apache.sling.feature.maven.mojos.reports.Reporter;
 import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
@@ -232,6 +233,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         available.add(new ExportPackagesReporter());
         available.add(new DuplicatesReporter());
         available.add(new ContentsReporter());
+        available.add(new ImportPackagesReporter());
 
         final List<Reporter> result = new ArrayList<>();
         for(final String r : reports.split(",")) {
