@@ -493,6 +493,10 @@ A text file with a list of exported packages is generated for each feature. If a
 
 This report is done across all features and list the contents (bundles and artifacts).
 
+### Imported Packages (imported-packages)
+
+A text file with a list of imported packages is generated for each feature. If a feature does not import packages, no file is created.
+
 ### Usage in a Maven Project
 
 When used in a Maven project, the list of features for the input goal can be specified by defining the feature set for the goal. The features are configured as described in the global configuration section above. If no configuration is provided, all feature files from the project are used.
