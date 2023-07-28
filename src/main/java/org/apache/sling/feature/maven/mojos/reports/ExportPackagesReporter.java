@@ -61,7 +61,7 @@ public class ExportPackagesReporter implements Reporter {
                 if ( version == null ) {
                     version = "----";
                 }
-                packages.add(p.getName().concat("     ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
+                packages.add(p.getName().concat("    ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
             }
         }
 

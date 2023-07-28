@@ -479,7 +479,7 @@ With the repository goal, a directory with all artifacts from the selected featu
 
 The `info` goal allows to extract information about one or more features and generate some reports. It can be used within a Maven project or standalone.
 
-The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either *log* in which case all output goes to the log or *file* (the default) in which case files for each report are generated.
+The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either *log* in which case all output goes to the log or *file* (the default) in which case files for each feature and report are generated or *singlefile* in which case a single file for each report across all features is generated.
 
 ### Duplicates Report (duplicates)
 

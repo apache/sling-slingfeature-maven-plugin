@@ -25,6 +25,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +87,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     private String reports;
 
     /**
-     * Output format, either file or log.
+     * Output format, either file, singlefile or log.
      */
     @Parameter(property = "outputFormat", defaultValue = "file")
     private String outputFormat;
@@ -125,6 +127,11 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     @Parameter(readonly = true, defaultValue = "${project.build.directory}/feature-reports")
     private File buildDirectory;
 
+    public enum OutputFormat {
+        FILE,
+        LOG,
+        SINGLEFILE
+    };
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
@@ -144,9 +151,11 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         if ( isStandalone && infoFeatureFiles == null ) {
             throw new MojoExecutionException("Required configuration for standalone execution is missing. Please specify 'infoFeatureFiles'.");
         }
-        boolean outputFile = "file".equals(outputFormat);
-        if ( !outputFile && !"log".equals(outputFormat)) {
-            throw new MojoExecutionException("Invalid value for 'outputFormat', allowed values are file or log, configured : ".concat(outputFormat));
+        OutputFormat format = OutputFormat.FILE;
+        try {
+            format = OutputFormat.valueOf(outputFormat.toUpperCase());
+        } catch ( final IllegalArgumentException iae) {
+            throw new MojoExecutionException("Invalid value for 'outputFormat', allowed values are file, log or singlefile, configured : ".concat(outputFormat));
         }
 
         final List<Reporter> reporters = getReporters(this.reports);
@@ -166,7 +175,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         } else {
             matcher = null;
         }
-        final Map<String, List<String>> reports = new LinkedHashMap<>();
+        final Map<String, List<String>> reportsFromSingleReporter = new LinkedHashMap<>();
         final ReportContext ctx = new ReportContext() {
 
             @Override
@@ -181,7 +190,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
 
             @Override
             public void addReport(final String key, final List<String> output) {
-                reports.put(key, output);
+                reportsFromSingleReporter.put(key, output);
             }
 
             @Override
@@ -189,9 +198,12 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
                 return matcher == null || matcher.matches(id) != null;
             }
         };
+        final Map<String, Map<String, List<String>>> allReports = new HashMap<>();
         for(final Reporter reporter : reporters) {
             getLog().info("Generating report ".concat(reporter.getName().concat("...")));
             reporter.generateReport(ctx);
+            allReports.put(reporter.getName(), new HashMap<>(reportsFromSingleReporter));
+            reportsFromSingleReporter.clear();
         }
 
         final File directory;
@@ -203,25 +215,50 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         } else {
             directory = buildDirectory;
         }
-        if ( outputFile ) {
-            directory.mkdirs();
-        }
-        for(final Map.Entry<String, List<String>> entry : reports.entrySet()) {
-            if ( outputFile ) {
-                try {
-                    final File out = new File(directory, entry.getKey());
-                    getLog().info("Writing " + out + "...");
-                    Files.write(out.toPath(), entry.getValue());
-                } catch (final IOException e) {
-                    throw new MojoExecutionException("Unable to write file: " + e.getMessage(), e);
-                }
-            } else {
-                getLog().info("");
-                getLog().info("Report ".concat(entry.getKey()));
-                getLog().info("================================================================");
-                entry.getValue().stream().forEach(l -> getLog().info(l));
-                getLog().info("");
-            }
+        switch (format) {
+            case FILE:
+                directory.mkdirs();
+                allReports.values().forEach(map -> {
+                    map.forEach((key, value) -> {
+                        try {
+                            final File out = new File(directory, key);
+                            getLog().info("Writing " + out + "...");
+                            Files.write(out.toPath(), value);
+                        } catch (final IOException e) {
+                            throw new RuntimeException("Unable to write file: " + e.getMessage(), e);
+                        }
+                    });
+                });
+                break;
+            case SINGLEFILE:
+                directory.mkdirs();
+                allReports.entrySet().forEach(entry -> {
+                    final List<String> result = new ArrayList<>();
+                    for(final List<String> value : entry.getValue().values()) {
+                        result.addAll(value);
+                    }
+                    Collections.sort(result);
+                    try {
+                        final File out = new File(directory, "report-" + entry.getKey() + ".txt");
+                        getLog().info("Writing " + out + "...");
+                        Files.write(out.toPath(), result);
+                    } catch (final IOException e) {
+                        throw new RuntimeException("Unable to write file: " + e.getMessage(), e);
+                    }
+                });
+
+                break;
+            case LOG:
+                allReports.values().forEach(map -> {
+                    map.forEach((key, value) -> {
+                        getLog().info("");
+                        getLog().info("Report ".concat(key));
+                        getLog().info("================================================================");
+                        value.stream().forEach(l -> getLog().info(l));
+                        getLog().info("");
+                    });
+                });
+                break;
         }
     }
 

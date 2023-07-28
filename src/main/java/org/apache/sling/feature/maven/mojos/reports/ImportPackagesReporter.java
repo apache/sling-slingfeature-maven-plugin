@@ -59,11 +59,12 @@ public class ImportPackagesReporter implements Reporter {
             for (final PackageInfo p : bd.getImportedPackages()) {
                 String version = p.getVersion();
                 if ( version == null ) {
-                    version = "";
-                } else {
-                    version = ":".concat(version);
+                    version = "any";
                 }
-                packages.add(p.getName().concat(version).concat(" : ").concat(bd.getArtifact().getId().toMvnId()));
+                if (p.isOptional()) {
+                    version = version.concat(";optional");
+                }
+                packages.add(p.getName().concat("    ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
             }
         }
 
