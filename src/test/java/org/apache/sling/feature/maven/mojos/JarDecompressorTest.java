@@ -71,10 +71,6 @@ public class JarDecompressorTest {
 
     @Test
     public void testJarWithEmbeddedJar() throws Exception {
-        
-        // SLING-11935 
-        assumeFalse(System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win"));
-        
         File cj = new File(getClass().getResource("/repository/compressed-embedded.jar").getFile());
         File uj = Files.createTempFile(getClass().getSimpleName(), "embedded-uncompressed.jar").toFile();
 
@@ -83,6 +79,7 @@ public class JarDecompressorTest {
 
             Map<String, byte[]> actualJar = readJar(uj);
 
+            // this file is supposed to have *nix line ending
             File tf = new File(getClass().getResource("/repository/textfile.txt").getFile());
             assertEquals(tf.length(), actualJar.get("textfile.txt").length);
             File cf = new File(getClass().getResource("/repository/compressed.jar").getFile());
