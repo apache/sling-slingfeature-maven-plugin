@@ -37,13 +37,10 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.apache.maven.RepositoryUtils;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
-import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Plugin;
@@ -55,6 +52,9 @@ import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.io.json.FeatureJSONWriter;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResult;
 
 /**
  * The project helper contains utility functions and provides access
@@ -336,7 +336,7 @@ public abstract class ProjectHelper {
     public static Artifact getOrResolveArtifact(final MavenProject project,
             final MavenSession session,
             final ArtifactHandlerManager artifactHandlerManager,
-            final ArtifactResolver resolver,
+            final RepositorySystem repoSystem,
             final ArtifactId id) {
         @SuppressWarnings("unchecked")
         Map<String, Artifact> cache = (Map<String, Artifact>) project.getContextValue(ARTIFACT_CACHE);
@@ -362,19 +362,22 @@ public abstract class ProjectHelper {
                         }
                     }
                     if ( result == null ) {
-                        final Artifact prjArtifact = new DefaultArtifact(id.getGroupId(),
-                                id.getArtifactId(),
-                                VersionRange.createFromVersion(id.getVersion()),
-                                Artifact.SCOPE_PROVIDED,
-                                id.getType(),
-                                id.getClassifier(),
-                                artifactHandlerManager.getArtifactHandler(id.getType()));
                         try {
-                            resolver.resolve(prjArtifact, project.getRemoteArtifactRepositories(), session.getLocalRepository());
-                        } catch (final ArtifactResolutionException | ArtifactNotFoundException e) {
+                            
+                            org.eclipse.aether.artifact.Artifact prjArtifact = new org.eclipse.aether.artifact.DefaultArtifact(
+                                            id.getGroupId(),
+                                            id.getArtifactId(),
+                                            id.getClassifier(),
+                                            null, // extension retrieved via artifactTye
+                                            id.getVersion(),
+                                            RepositoryUtils.newArtifactType(id.getType(), artifactHandlerManager.getArtifactHandler(id.getType()))
+                                    );
+                            ArtifactRequest artifactRequest = new ArtifactRequest(prjArtifact, project.getRemoteProjectRepositories(), null);
+                            ArtifactResult artifactResult = repoSystem.resolveArtifact(session.getRepositorySession(), artifactRequest);
+                            result = RepositoryUtils.toArtifact(artifactResult.getArtifact());
+                        } catch (final org.eclipse.aether.resolution.ArtifactResolutionException e) {
                             throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
                         }
-                        result = prjArtifact;
                     }
                 }
             }
@@ -385,8 +388,8 @@ public abstract class ProjectHelper {
     }
 
     public static Feature getOrResolveFeature(final MavenProject project, final MavenSession session,
-            final ArtifactHandlerManager artifactHandlerManager, final ArtifactResolver resolver, final ArtifactId id) {
-        final File artFile = getOrResolveArtifact(project, session, artifactHandlerManager, resolver, id).getFile();
+            final ArtifactHandlerManager artifactHandlerManager, final RepositorySystem repoSystem, final ArtifactId id) {
+        final File artFile = getOrResolveArtifact(project, session, artifactHandlerManager, repoSystem, id).getFile();
         try (final Reader reader = new FileReader(artFile)) {
             return FeatureJSONReader.read(reader, artFile.getAbsolutePath());
         } catch (final IOException ioe) {

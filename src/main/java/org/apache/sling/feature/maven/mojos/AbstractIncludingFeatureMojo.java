@@ -208,7 +208,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                                         "RefsFile configuration is used to select a local feature: " + id.toMvnId());
                         }
                         final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                                this.artifactHandlerManager, this.artifactResolver, id);
+                                this.artifactHandlerManager, this.repoSystem, id);
                         result.put(id.toMvnUrl(), feature);
                     } catch ( final IllegalArgumentException e) {
                         throw new MojoExecutionException("Reference " + url + " in " + selectedFile.getAbsolutePath() + " is not a supported url.");
@@ -228,7 +228,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
                         "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
         }
         final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                this.artifactHandlerManager, this.artifactResolver, id);
+                this.artifactHandlerManager, this.repoSystem, id);
         result.put(id.toMvnUrl(), feature);
     }
 

@@ -20,9 +20,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.codehaus.plexus.logging.Logger;
+import org.eclipse.aether.RepositorySystem;
 
 /**
  * The environment provides required services to the {@link Preprocessor} as well
@@ -31,7 +31,7 @@ import org.codehaus.plexus.logging.Logger;
 public class Environment {
 
     public ArtifactHandlerManager artifactHandlerManager;
-    public ArtifactResolver resolver;
+    public RepositorySystem repoSystem;
     public MavenSession session;
     public Logger logger;
 

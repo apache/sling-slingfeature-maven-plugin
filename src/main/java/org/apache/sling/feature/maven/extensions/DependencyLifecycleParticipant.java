@@ -23,7 +23,6 @@ import javax.inject.Singleton;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.project.MavenProject;
@@ -31,6 +30,7 @@ import org.apache.sling.feature.maven.Environment;
 import org.apache.sling.feature.maven.FeatureProjectInfo;
 import org.apache.sling.feature.maven.Preprocessor;
 import org.codehaus.plexus.logging.Logger;
+import org.eclipse.aether.RepositorySystem;
 
 /**
  * Maven lifecycle participant which adds the artifacts of the model to the dependencies.
@@ -52,21 +52,21 @@ public class DependencyLifecycleParticipant extends AbstractMavenLifecyclePartic
      * Used to look up Artifacts in the remote repository.
      *
      */
-    private final ArtifactResolver resolver;
+    private final RepositorySystem repoSystem;
 
     @Inject
-    public DependencyLifecycleParticipant(Logger logger, ArtifactHandlerManager artifactHandlerManager, ArtifactResolver resolver) {
+    public DependencyLifecycleParticipant(Logger logger, ArtifactHandlerManager artifactHandlerManager, RepositorySystem repoSystem) {
         super();
         this.logger = logger;
         this.artifactHandlerManager = artifactHandlerManager;
-        this.resolver = resolver;
+        this.repoSystem = repoSystem;
     }
 
     @Override
     public void afterProjectsRead(final MavenSession session) throws MavenExecutionException {
         final Environment env = new Environment();
         env.artifactHandlerManager = artifactHandlerManager;
-        env.resolver = resolver;
+        env.repoSystem = repoSystem;
         env.logger = logger;
         env.session = session;
 

@@ -16,16 +16,7 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
-import org.apache.maven.artifact.handler.ArtifactHandler;
-import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
-import org.apache.maven.artifact.resolver.ArtifactResolver;
-import org.apache.maven.execution.MavenSession;
-import org.apache.maven.plugin.MojoExecutionException;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.project.MavenProject;
-import org.apache.sling.feature.ArtifactId;
-import org.junit.Test;
-import org.mockito.Mockito;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,14 +25,30 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.maven.artifact.handler.ArtifactHandler;
+import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.project.MavenProject;
+import org.apache.sling.feature.ArtifactId;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.artifact.DefaultArtifact;
+import org.eclipse.aether.resolution.ArtifactResolutionException;
+import org.eclipse.aether.resolution.ArtifactResult;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
 
 public class AbstractRepositoryMojoTest {
-    @Test
-    public void testCopyArtifactToRepository() throws Exception {
-        StringBuilder recordedOp = new StringBuilder();
+    private AbstractRepositoryMojo arm;
+    private StringBuilder recordedOp;
 
-        AbstractRepositoryMojo arm = new AbstractRepositoryMojo() {
+    @Before
+    public void setUp() throws ArtifactResolutionException {
+        recordedOp = new StringBuilder();
+        arm = new AbstractRepositoryMojo() {
             @Override
             public void execute() throws MojoExecutionException, MojoFailureException {
                 // not used here
@@ -59,11 +66,17 @@ public class AbstractRepositoryMojoTest {
         };
         arm.project = Mockito.mock(MavenProject.class);
         arm.mavenSession = Mockito.mock(MavenSession.class);
-        arm.artifactResolver = Mockito.mock(ArtifactResolver.class);
+        ArtifactResult artifactResult = Mockito.mock(ArtifactResult.class);
+        Mockito.when(artifactResult.getArtifact()).thenReturn(new DefaultArtifact("mygroup:dummyartifact:1.0.0"));
+        arm.repoSystem = Mockito.mock(RepositorySystem.class);
+        Mockito.when(arm.repoSystem.resolveArtifact(Mockito.any(), Mockito.any())).thenReturn(artifactResult);
         arm.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
         Mockito.when(arm.artifactHandlerManager.getArtifactHandler(Mockito.anyString()))
                     .thenReturn(Mockito.mock(ArtifactHandler.class));
+    }
 
+    @Test
+    public void testCopyArtifactToRepository() throws Exception {
         Method m = AbstractRepositoryMojo.class.getDeclaredMethod("copyArtifactToRepository", ArtifactId.class, File.class);
         m.setAccessible(true);
 
@@ -80,30 +93,6 @@ public class AbstractRepositoryMojoTest {
 
     @Test
     public void testCopyDecompressArtifactToRepository() throws Exception {
-        StringBuilder recordedOp = new StringBuilder();
-
-        AbstractRepositoryMojo arm = new AbstractRepositoryMojo() {
-            @Override
-            public void execute() throws MojoExecutionException, MojoFailureException {
-                // not used here
-            }
-
-            @Override
-            void copyAndDecompressArtifact(File sourceFile, File artifactFile) throws IOException {
-                recordedOp.append("copy_decompress");
-            }
-
-            @Override
-            void copyArtifact(File sourceFile, File artifactFile) throws IOException {
-                recordedOp.append("copy");
-            }
-        };
-        arm.project = Mockito.mock(MavenProject.class);
-        arm.mavenSession = Mockito.mock(MavenSession.class);
-        arm.artifactResolver = Mockito.mock(ArtifactResolver.class);
-        arm.artifactHandlerManager = Mockito.mock(ArtifactHandlerManager.class);
-        Mockito.when(arm.artifactHandlerManager.getArtifactHandler(Mockito.anyString()))
-                    .thenReturn(Mockito.mock(ArtifactHandler.class));
         arm.decompress = true;
 
         Method m = AbstractRepositoryMojo.class.getDeclaredMethod("copyArtifactToRepository", ArtifactId.class, File.class);

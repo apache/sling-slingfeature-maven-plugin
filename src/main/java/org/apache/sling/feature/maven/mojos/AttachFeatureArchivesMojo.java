@@ -159,7 +159,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
 
                         try {
                             return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager,
-                                    artifactResolver, id).getFile().toURI().toURL();
+                                    repoSystem, id).getFile().toURI().toURL();
                         } catch (final MalformedURLException e) {
                             getLog().debug("Malformed url " + e.getMessage(), e);
                             // ignore

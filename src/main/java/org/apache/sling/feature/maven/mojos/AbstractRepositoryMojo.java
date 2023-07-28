@@ -107,7 +107,7 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
                 processFeature(artifactDir, prototype);
             } else {
                 final Feature prototype = ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                        artifactResolver, f.getPrototype().getId());
+                        repoSystem, f.getPrototype().getId());
                 processFeature(artifactDir, prototype);
             }
         }
@@ -140,7 +140,7 @@ public abstract class AbstractRepositoryMojo extends AbstractIncludingFeatureMoj
         File source = ProjectHelper.getOrResolveArtifact(this.project,
             this.mavenSession,
             this.artifactHandlerManager,
-            this.artifactResolver,
+            this.repoSystem,
             artifactId).getFile();
         if (ProjectHelper.isLocalProjectArtifact(this.project, artifactId) && source.isDirectory()) {
             if (artifactId.getClassifier() != null) {
