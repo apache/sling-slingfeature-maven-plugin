@@ -22,6 +22,7 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -100,7 +101,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
         FeatureProvider featureProvider = getFeatureProvider();
 
-        boolean hasErrors = false;
+        final Map<Feature, AnalyserResult> results = new LinkedHashMap<>();
         for (final Scan an : list) {
             try {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
@@ -148,23 +149,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                             fwk = this.framework;
                         }
                         final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
-                        if ( logWarnings ) {
-                            for (final String msg : result.getWarnings()) {
-                                getLog().warn(msg);
-                            }
-                        }
-                        for (final String msg : result.getErrors()) {
-                            getLog().error(msg);
-                        }
-
-                        if (!result.getErrors().isEmpty()) {
-                            getLog().error("Analyser detected errors on feature '" + f.getId().toMvnId()
-                                    + "'. See log output for error messages.");
-                            hasErrors = true;
-                        } else {
-                            getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
-                                    .a(" succesfully passed all analysis").toString());
-                        }
+                        results.put(f, result);
                     } catch (Exception t) {
                         throw new MojoFailureException(
                                 "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(),
@@ -176,6 +161,36 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                         "A fatal error occurred while setting up the analyzer, see error cause:", e);
             } finally {
                 getLog().debug("Features analysis complete");
+            }
+        }
+        boolean hasErrors = false;
+        for(final Map.Entry<Feature, AnalyserResult> entry : results.entrySet()) {
+            final Feature f = entry.getKey();
+            final AnalyserResult result = entry.getValue();
+            if ( (result.getWarnings().isEmpty() || !logWarnings) && result.getErrors().isEmpty() ) {
+                getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
+                        .a(" succesfully passed all analysis").toString());
+            } else {
+                final String message;
+                if (!result.getErrors().isEmpty()) {
+                    if (logWarnings && !result.getWarnings().isEmpty()) {
+                        message ="errors and warnings";
+                    } else {
+                        message = "errors";
+                    }
+                    hasErrors = true;
+                } else {
+                    message = "warnings";
+                }
+                getLog().error("Analyser detected " + message + " on feature '" + f.getId().toMvnId() + "'.");
+                if ( logWarnings ) {
+                    for (final String msg : result.getWarnings()) {
+                        getLog().warn(msg);
+                    }
+                }
+                 for (final String msg : result.getErrors()) {
+                    getLog().error(msg);
+                }
             }
         }
         if (hasErrors) {
