@@ -328,7 +328,7 @@ public abstract class ProjectHelper {
      * @param project The maven project
      * @param session The maven session
      * @param artifactHandlerManager The artifact handler manager
-     * @param resolver The artifact resolver
+     * @param repoSystem The repository system
      * @param id The ID of the artifact to get/resolve.
      * @return the artifact, which has been resolved.
      */
