@@ -207,6 +207,7 @@ public class ApisUtil {
      * @param ctx The Apis Jar Context to use
      * @param regionName The region name to use
      * @throws MojoExecutionException When an invalid artifact ID is found
+     * @return The computed javadoc classpath
      */
     public static Collection<String> getJavadocClassPath(final Log log,
             final RepositorySystem repositorySystem,
