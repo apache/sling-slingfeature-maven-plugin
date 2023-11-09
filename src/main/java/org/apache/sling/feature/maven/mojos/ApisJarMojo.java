@@ -24,6 +24,7 @@ import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -423,6 +424,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     @Parameter
     private String apiName;
 
+    /**
+     * Include ProviderType interfaces as a resource in the binary jar
+     * @since 1.8.0
+     */
+    @Parameter(defaultValue = "false")
+    private boolean includeProviderTypeResource;
+
     @Parameter(defaultValue = "${project.build.directory}/apis-jars", readonly = true)
     private File mainOutputDir;
 
@@ -550,9 +558,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
             final File regionDir = new File(featureDir, regionName);
 
             if (generateApiJar) {
+                final List<Map.Entry<String, File>> additionalResources = new ArrayList<>();
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
-                this.runProcessor(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos);
-                final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos, report);
+                this.runProcessor(ctx, apiRegion, ArtifactType.APIS, this.apiResources, additionalResources, infos);
+                final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos, additionalResources, report);
                 report(ctx, apiJar, ArtifactType.APIS, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
             }
 
@@ -562,12 +571,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 if ( generateJavadocJar ) {
                     infos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));
                 }
-                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, infos);
+                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, null, infos);
             }
 
             if (generateSourceJar) {
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
-                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, report);
+                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, null, report);
                 report(ctx, sourceJar, ArtifactType.SOURCES, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
             }
 
@@ -586,7 +595,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 final Collection<ArtifactInfo> infos = generateJavadoc(ctx, regionName, links, javadocsDir, regionSupport, ctx.getConfig().isUseApiDependenciesForJavadoc());
                 ctx.setJavadocDir(javadocsDir);
                 final File javadocJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC,
-                        this.apiJavadocResources, infos, report);
+                        this.apiJavadocResources, infos, null, report);
                 report(ctx, javadocJar, ArtifactType.JAVADOC, regionSupport, apiRegion, ctx.getConfig().isUseApiDependenciesForJavadoc(), report, links);
 
                 if ( ctx.getConfig().isUseApiDependencies() && ctx.getConfig().isGenerateJavadocForAllApi() ) {
@@ -594,7 +603,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     final Collection<ArtifactInfo> infosForAll = generateJavadoc(ctx, regionName, links, javadocsAllDir, regionSupport, false);
                     ctx.setJavadocDir(javadocsAllDir);
                     final File javadocAllJar = createArchive(ctx, apiRegion, ArtifactType.JAVADOC_ALL,
-                            this.apiJavadocResources, infosForAll, report);
+                            this.apiJavadocResources, infosForAll, null, report);
                     report(ctx, javadocAllJar, ArtifactType.JAVADOC, regionSupport, apiRegion, false, report, links);
                 }
             }
@@ -1614,8 +1623,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
         final ApiRegion apiRegion,
         final ArtifactType archiveType,
         final List<File> resources,
+        final List<Map.Entry<String, File>> additionalResources,
         final Collection<ArtifactInfo> infos) {
-        final List<Processor> processors = ApisUtil.getProcessors();
+        final List<Processor> processors = ApisUtil.getProcessors(this.includeProviderTypeResource);
         if ( !processors.isEmpty() ) {
             final List<Source> sources = new ArrayList<>();
 
@@ -1650,6 +1660,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     public Log getLog() {
                         return ApisJarMojo.this.getLog();
                     }
+
+                    @Override
+                    public void addBinaryResource(final String name, final File file) {
+                        additionalResources.add(new AbstractMap.SimpleImmutableEntry<>(name, file));
+                    }
+                    
                 };
                 if ( archiveType == ArtifactType.APIS ) {
                     getLog().info("Running processor " + p.getName() + " on binaries...");
@@ -1663,7 +1679,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
     }
 
     private File createArchive(final ApisJarContext ctx, final ApiRegion apiRegion, final ArtifactType archiveType,
-            final List<File> resources, final Collection<ArtifactInfo> infos, final List<String> report)
+            final List<File> resources, final Collection<ArtifactInfo> infos, 
+            final List<Map.Entry<String, File>> additionalResources,
+            final List<String> report)
             throws MojoExecutionException {
         final JarArchiver jarArchiver = new JarArchiver();
 
@@ -1678,6 +1696,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         // add included resources
         this.addResources(infos, resources, jarArchiver, null);
+        if (additionalResources != null) {
+            for(final Map.Entry<String, File> s : additionalResources) {
+                getLog().debug("Adding resource " + s.getKey());
+                jarArchiver.addFile(s.getValue(), s.getKey());
+            }
+        }
 
         // check for license report
         if ( ctx.getConfig().getLicenseReport() != null ) {

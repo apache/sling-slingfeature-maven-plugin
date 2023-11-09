@@ -398,12 +398,15 @@ public class ApisUtil {
      * Get the list of processors
      * @return The processors - might be empty
      */
-    public static List<Processor> getProcessors() {
+    public static List<Processor> getProcessors(final boolean includeProviderTypeResource) {
         final ServiceLoader<Processor> loader = ServiceLoader.load(Processor.class);
 
         final List<Processor> result = new ArrayList<>();
         for(final Processor p : loader) {
             result.add(p);
+        }
+        if (includeProviderTypeResource) {
+            result.add(new ClassFileProcessor());
         }
         return result;
     }

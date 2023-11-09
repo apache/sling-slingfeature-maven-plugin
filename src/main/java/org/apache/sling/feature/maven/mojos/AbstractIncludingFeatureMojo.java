@@ -46,7 +46,9 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
     protected Map<String, Feature> getSelectedFeatures(final FeatureSelectionConfig config)
             throws MojoExecutionException {
         final Map<String, Feature> result = new LinkedHashMap<>();
-
+        if (config == null) {
+            return result;
+        }
         boolean hasFileInclude = false;
 
         for(final FeatureSelectionConfig.Selection selection : config.getSelections()) {

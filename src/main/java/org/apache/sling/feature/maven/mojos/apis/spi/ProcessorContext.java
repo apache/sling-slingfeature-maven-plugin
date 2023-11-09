@@ -16,6 +16,9 @@
  */
 package org.apache.sling.feature.maven.mojos.apis.spi;
 
+import java.io.File;
+import java.util.List;
+
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
@@ -56,4 +59,13 @@ public interface ProcessorContext {
      * @return The log
      */
     Log getLog();
+
+    /**
+     * Add a resource to the binary artifact. This method has only an affect when
+     * the binary artifact is processed by the processor.
+     * @param name The name of the resource, might contain slashes
+     * @param file The file to add
+     * @since 1.8.0
+     */
+    void addBinaryResource(String name, File file);
 }
