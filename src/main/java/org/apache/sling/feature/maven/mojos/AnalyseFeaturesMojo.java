@@ -182,7 +182,13 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 } else {
                     message = "warnings";
                 }
-                getLog().error("Analyser detected " + message + " on feature '" + f.getId().toMvnId() + "'.");
+                final String m = "Analyser detected "
+                    .concat(message).concat(" on feature '").concat(f.getId().toMvnId()).concat("'.");
+                if (hasErrors) {
+                    getLog().error(m);
+                } else {
+                    getLog().warn(m);
+                }
                 if ( logWarnings ) {
                     for (final String msg : result.getWarnings()) {
                         getLog().warn(msg);
