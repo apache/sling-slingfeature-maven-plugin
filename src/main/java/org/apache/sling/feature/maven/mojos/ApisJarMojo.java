@@ -557,12 +557,13 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
             final File regionDir = new File(featureDir, regionName);
 
+            final List<Map.Entry<String, File>> additionalResources = new ArrayList<>();
             if (generateApiJar) {
-                final List<Map.Entry<String, File>> additionalResources = new ArrayList<>();
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
                 this.runProcessor(ctx, apiRegion, ArtifactType.APIS, this.apiResources, additionalResources, infos);
                 final File apiJar = createArchive(ctx, apiRegion, ArtifactType.APIS, this.apiResources, infos, additionalResources, report);
                 report(ctx, apiJar, ArtifactType.APIS, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
+                additionalResources.clear();
             }
 
             // run processor on sources
@@ -571,12 +572,12 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                 if ( generateJavadocJar ) {
                     infos.addAll(getAdditionalJavadocArtifacts(ctx, apiRegion, regionSupport));
                 }
-                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, null, infos);
+                this.runProcessor(ctx, apiRegion, ArtifactType.SOURCES, this.apiResources, additionalResources, infos);
             }
 
             if (generateSourceJar) {
                 final Collection<ArtifactInfo> infos = ctx.getArtifactInfos(regionName, ctx.getConfig().isUseApiDependencies());
-                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, null, report);
+                final File sourceJar = createArchive(ctx, apiRegion, ArtifactType.SOURCES, this.apiSourceResources, infos, additionalResources, report);
                 report(ctx, sourceJar, ArtifactType.SOURCES, regionSupport, apiRegion, ctx.getConfig().isUseApiDependencies(), report, null);
             }
 
@@ -1662,7 +1663,7 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     }
 
                     @Override
-                    public void addBinaryResource(final String name, final File file) {
+                    public void addResource(final String name, final File file) {
                         additionalResources.add(new AbstractMap.SimpleImmutableEntry<>(name, file));
                     }
                     

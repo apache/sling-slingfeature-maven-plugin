@@ -53,7 +53,7 @@ public class ClassFileProcessor implements Processor {
             if (!providerTypes.isEmpty()) {
                 out.getParentFile().mkdirs();
                 Files.write(out.toPath(), providerTypes);
-                ctx.addBinaryResource("META-INF/" + out.getName(), out);
+                ctx.addResource("META-INF/" + out.getName(), out);
             } else if (out.exists()) {
                 out.delete();
             }
