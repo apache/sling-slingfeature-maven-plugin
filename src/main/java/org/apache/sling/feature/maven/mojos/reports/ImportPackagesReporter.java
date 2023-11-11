@@ -64,12 +64,25 @@ public class ImportPackagesReporter implements Reporter {
                 if (p.isOptional()) {
                     version = version.concat(";optional");
                 }
-                packages.add(p.getName().concat("    ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
+                String ext = "";
+                if (isUsedInExportedPackages(bd, p)) {
+                    ext = "    used-in-exports";
+                }
+                packages.add(p.getName().concat("    ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()).concat(ext));
             }
         }
 
         Collections.sort(packages);
         return packages;
+    }
+
+    private boolean isUsedInExportedPackages(final BundleDescriptor bd, final PackageInfo p) {
+        for(final PackageInfo exportedPackage : bd.getExportedPackages()) {
+            if ( exportedPackage.getUses().contains(p.getName()) ) {
+                return true;
+            }
+        }
+        return false;
     }
     
 }
