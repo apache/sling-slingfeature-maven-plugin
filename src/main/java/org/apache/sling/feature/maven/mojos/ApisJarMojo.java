@@ -725,9 +725,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
 
         apiPackages.addAll(otherPackages);
         if (artifactType == ArtifactType.JAVADOC) {
-            // jquery might be part of javadoc
+            // jquery and legal might be part of javadoc
             final Collection<String> jqueryPackages = Arrays.asList("jquery", "jquery.external.jquery", "jquery.images",
-                    "jquery.jszip-utils.dist", "jquery.jszip.dist", "resources");
+                    "jquery.jszip-utils.dist", "jquery.jszip.dist", "resources", "legal");
             apiPackages.removeAll(jqueryPackages);
         }
 
