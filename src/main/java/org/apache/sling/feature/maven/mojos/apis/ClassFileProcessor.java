@@ -27,6 +27,8 @@ import org.apache.sling.feature.maven.mojos.apis.spi.ProcessorContext;
 import org.apache.sling.feature.maven.mojos.apis.spi.Source;
 import org.osgi.annotation.versioning.ProviderType;
 
+import jakarta.json.Json;
+import jakarta.json.stream.JsonGenerator;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.bytecode.AnnotationsAttribute;
@@ -35,7 +37,8 @@ import javassist.bytecode.ClassFile;
 
 public class ClassFileProcessor implements Processor {
 
-    
+    private static final String NAME = "api-info.json";
+
     @Override
     public void processBinaries(final ProcessorContext ctx, final List<Source> sources) {
         try {
@@ -49,11 +52,19 @@ public class ClassFileProcessor implements Processor {
                     }
                 }
             }
-            final File out = new File(ctx.getProject().getBuild().getOutputDirectory(), "provider-types.txt");
+            final File out = new File(ctx.getOutputDirectory(), ctx.getApiRegion().getName().concat("-").concat(NAME));
             if (!providerTypes.isEmpty()) {
                 out.getParentFile().mkdirs();
-                Files.write(out.toPath(), providerTypes);
-                ctx.addResource("META-INF/" + out.getName(), out);
+                try (final JsonGenerator gen = Json.createGenerator(Files.newOutputStream(out.toPath()))) {
+                    gen.writeStartObject();
+                    gen.writeStartArray("providerTypes");
+                    for(final String p : providerTypes) {
+                        gen.write(p);
+                    }
+                    gen.writeEnd();
+                    gen.writeEnd();
+                }
+                ctx.addResource("META-INF/".concat(NAME), out);
             } else if (out.exists()) {
                 out.delete();
             }

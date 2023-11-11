@@ -1664,12 +1664,16 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     public Log getLog() {
                         return ApisJarMojo.this.getLog();
                     }
+                    
+                    @Override
+                    public File getOutputDirectory() {
+                        return mainOutputDir;
+                    }
 
                     @Override
                     public void addResource(final String name, final File file) {
                         additionalResources.add(new AbstractMap.SimpleImmutableEntry<>(name, file));
-                    }
-                    
+                    }                    
                 };
                 if ( archiveType == ArtifactType.APIS ) {
                     getLog().info("Running processor " + p.getName() + " on binaries...");

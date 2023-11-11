@@ -60,10 +60,18 @@ public interface ProcessorContext {
     Log getLog();
 
     /**
+     * Get the output directory.
+     * This directory should be used by {@link #addResource(String, File)}
+     * @return The output directory
+     * @since 1.8.0
+     */
+    File getOutputDirectory();
+
+    /**
      * Add a resource to the binary or source artifact. 
      * @param name The name of the resource, might contain slashes
      * @param file The file to add
      * @since 1.8.0
      */
     void addResource(String name, File file);
-}
+}    
