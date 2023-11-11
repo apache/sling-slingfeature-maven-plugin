@@ -1482,7 +1482,10 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
            if (ServiceNamespace.SERVICE_NAMESPACE.equals(providedCapability.getName())) {
                String serviceObjectClasses = providedCapability.getAttribute(ServiceNamespace.CAPABILITY_OBJECTCLASS_ATTRIBUTE+":List<String>");
                if (serviceObjectClasses == null) {
-                   throw new IllegalArgumentException("Could not find mandatory attribute '" + ServiceNamespace.CAPABILITY_OBJECTCLASS_ATTRIBUTE + "' in clause '" + providedCapability + "' of bundle " + bundle.getId());
+                   serviceObjectClasses = providedCapability.getAttribute(ServiceNamespace.CAPABILITY_OBJECTCLASS_ATTRIBUTE);
+                   if (serviceObjectClasses == null) {
+                       throw new IllegalArgumentException("Could not find mandatory attribute '" + ServiceNamespace.CAPABILITY_OBJECTCLASS_ATTRIBUTE + "' in clause '" + providedCapability + "' of bundle " + bundle.getId());
+                   }
                }
                if (areServiceObjectClassesContainedInRegion(apiRegion, serviceObjectClasses, bundle)) {
                    result.add(providedCapability);
