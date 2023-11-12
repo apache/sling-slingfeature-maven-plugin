@@ -479,7 +479,7 @@ With the repository goal, a directory with all artifacts from the selected featu
 
 The `info` goal allows to extract information about one or more features and generate some reports. It can be used within a Maven project or standalone.
 
-The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either *log* in which case all output goes to the log or *file* (the default) in which case files for each feature and report are generated or *singlefile* in which case a single file for each report across all features is generated.
+The `reports` configuration should be configured with a comma separated list of the reports to be generated. The `outputFormat` configuration can be configured with either *log* in which case all output goes to the log or *file* (the default) in which case files for each feature and report are generated or *singlefile* in which case a single file for all report across all features is generated.
 
 ### Duplicates Report (duplicates)
 
@@ -539,11 +539,9 @@ If the `outputFormat` is set to *file*, by default the files are generated a dir
 
 ## Feature Launcher (launch-features)
 
-**Attention**: This Mojo is BETA meaning under development and new released
-may change the way the Mojo is used.
+**Attention**: This Mojo is BETA meaning under development and new released may change the way the Mojo is used.
 
-This Mojo allows the user to launch a Feature(s) from a POM through a
-profile. This can look like this:
+This Mojo allows the user to launch a Feature(s) from a POM through a profile. This can look like this:
 
 ``` xml
 <profile>
@@ -588,16 +586,11 @@ profile. This can look like this:
 </profile>
 ```
 
-Do avoid having to release this plugin every time a new Feature Launcher
-is released the two are decoupled and the Feature Launcher is loaded at
-runtime instead. For that the feature launcher must be added to the plugin
-as dependency. If missing this Mojo with fail as it cannot find the launcher.
+Do avoid having to release this plugin every time a new Feature Launcher is released the two are decoupled and the Feature Launcher is loaded at runtime instead. For that the feature launcher must be added to the plugin as dependency. If missing this Mojo with fail as it cannot find the launcher.
 
 **Attention**: to deploy converted Content Packages the **Feature Content** Extension must added here as well and it must be place **AHEAD** of the feature launcher.
 
-Beside the Feature Files this Mojo for now supports all the parameters
-of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the
-FeautreLaucherMojoTest.testFullLaunch() test method.
+Beside the Feature Files this Mojo for now supports all the parameters of the current Feature Launcher (1.0.7-SNAPSHOT). For more info see the FeautreLaucherMojoTest.testFullLaunch() test method.
 
 **Support for Feature Archives**: feature archives (FAR) are supported now and can be added to the project either:
 

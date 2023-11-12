@@ -23,6 +23,10 @@ import java.util.List;
 
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.sling.feature.Feature;
+import org.apache.sling.feature.extension.apiregions.api.ApiExport;
+import org.apache.sling.feature.extension.apiregions.api.ApiRegion;
+import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
+import org.apache.sling.feature.extension.apiregions.api.Deprecation;
 import org.apache.sling.feature.scanner.BundleDescriptor;
 import org.apache.sling.feature.scanner.FeatureDescriptor;
 import org.apache.sling.feature.scanner.PackageInfo;
@@ -53,6 +57,7 @@ public class ExportPackagesReporter implements Reporter {
     }
 
     private List<String> getExportedPackages(final FeatureDescriptor fd) {
+        final ApiRegions regions = ApiRegions.getApiRegions(fd.getFeature());
         final List<String> packages = new ArrayList<>();
 
         for (final BundleDescriptor bd : fd.getBundleDescriptors()) {
@@ -61,7 +66,32 @@ public class ExportPackagesReporter implements Reporter {
                 if ( version == null ) {
                     version = "----";
                 }
-                packages.add(p.getName().concat("    ").concat(version).concat("    ").concat(bd.getArtifact().getId().toMvnId()));
+                String region = "----";
+                String deprecated = "";
+                if (regions != null) {
+                    boolean found = false;
+                    for(final ApiRegion r : regions.listRegions()) {
+                        for(final ApiExport e : r.listExports()) {
+                            if (e.getName().equals(p.getName())) {
+                                found = true;
+                                region = r.getName();
+                                final Deprecation d = e.getDeprecation();
+                                if (d.getPackageInfo() != null) {
+                                    deprecated = "    ".concat("deprecated");
+                                }
+                                break;
+                            }
+                        }
+                        if ( found ) {
+                            break;
+                        }
+                    }
+                }
+                packages.add(p.getName().concat("    ")
+                    .concat(version).concat("    ")
+                    .concat(bd.getArtifact().getId().toMvnId()).concat("    ")
+                    .concat(region)
+                    .concat(deprecated));
             }
         }
 

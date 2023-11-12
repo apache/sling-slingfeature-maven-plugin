@@ -544,7 +544,6 @@ public class AggregateFeaturesMojoTest {
         assertEquals(id2, pluginCallbacks.get("TestPlugin3 - myval-Hi there"));
     }
 
-    @SuppressWarnings("rawtypes")
     @Test
     public void testHandlerConfiguration() throws Exception {
         File featuresDir = new File(
