@@ -21,6 +21,7 @@ import java.util.List;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.scanner.Scanner;
+import org.apache.sling.feature.builder.ArtifactProvider;
 
 public interface ReportContext {
 
@@ -31,4 +32,6 @@ public interface ReportContext {
     void addReport(String key, List<String> output);
 
     boolean matches(ArtifactId id);
+
+    ArtifactProvider getArtifactProvider();
 }

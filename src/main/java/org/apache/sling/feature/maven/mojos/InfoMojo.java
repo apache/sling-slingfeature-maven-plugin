@@ -48,9 +48,9 @@ import org.apache.sling.feature.maven.mojos.reports.ExportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ImportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.reports.ReportContext;
 import org.apache.sling.feature.maven.mojos.reports.Reporter;
+import org.apache.sling.feature.maven.mojos.reports.ScriptsImportPackagesReporter;
 import org.apache.sling.feature.maven.mojos.selection.IncludeExcludeMatcher;
 import org.apache.sling.feature.scanner.Scanner;
-
 
 /**
  * Extract information from a feature This mojo does not require a project, it
@@ -166,7 +166,8 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         final List<Feature> selection = selectFeatures(infoFeatureFiles);
 
         // setup scanner
-        final Scanner scanner = setupScanner();
+        final ArtifactProvider am = setupArtifactProvider();
+        final Scanner scanner = setupScanner(am);
         final IncludeExcludeMatcher matcher;
         if ( this.artifactIncludesList != null && !this.artifactIncludesList.isEmpty()) {
             matcher = new IncludeExcludeMatcher(Stream.of(this.artifactIncludesList.split(",")).map(v -> v.trim()).collect(Collectors.toList()),
@@ -181,6 +182,11 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
             @Override
             public Scanner getScanner() {
                 return scanner;
+            }
+
+            @Override
+            public ArtifactProvider getArtifactProvider() {
+                return am;
             }
 
             @Override
@@ -271,6 +277,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         available.add(new DuplicatesReporter());
         available.add(new ContentsReporter());
         available.add(new ImportPackagesReporter());
+        available.add(new ScriptsImportPackagesReporter());
 
         final List<Reporter> result = new ArrayList<>();
         for(final String r : reports.split(",")) {
@@ -307,7 +314,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         return result;
     }
 
-    private Scanner setupScanner() throws MojoExecutionException {
+    private ArtifactProvider setupArtifactProvider() {
         final ArtifactProvider am = new ArtifactProvider() {
 
             @Override
@@ -324,7 +331,10 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         };
+        return am;
+    }
 
+    private Scanner setupScanner(final ArtifactProvider am) throws MojoExecutionException {
         try {
             return new Scanner(am);
         } catch (final IOException e) {
