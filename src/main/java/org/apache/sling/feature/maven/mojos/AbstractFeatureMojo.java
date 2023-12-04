@@ -24,7 +24,9 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.artifact.handler.manager.ArtifactHandlerManager;
 import org.apache.maven.execution.MavenSession;
@@ -195,6 +197,10 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      */
     @Parameter(defaultValue = "false")
     private boolean enableLegacyVariableReplacement;
+
+    /** This parameter is only declared to make Maven happy, it is evaluated in the Preprossor */
+    @Parameter
+    protected Map<String, Map<String, String>> defaultMetadata = new HashMap<>();
 
     @Parameter(property = "project", readonly = true, required = true)
     protected MavenProject project;
