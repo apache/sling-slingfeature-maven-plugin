@@ -25,17 +25,17 @@ import org.codehaus.plexus.util.*;
         String log = FileUtils.fileRead(file);
 
         String[] values = [
-            "\"id\":\"org.apache.sling:slingfeature-maven-plugin-test:slingfeature:slingtest:1.0.0-SNAPSHOT\"",
-            "\"title\":\"Apache Sling Features Maven plugin test\"",
-            "\"description\":\"This is just an Apache Sling Features Maven plugin test to verify variables interpolation\"",
-            "\"vendor\":\"The Apache Software Foundation\"",
+            "\"id\": \"org.apache.sling:slingfeature-maven-plugin-test:slingfeature:slingtest:1.0.0-SNAPSHOT\"",
+            "\"title\": \"Apache Sling Features Maven plugin test\"",
+            "\"description\": \"This is just an Apache Sling Features Maven plugin test to verify variables interpolation\"",
+            "\"vendor\": \"The Apache Software Foundation\"",
             // TODO re-enable verification once license interpolation is fixed
             // "\"license\":\"Apache License, Version 2.0\"",
-            "\"interpolated_variable\":\"true\"",
-            "\"sling.framework.install.incremental\":\"true\"",
-            "\"sling.framework.install.startlevel\":\"1\"",
-            "\"sling.ignoreSystemProperties\":\"true\"",
-            "\"id\":\"org.osgi:org.osgi.framework:1.9.0\""
+            "\"interpolated_variable\": \"true\"",
+            "\"sling.framework.install.incremental\": \"true\"",
+            "\"sling.framework.install.startlevel\": \"1\"",
+            "\"sling.ignoreSystemProperties\": \"true\"",
+            "\"id\": \"org.osgi:org.osgi.framework:1.9.0\""
         ];
 
         for (String value : values) {
