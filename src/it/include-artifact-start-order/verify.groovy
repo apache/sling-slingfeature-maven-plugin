@@ -50,10 +50,10 @@ import org.codehaus.plexus.util.*;
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
         String[] values = [
-            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
-            "\"bundles\":[",
+            "\"id\": \"" + group + ":" + artifact + ":slingosgifeature:" + classifier + ":" + version + "\"",
+            "\"bundles\": [",
             group + ":" + artifact + ":" + version + "\"",
-            "\"id\":\"" + dependentGroup + ":" + dependentArtifact + ":" + dependentVersion + "\"",
+            "\"id\": \"" + dependentGroup + ":" + dependentArtifact + ":" + dependentVersion + "\"",
         ];
         for (String value : values) {
             if (fmContent.indexOf(value) < 0) {

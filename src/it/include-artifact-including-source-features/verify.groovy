@@ -49,10 +49,10 @@ import org.codehaus.plexus.util.*;
         String dependentArtifact = "janino";
         String dependentVersion = "2.7.5";
         String[] values = [
-            "\"id\":\"" + group + ":" + artifact + ":slingosgifeature:" + version + "\"",
-            "\"bundles\":[",
+            "\"id\": \"" + group + ":" + artifact + ":slingosgifeature:" + version + "\"",
+            "\"bundles\": [",
             group + ":" + artifact + ":" + version + "\"",
-            "\"repoinit:TEXT|true\":[",
+            "\"repoinit:TEXT|true\": [",
             "\"create path (rep:AuthorizableFolder) /home/users/system\""
         ];
         for (String value : values) {
