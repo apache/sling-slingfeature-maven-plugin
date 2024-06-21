@@ -26,12 +26,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -60,31 +58,29 @@ import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.Preprocessor;
 import org.eclipse.aether.RepositorySystem;
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 
 public class AggregateFeaturesMojoTest {
+    
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
     private Path tempDir;
+    
     private static Map<String, ArtifactId> pluginCallbacks;
 
     public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
 
     @Before
     public void setup() throws Exception {
-        tempDir = Files.createTempDirectory(getClass().getSimpleName());
         pluginCallbacks = new HashMap<>();
+        tempDir = folder.newFolder().toPath();
     }
 
-    @After
-    public void tearDown() throws Exception {
-        // Delete the temp dir again
-        Files.walk(tempDir)
-            .sorted(Comparator.reverseOrder())
-            .map(Path::toFile)
-            .forEach(File::delete);
-    }
 
     public static void addPluginCallback(String plugin, ArtifactId artifactId) {
         pluginCallbacks.put(plugin, artifactId);
