@@ -16,6 +16,14 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.Artifact;
 import org.apache.sling.feature.ArtifactId;
@@ -24,34 +32,21 @@ import org.apache.sling.feature.ExtensionState;
 import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.maven.Preprocessor;
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
-
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.rules.TemporaryFolder;
 
 public class ExtractExtensionsMojoTest {
+
+    @Rule 
+    public TemporaryFolder folder = new TemporaryFolder();
+    
     private Path tempDir;
 
     @Before
-    public void setup() throws Exception {
-        tempDir = Files.createTempDirectory(getClass().getSimpleName());
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        // Delete the temp dir again
-        Files.walk(tempDir)
-            .sorted(Comparator.reverseOrder())
-            .map(Path::toFile)
-            .forEach(File::delete);
+    public void prepare() {
+        tempDir = folder.getRoot().toPath();
     }
 
     @Test

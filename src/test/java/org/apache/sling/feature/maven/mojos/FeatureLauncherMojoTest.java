@@ -31,11 +31,9 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,9 +48,10 @@ import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingRequest;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -61,18 +60,14 @@ public class FeatureLauncherMojoTest {
 
     private static final String ASSEMBLED_FEATURE_JSON = Feature.class.getName() + "/assembledmain.json";
 
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
     private FeatureLauncherMojo mojo = spy(new FeatureLauncherMojo());
     private Path tempDir;
 
     @Before
     public void setup() throws IOException {
-        tempDir = Files.createTempDirectory(getClass().getSimpleName());
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        // Delete the temp dir again
-        Files.walk(tempDir).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+        tempDir = folder.newFolder().toPath();
     }
 
     @Test
