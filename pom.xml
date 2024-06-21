@@ -32,7 +32,7 @@
     <url>https://sling.apache.org/components/slingfeature-maven-plugin/</url>
 
     <properties>
-        <sling.java.version>8</sling.java.version>
+        <sling.java.version>11</sling.java.version>
         <maven.version>3.6.3</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
@@ -74,7 +74,6 @@
                         </goals>
                         <configuration>
                             <externalJavadocBaseUrls>
-                                <externalJavadocBaseUrl>https://docs.oracle.com/javase/${sling.java.version}/docs/api/</externalJavadocBaseUrl>
                                 <externalJavadocBaseUrl>https://www.javadoc.io/doc/org.apache.sling/org.apache.sling.feature/${sling.feature.version}/</externalJavadocBaseUrl>
                             </externalJavadocBaseUrls>
                             <internalJavadocBaseUrl>apidocs/</internalJavadocBaseUrl>
