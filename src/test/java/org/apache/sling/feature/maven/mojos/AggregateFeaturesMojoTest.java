@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 import org.apache.maven.artifact.Artifact;
@@ -54,8 +55,11 @@ import org.apache.maven.project.DefaultMavenProjectHelper;
 import org.apache.maven.project.MavenProject;
 import org.apache.sling.feature.ArtifactId;
 import org.apache.sling.feature.Bundles;
+import org.apache.sling.feature.Extension;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.BuilderContext;
+import org.apache.sling.feature.builder.HandlerContext;
+import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.Preprocessor;
@@ -801,6 +805,20 @@ public class AggregateFeaturesMojoTest {
             assertEquals("More than one feature file for classifier myagg in project test.aggregate.project1 : [aggregate myagg, aggregate myagg]", e.getMessage());
         }
     }
+    
+    @Test
+    public void customAggregate() throws Exception {
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", 
+                new String[] { "test_w.json", "test_y.json" }, // control the number of aggregations
+                (agg, mojo) -> mojo.additionalPostProcessHandlers.add(SpyAggregateHandler.class.getTypeName()) );
+        
+        ctx.getMojo().execute();
+        
+        // we expect 2 invocations because we have 2 feature files as input 
+        assertEquals("Additional postProcessHandler invocation count", 2, SpyAggregateHandler.invocationCount.get());
+        
+    }
 
     private Artifact createMockArtifact() {
         Artifact parentArtifact = Mockito.mock(Artifact.class);
@@ -872,6 +890,16 @@ public class AggregateFeaturesMojoTest {
         
         public Map<String, Feature> getFeatureMap() {
             return featureMap;
+        }
+    }
+    
+    public static class SpyAggregateHandler implements PostProcessHandler {
+        
+        static final AtomicInteger invocationCount = new AtomicInteger(0);
+
+        @Override
+        public void postProcess(HandlerContext context, Feature feature, Extension extension) {
+            invocationCount.incrementAndGet();
         }
     }
 }

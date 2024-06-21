@@ -16,6 +16,7 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,7 @@ import java.util.Properties;
 import java.util.ServiceLoader;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.apache.maven.plugin.MojoExecutionException;
@@ -60,7 +62,18 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
     Map<String, Properties> handlerConfiguration = new HashMap<>();
-
+    
+    /**
+     * Additional post process handlers to use when aggregating
+     * 
+     * <p>Normally handlers are discovered using the {@link ServiceLoader} mechanism but some
+     * special-purpose handlers are not registered by default.</p>
+     * 
+     * <p>These handlers will be installed after the ones discovered by the {@link ServiceLoader}.</p>
+     */
+    @Parameter
+    List<String> additionalPostProcessHandlers = new ArrayList<>();
+    
     @Override
     public void execute() throws MojoExecutionException {
         checkPreconditions();
@@ -121,9 +134,7 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                 .addMergeExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
                     ServiceLoader.load(MergeHandler.class).iterator(), Spliterator.ORDERED),
                     false).toArray(MergeHandler[]::new))
-                .addPostProcessExtensions(StreamSupport.stream(Spliterators.spliteratorUnknownSize(
-                    ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED),
-                    false).toArray(PostProcessHandler[]::new));
+                .addPostProcessExtensions(postProcessHandlers().toArray(PostProcessHandler[]::new));
             for (final ArtifactId rule : aggregate.getArtifactOverrideRules()) {
                 builderContext.addArtifactsOverride(rule);
             }
@@ -167,6 +178,23 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             // SLING-9656 - remember that we have already processed this one
             handledAggregates.put(aggregate, result);
         }
+    }
+
+    private Stream<PostProcessHandler> postProcessHandlers() {
+        
+        Stream<PostProcessHandler> serviceLoaderHandlers = StreamSupport.stream(Spliterators.spliteratorUnknownSize(
+            ServiceLoader.load(PostProcessHandler.class).iterator(), Spliterator.ORDERED), false);
+
+        Stream<PostProcessHandler> additionalHandlers = this.additionalPostProcessHandlers.stream()
+            .map( extension -> {
+                try {
+                    return (PostProcessHandler) Class.forName(extension).getDeclaredConstructor().newInstance();
+                } catch (Exception e) {
+                    throw new RuntimeException("Unable to instantiate post-process extension " + extension, e);
+                }
+            });
+        
+        return Stream.concat(serviceLoaderHandlers, additionalHandlers);
     }
 
     Feature assembleFeature(final ArtifactId newFeatureID, final BuilderContext builderContext,
