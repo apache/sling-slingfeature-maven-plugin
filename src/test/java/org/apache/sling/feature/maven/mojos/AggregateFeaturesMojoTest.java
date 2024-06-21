@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
@@ -39,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.DefaultArtifact;
@@ -88,43 +90,12 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testAggregateFeaturesFromDirectory() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir2").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
 
-        Aggregate fc = new Aggregate();
-        fc.setFilesInclude("*.json");
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] { "*.json" } );
+         
+        ctx.getMojo().execute();
 
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc.classifier = "aggregated";
-        af.aggregates = Collections.singletonList(fc);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-        af.execute();
-
-        Feature genFeat = featureMap.get(":aggregate:aggregated:T");
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
         assertNotNull(genFeat);
         ArtifactId id = genFeat.getId();
 
@@ -158,50 +129,20 @@ public class AggregateFeaturesMojoTest {
         }
         assertConfigsEquivalent(expectedConfigs, actualConfigs);
     }
-
+    
     @Test
     public void testAggregateFeaturesFromDirectoryWithIncludesExcludes() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "*.json", "*.foobar" }, 
+                (agg, mojo) -> {
+                    agg.setFilesExclude("*_v*");
+                    agg.setFilesExclude("test_w.json");
+                }
+            );
+        
+        ctx.getMojo().execute();
 
-        Aggregate fc = new Aggregate();
-        fc.setFilesInclude("*.json");
-        fc.setFilesInclude("*.foobar");
-        fc.setFilesExclude("*_v*");
-        fc.setFilesExclude("test_w.json");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc.classifier = "aggregated";
-        af.aggregates = Collections.singletonList(fc);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-
-        af.execute();
-
-        Feature genFeat = featureMap.get(":aggregate:aggregated:T");
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
         assertNotNull(genFeat);
         ArtifactId id = genFeat.getId();
 
@@ -237,43 +178,11 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testNonMatchingDirectoryIncludes() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
-
-        Aggregate fc = new Aggregate();
-        fc.setFilesInclude("doesnotexist.json");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc.classifier = "aggregated";
-        af.aggregates = Collections.singletonList(fc);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "doesnotexist.json" });
+        
         try {
-            af.execute();
+            ctx.getMojo().execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
             assertTrue(mee.getMessage().contains("Include doesnotexist.json not found"));
@@ -282,43 +191,11 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testNonMatchingDirectoryExcludes() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
-
-        Aggregate fc = new Aggregate();
-        fc.setFilesInclude("doesnotexist.json");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc.classifier = "aggregated";
-        af.aggregates = Collections.singletonList(fc);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "doesnotexist.json" });
+        
         try {
-            af.execute();
+            ctx.getMojo().execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
         } catch (MojoExecutionException mee) {
             assertTrue(mee.getMessage().contains("FeatureInclude doesnotexist.json not found"));
@@ -327,58 +204,23 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testIncludeOrdering() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir4").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir4",
+                new String[] { "test_x.json", "test_u.json", "test_y.json", "test_v.json", "test_z.json", "test_t.json" }, 
+                (agg, mojo) -> {
+                    agg.configurationOverrides = Arrays.asList("*=" + BuilderContext.CONFIG_MERGE_LATEST);
+                    agg.classifier = "agg";
+                });
+        
+        ctx.getMojo().execute();
 
-        Aggregate fc1 = new Aggregate();
-        fc1.setFilesInclude("test_x.json");
-
-        fc1.setFilesInclude("test_u.json");
-        fc1.setFilesInclude("test_y.json");
-        fc1.setFilesInclude("test_v.json");
-        fc1.setFilesInclude("test_z.json");
-
-        fc1.setFilesInclude("test_t.json");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("g");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("a");
-        Mockito.when(mockProj.getVersion()).thenReturn("999");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc1.classifier = "agg";
-        fc1.configurationOverrides = Arrays.asList("*=" + BuilderContext.CONFIG_MERGE_LATEST);
-        af.aggregates = Arrays.asList(fc1);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-
-        af.execute();
-
-        Feature genFeat = featureMap.get(":aggregate:agg:T");
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:agg:T");
+        assertNotNull(genFeat);
         ArtifactId id = genFeat.getId();
 
-        assertEquals("g", id.getGroupId());
-        assertEquals("a", id.getArtifactId());
-        assertEquals("999", id.getVersion());
+        assertEquals("org.foo", id.getGroupId());
+        assertEquals("org.foo.bar", id.getArtifactId());
+        assertEquals("1.2.3-SNAPSHOT", id.getVersion());
         assertEquals(FeatureConstants.PACKAGING_FEATURE, id.getType());
         assertEquals("agg", id.getClassifier());
 
@@ -484,49 +326,19 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testPluginHandling() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir3").getFile());
-        // read features
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
-
-        Aggregate fc = new Aggregate();
-        fc.setFilesInclude("*.json");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArtifact = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        fc.classifier = "aggregated";
-        af.aggregates = Collections.singletonList(fc);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-        af.handlerConfiguration = new HashMap<>();
-
-        Properties p3props = new Properties();
-        p3props.put("test3cfg", "myval");
-        p3props.put("test3cfg3", "somethingelse");
-        af.handlerConfiguration.put("TestPlugin3", p3props);
-
+        
+       TestContext ctx = prepareTestContext("/aggregate-features/dir3",
+               new String[] { "*.json" }, 
+               (agg, mojo) -> {
+                   Properties p3props = new Properties();
+                   p3props.put("test3cfg", "myval");
+                   p3props.put("test3cfg3", "somethingelse");
+                   
+                   mojo.handlerConfiguration = Map.of("TestPlugin3", p3props);
+                });
+        
         assertEquals("Precondition", 0, pluginCallbacks.size());
-        af.execute();
+        ctx.getMojo().execute();
 
         ArtifactId id = new ArtifactId("org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", FeatureConstants.PACKAGING_FEATURE);
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension1"));
@@ -723,46 +535,18 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testOverrides() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir5").getFile());
+        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir5",
+                new String[] { "*.json" }, 
+                (agg, mojo) -> {
+                    agg.classifier = "myagg";
+                    agg.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
+                            "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+                 });
 
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
+        ctx.getMojo().execute();
 
-        Aggregate ag = new Aggregate();
-        ag.setFilesInclude("*.json");
-        ag.classifier = "myagg";
-        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregates = Collections.singletonList(ag);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-        af.handlerConfiguration = new HashMap<>();
-
-        af.execute();
-        Feature genFeat = featureMap.get(":aggregate:myagg:T");
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(3, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
@@ -775,44 +559,14 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testOverrideWithManualArtifactIDNoOverride() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir6").getFile());
-
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
-
-        Aggregate ag = new Aggregate();
-        ag.setFilesInclude("*.json");
-        ag.classifier = "myagg";
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregates = Collections.singletonList(ag);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-        af.handlerConfiguration = new HashMap<>();
-
+        TestContext ctx = prepareTestContext("/aggregate-features/dir6",
+                new String[] { "*.json" }, 
+                (agg, mojo) -> {
+                    agg.classifier = "myagg";
+                 });
+        
         try {
-            af.execute();
+            ctx.getMojo().execute();
             fail("Should have thrown an exception as "
                     + "org.apache.sling:somebundle has as alias org.apache.sling:myotherbundle");
         } catch (Exception e) {
@@ -825,47 +579,16 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testOverrideWithManualArtifactID() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir6").getFile());
+        TestContext ctx = prepareTestContext("/aggregate-features/dir6",
+                new String[] { "test_c.json", "test_d.json" }, 
+                (agg, mojo) -> {
+                    agg.classifier = "myagg";
+                    agg.artifactsOverrides = Arrays.asList("org.apache.sling:myotherbundle:LATEST");
+                 });
+        
+        ctx.getMojo().execute();
 
-        Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
-            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
-            featureMap.put(f.getAbsolutePath(), feat);
-        }
-
-        Aggregate ag = new Aggregate();
-        ag.setFilesInclude("test_c.json");
-        ag.setFilesInclude("test_d.json");
-        ag.classifier = "myagg";
-        ag.artifactsOverrides = Arrays.asList("org.apache.sling:myotherbundle:LATEST");
-
-        Build mockBuild = Mockito.mock(Build.class);
-        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
-
-        Artifact parentArt = createMockArtifact();
-        MavenProject mockProj = Mockito.mock(MavenProject.class);
-        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
-        Mockito.when(mockProj.getGroupId()).thenReturn("org.apache.sling");
-        Mockito.when(mockProj.getArtifactId()).thenReturn("org.apache.sling.test");
-        Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
-        Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
-        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
-
-        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
-        af.aggregates = Collections.singletonList(ag);
-        af.project = mockProj;
-        af.projectHelper = new DefaultMavenProjectHelper();
-        af.features = featuresDir;
-        af.handlerConfiguration = new HashMap<>();
-
-        af.execute();
-
-        Feature genFeat = featureMap.get(":aggregate:myagg:T");
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(1, bundles.size());
         assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
@@ -1086,5 +809,69 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(parentArtifact.getVersionRange()).thenReturn(VersionRange.createFromVersion("123"));
         Mockito.when(parentArtifact.getType()).thenReturn("foo");
         return parentArtifact;
+    }
+    
+    private TestContext prepareTestContext(String featuresDirS, String[] filesInclude) throws IOException {
+        return prepareTestContext(featuresDirS, filesInclude, (a,m) -> {});
+    }
+    
+    private TestContext prepareTestContext(String featuresDirS, String[] filesInclude, BiConsumer<Aggregate, AggregateFeaturesMojo> customiser) throws IOException {
+        File featuresDir = new File(
+                getClass().getResource(featuresDirS).getFile());
+        // read features
+        Map<String, Feature> featureMap = new HashMap<>();
+        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+            Feature feat = FeatureJSONReader.read(new FileReader(f), null);
+            featureMap.put(f.getAbsolutePath(), feat);
+        }
+
+        Aggregate fc = new Aggregate();
+        fc.classifier = "aggregated";
+        for (String include : filesInclude)
+            fc.setFilesInclude(include);
+
+        Build mockBuild = Mockito.mock(Build.class);
+        Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
+
+        Artifact parentArtifact = createMockArtifact();
+        MavenProject mockProj = Mockito.mock(MavenProject.class);
+        Mockito.when(mockProj.getBuild()).thenReturn(mockBuild);
+        Mockito.when(mockProj.getGroupId()).thenReturn("org.foo");
+        Mockito.when(mockProj.getArtifactId()).thenReturn("org.foo.bar");
+        Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
+        Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
+            .thenReturn(featureMap);
+        Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
+
+        AggregateFeaturesMojo af = new AggregateFeaturesMojo();
+        af.aggregates = Collections.singletonList(fc);
+        af.project = mockProj;
+        af.projectHelper = new DefaultMavenProjectHelper();
+        af.features = featuresDir;
+
+        customiser.accept(fc, af);
+        
+        return new TestContext(af, featureMap);
+    }
+    
+    static class TestContext {
+        private final AggregateFeaturesMojo mojo;
+        private final Map<String, Feature> featureMap;
+
+        public TestContext(AggregateFeaturesMojo mojo, Map<String, Feature> featureMap) {
+            this.mojo = mojo;
+            this.featureMap = featureMap;
+        }
+        
+        public AggregateFeaturesMojo getMojo() {
+            return mojo;
+        }
+        
+        public Map<String, Feature> getFeatureMap() {
+            return featureMap;
+        }
     }
 }
