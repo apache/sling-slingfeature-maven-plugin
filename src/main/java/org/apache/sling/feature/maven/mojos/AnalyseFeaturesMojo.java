@@ -19,13 +19,8 @@ package org.apache.sling.feature.maven.mojos;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -101,7 +96,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
         FeatureProvider featureProvider = getFeatureProvider();
 
-        final Map<Feature, AnalyserResult> results = new LinkedHashMap<>();
+        final Map<Feature, List<AnalyserResult>> results = new LinkedHashMap<>();
         for (final Scan an : list) {
             try {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
@@ -134,7 +129,7 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
                 if (features.isEmpty()) {
                     getLog().debug(
-                            "There are no assciated feature files to current project, plugin execution will be skipped");
+                            "There are no associated feature files to current project, plugin execution will be skipped");
                     continue;
                 } else {
                     getLog().debug("Starting analysis of features...");
@@ -149,7 +144,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                             fwk = this.framework;
                         }
                         final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
-                        results.put(f, result);
+
+                        if (!results.containsKey(f)) {
+                            results.put(f, new ArrayList<>());
+                        }
+                        results.get(f).add(result);
                     } catch (Exception t) {
                         throw new MojoFailureException(
                                 "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(),
@@ -164,16 +163,20 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             }
         }
         boolean hasErrors = false;
-        for(final Map.Entry<Feature, AnalyserResult> entry : results.entrySet()) {
+        for(final Map.Entry<Feature, List<AnalyserResult>> entry : results.entrySet()) {
             final Feature f = entry.getKey();
-            final AnalyserResult result = entry.getValue();
-            if ( (result.getWarnings().isEmpty() || !logWarnings) && result.getErrors().isEmpty() ) {
+            final List<AnalyserResult> result = entry.getValue();
+
+            List<String> warnings = result.stream().flatMap(r -> r.getWarnings().stream()).collect(Collectors.toList());
+            List<String> errors = result.stream().flatMap(r -> r.getErrors().stream()).collect(Collectors.toList());
+
+            if ( (warnings.isEmpty() || !logWarnings) && errors.isEmpty() ) {
                 getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
                         .a(" succesfully passed all analysis").toString());
             } else {
                 final String message;
-                if (!result.getErrors().isEmpty()) {
-                    if (logWarnings && !result.getWarnings().isEmpty()) {
+                if (!errors.isEmpty()) {
+                    if (logWarnings && !warnings.isEmpty()) {
                         message ="errors and warnings";
                     } else {
                         message = "errors";
@@ -190,11 +193,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                     getLog().warn(m);
                 }
                 if ( logWarnings ) {
-                    for (final String msg : result.getWarnings()) {
+                    for (final String msg : warnings) {
                         getLog().warn(msg);
                     }
                 }
-                 for (final String msg : result.getErrors()) {
+                 for (final String msg : errors) {
                     getLog().error(msg);
                 }
             }
