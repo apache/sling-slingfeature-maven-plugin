@@ -145,17 +145,14 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                         }
                         final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
 
-                        if (!results.containsKey(f)) {
-                            results.put(f, new ArrayList<>());
-                        }
-                        results.get(f).add(result);
-                    } catch (Exception t) {
+                        results.computeIfAbsent(f, (key) -> new ArrayList<>()).add(result);
+                    } catch (final Exception t) {
                         throw new MojoFailureException(
                                 "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(),
                                 t);
                     }
                 }
-            } catch (IOException e) {
+            } catch (final IOException e) {
                 throw new MojoExecutionException(
                         "A fatal error occurred while setting up the analyzer, see error cause:", e);
             } finally {
@@ -167,8 +164,8 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             final Feature f = entry.getKey();
             final List<AnalyserResult> result = entry.getValue();
 
-            List<String> warnings = result.stream().flatMap(r -> r.getWarnings().stream()).collect(Collectors.toList());
-            List<String> errors = result.stream().flatMap(r -> r.getErrors().stream()).collect(Collectors.toList());
+            final List<String> warnings = result.stream().flatMap(r -> r.getWarnings().stream()).collect(Collectors.toList());
+            final List<String> errors = result.stream().flatMap(r -> r.getErrors().stream()).collect(Collectors.toList());
 
             if ( (warnings.isEmpty() || !logWarnings) && errors.isEmpty() ) {
                 getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
