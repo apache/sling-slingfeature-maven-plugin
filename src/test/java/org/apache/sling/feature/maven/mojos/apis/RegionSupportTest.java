@@ -1,24 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.apis;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import java.util.Collections;
 import java.util.Set;
@@ -35,10 +33,16 @@ import org.apache.sling.feature.extension.apiregions.api.ApiRegions;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 public class RegionSupportTest {
 
-    @Test public void testNoRegionInfo() throws MojoExecutionException {
-        final RegionSupport support = new RegionSupport(Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+    @Test
+    public void testNoRegionInfo() throws MojoExecutionException {
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
 
         final Feature f = new Feature(ArtifactId.parse("g:a:1"));
 
@@ -48,7 +52,8 @@ public class RegionSupportTest {
         assertEquals("global", regions.listRegions().get(0).getName());
     }
 
-    @Test public void testApiExportAllPackages() throws MojoExecutionException {
+    @Test
+    public void testApiExportAllPackages() throws MojoExecutionException {
         final ApiRegions regions = new ApiRegions();
         final ApiRegion region = new ApiRegion("global");
         regions.add(region);
@@ -59,7 +64,8 @@ public class RegionSupportTest {
         final ApiExport e3 = new ApiExport("p3");
         region.add(e3);
         final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
-        final RegionSupport support = new RegionSupport(Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
 
         // three packages are exported
         final Clause[] exportedPackages = new Clause[3];
@@ -67,7 +73,8 @@ public class RegionSupportTest {
         exportedPackages[1] = new Clause("p2", null, null);
         exportedPackages[2] = new Clause("p3", null, null);
 
-        final Set<String> used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
+        final Set<String> used =
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertEquals(3, used.size());
         assertTrue(used.contains("p1"));
         assertTrue(used.contains("p2"));
@@ -80,7 +87,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[2]));
     }
 
-    @Test public void testApiExportSubsetOfPackages() throws MojoExecutionException {
+    @Test
+    public void testApiExportSubsetOfPackages() throws MojoExecutionException {
         final ApiRegions regions = new ApiRegions();
         final ApiRegion region = new ApiRegion("global");
         regions.add(region);
@@ -91,7 +99,8 @@ public class RegionSupportTest {
         final ApiExport e3 = new ApiExport("p4");
         region.add(e3);
         final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
-        final RegionSupport support = new RegionSupport(Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
 
         // three packages are exported
         final Clause[] exportedPackages = new Clause[3];
@@ -99,7 +108,8 @@ public class RegionSupportTest {
         exportedPackages[1] = new Clause("p2", null, null);
         exportedPackages[2] = new Clause("p3", null, null);
 
-        final Set<String> used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
+        final Set<String> used =
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertEquals(2, used.size());
         assertTrue(used.contains("p1"));
         assertTrue(used.contains("p2"));
@@ -110,7 +120,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[1]));
     }
 
-    @Test public void testApiExportWithToggles() throws MojoExecutionException {
+    @Test
+    public void testApiExportWithToggles() throws MojoExecutionException {
         final ApiRegions regions = new ApiRegions();
         final ApiRegion region = new ApiRegion("global");
         regions.add(region);
@@ -122,7 +133,8 @@ public class RegionSupportTest {
         final ApiExport e3 = new ApiExport("p3");
         region.add(e3);
         final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
-        final RegionSupport support = new RegionSupport(Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
 
         // three packages are exported
         final Clause[] exportedPackages = new Clause[3];
@@ -131,7 +143,8 @@ public class RegionSupportTest {
         exportedPackages[2] = new Clause("p3", null, null);
 
         // no toggle set, p2 is not included
-        Set<String> used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
+        Set<String> used =
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertEquals(2, used.size());
         assertTrue(used.contains("p1"));
         assertTrue(used.contains("p3"));
@@ -142,7 +155,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[2]));
 
         // set toggle - p2 is included
-        used = support.computeAllUsedExportPackages(regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
+        used = support.computeAllUsedExportPackages(
+                regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
         assertEquals(3, used.size());
         assertTrue(used.contains("p1"));
         assertTrue(used.contains("p2"));
@@ -169,7 +183,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.contains(exportedPackages[2]));
     }
 
-    @Test public void testApiExportWithTogglesOnly() throws MojoExecutionException {
+    @Test
+    public void testApiExportWithTogglesOnly() throws MojoExecutionException {
         final ApiRegions regions = new ApiRegions();
         final ApiRegion region = new ApiRegion("global");
         regions.add(region);
@@ -181,7 +196,8 @@ public class RegionSupportTest {
         final ApiExport e3 = new ApiExport("p3");
         region.add(e3);
         final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
-        final RegionSupport support = new RegionSupport(Mockito.mock(Log.class), true, true, Collections.singleton("*"), Collections.emptySet());
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, true, Collections.singleton("*"), Collections.emptySet());
 
         // three packages are exported
         final Clause[] exportedPackages = new Clause[3];
@@ -190,14 +206,16 @@ public class RegionSupportTest {
         exportedPackages[2] = new Clause("p3", null, null);
 
         // no toggle set, toggle is required - empty result
-        Set<String> used = support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
+        Set<String> used =
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
         assertTrue(used.isEmpty());
 
         Set<Clause> usedPerRegion = support.computeUsedExportPackagesPerRegion(region, exportedPackages, used);
         assertTrue(usedPerRegion.isEmpty());
 
         // set toggle - p2-feature is set -> p2 is included
-        used = support.computeAllUsedExportPackages(regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
+        used = support.computeAllUsedExportPackages(
+                regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
         assertEquals(1, used.size());
         assertTrue(used.contains("p2"));
 
@@ -214,7 +232,8 @@ public class RegionSupportTest {
         assertTrue(usedPerRegion.isEmpty());
 
         // set toggle - p2-feature is set -> p2 is included
-        used = support.computeAllUsedExportPackages(regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
+        used = support.computeAllUsedExportPackages(
+                regions, Collections.singleton("p2-feature"), exportedPackages, bundle);
         assertEquals(1, used.size());
         assertTrue(used.contains("p2"));
 

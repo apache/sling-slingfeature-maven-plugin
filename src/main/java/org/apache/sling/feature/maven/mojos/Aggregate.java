@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -77,8 +79,19 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), artifactsOverrides, attach, classifier, configurationOverrides, description,
-                frameworkPropertiesOverrides, markAsComplete, markAsFinal, title, variablesOverrides, vendor);
+        return Objects.hash(
+                super.hashCode(),
+                artifactsOverrides,
+                attach,
+                classifier,
+                configurationOverrides,
+                description,
+                frameworkPropertiesOverrides,
+                markAsComplete,
+                markAsFinal,
+                title,
+                variablesOverrides,
+                vendor);
     }
 
     /* (non-Javadoc)
@@ -86,20 +99,20 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (!super.equals(obj))
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
+        if (this == obj) return true;
+        if (!super.equals(obj)) return false;
+        if (getClass() != obj.getClass()) return false;
         Aggregate other = (Aggregate) obj;
-        return Objects.equals(artifactsOverrides, other.artifactsOverrides) && attach == other.attach
+        return Objects.equals(artifactsOverrides, other.artifactsOverrides)
+                && attach == other.attach
                 && Objects.equals(classifier, other.classifier)
                 && Objects.equals(configurationOverrides, other.configurationOverrides)
                 && Objects.equals(description, other.description)
                 && Objects.equals(frameworkPropertiesOverrides, other.frameworkPropertiesOverrides)
-                && markAsComplete == other.markAsComplete && markAsFinal == other.markAsFinal
-                && Objects.equals(title, other.title) && Objects.equals(variablesOverrides, other.variablesOverrides)
+                && markAsComplete == other.markAsComplete
+                && markAsFinal == other.markAsFinal
+                && Objects.equals(title, other.title)
+                && Objects.equals(variablesOverrides, other.variablesOverrides)
                 && Objects.equals(vendor, other.vendor);
     }
 
@@ -109,7 +122,8 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", classifier=" + classifier + ", attach=" + attach
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
-                + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides=" + frameworkPropertiesOverrides + "]";
+                + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides="
+                + frameworkPropertiesOverrides + "]";
     }
 
     public List<ArtifactId> getArtifactOverrideRules() {

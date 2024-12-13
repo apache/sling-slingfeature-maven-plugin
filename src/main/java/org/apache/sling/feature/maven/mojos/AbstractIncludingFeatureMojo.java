@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -51,23 +53,23 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         }
         boolean hasFileInclude = false;
 
-        for(final FeatureSelectionConfig.Selection selection : config.getSelections()) {
-            switch ( selection.type ) {
-            case FILES_INCLUDE:
-                hasFileInclude = true;
-                selectFeatureFiles(selection.instruction, config.getFilesExcludes(), result);
-                break;
-            case CLASSIFIER:
-                selectFeatureClassifier(selection.instruction, result);
-                break;
-            case ARTIFACT:
-                selectFeatureArtifact(selection.instruction, result);
-                break;
-            case REFS_INCLUDE:
-                selectRefsFiles(selection.instruction, config.getFilesExcludes(), result);
-                break;
-            default:
-                break;
+        for (final FeatureSelectionConfig.Selection selection : config.getSelections()) {
+            switch (selection.type) {
+                case FILES_INCLUDE:
+                    hasFileInclude = true;
+                    selectFeatureFiles(selection.instruction, config.getFilesExcludes(), result);
+                    break;
+                case CLASSIFIER:
+                    selectFeatureClassifier(selection.instruction, result);
+                    break;
+                case ARTIFACT:
+                    selectFeatureArtifact(selection.instruction, result);
+                    break;
+                case REFS_INCLUDE:
+                    selectRefsFiles(selection.instruction, config.getFilesExcludes(), result);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -139,17 +141,18 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
      * @param result Map containing the result
      * @throws MojoExecutionException
      */
-    private void selectFeatureFiles(final String include, final List<String> excludes,
-            final Map<String, Feature> result)
+    private void selectFeatureFiles(
+            final String include, final List<String> excludes, final Map<String, Feature> result)
             throws MojoExecutionException {
         final Map<String, Feature> projectFeatures = ProjectHelper.getAssembledFeatures(this.project);
 
-        final String prefix = this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
+        final String prefix =
+                this.features.toPath().normalize().toFile().getAbsolutePath().concat(File.separator);
         final FeatureScanner scanner = new FeatureScanner(projectFeatures, prefix);
         if (!excludes.isEmpty()) {
             scanner.setExcludes(excludes.toArray(new String[excludes.size()]));
         }
-        scanner.setIncludes(new String[] { include });
+        scanner.setIncludes(new String[] {include});
         scanner.scan();
 
         if (!include.contains("*") && scanner.getIncluded().isEmpty()) {
@@ -165,7 +168,7 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
             for (final String exclude : excludes) {
                 if (!exclude.contains("*")) {
                     final FeatureScanner excludeScanner = new FeatureScanner(projectFeatures, prefix);
-                    excludeScanner.setIncludes(new String[] { exclude });
+                    excludeScanner.setIncludes(new String[] {exclude});
                     excludeScanner.scan();
                     if (excludeScanner.getIncluded().isEmpty()) {
                         throw new MojoExecutionException("FeatureExclude " + exclude + " not found.");
@@ -189,31 +192,32 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         if (!excludes.isEmpty()) {
             scanner.setExcludes(excludes.toArray(new String[excludes.size()]));
         }
-        scanner.setIncludes(new String[] { selection });
+        scanner.setIncludes(new String[] {selection});
         scanner.scan();
 
-        if (!selection.contains("*") && scanner.getIncludedFiles().length == 0 ) {
+        if (!selection.contains("*") && scanner.getIncludedFiles().length == 0) {
             throw new MojoExecutionException("RefsInclude " + selection + " not found.");
         }
         // sort result
         final List<String> includedFiles = new ArrayList<>(Arrays.asList(scanner.getIncludedFiles()));
         Collections.sort(includedFiles);
-        for(final String path : includedFiles) {
+        for (final String path : includedFiles) {
             final File selectedFile = new File(this.project.getBasedir(), path.replace('/', File.separatorChar));
             try {
                 final List<String> urls = IOUtils.parseFeatureRefFile(selectedFile);
-                for(final String url : urls) {
+                for (final String url : urls) {
                     try {
                         final ArtifactId id = ArtifactId.parse(url);
                         if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
                             throw new MojoExecutionException(
-                                        "RefsFile configuration is used to select a local feature: " + id.toMvnId());
+                                    "RefsFile configuration is used to select a local feature: " + id.toMvnId());
                         }
-                        final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                                this.artifactHandlerManager, this.repoSystem, id);
+                        final Feature feature = ProjectHelper.getOrResolveFeature(
+                                this.project, this.mavenSession, this.artifactHandlerManager, this.repoSystem, id);
                         result.put(id.toMvnUrl(), feature);
-                    } catch ( final IllegalArgumentException e) {
-                        throw new MojoExecutionException("Reference " + url + " in " + selectedFile.getAbsolutePath() + " is not a supported url.");
+                    } catch (final IllegalArgumentException e) {
+                        throw new MojoExecutionException("Reference " + url + " in " + selectedFile.getAbsolutePath()
+                                + " is not a supported url.");
                     }
                 }
             } catch (final IOException e) {
@@ -227,10 +231,10 @@ public abstract class AbstractIncludingFeatureMojo extends AbstractFeatureMojo {
         final ArtifactId id = ArtifactId.parse(artifactId);
         if (ProjectHelper.isLocalProjectArtifact(this.project, id)) {
             throw new MojoExecutionException(
-                        "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
+                    "FeatureArtifact configuration is used to select a local feature: " + id.toMvnId());
         }
-        final Feature feature = ProjectHelper.getOrResolveFeature(this.project, this.mavenSession,
-                this.artifactHandlerManager, this.repoSystem, id);
+        final Feature feature = ProjectHelper.getOrResolveFeature(
+                this.project, this.mavenSession, this.artifactHandlerManager, this.repoSystem, id);
         result.put(id.toMvnUrl(), feature);
     }
 

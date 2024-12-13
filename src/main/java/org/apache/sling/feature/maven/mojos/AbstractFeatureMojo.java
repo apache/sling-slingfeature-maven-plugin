@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -65,7 +67,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     /**
      * Directory containing feature files
      */
-    @Parameter(name = FeatureProjectConfig.CFG_FEATURES,
+    @Parameter(
+            name = FeatureProjectConfig.CFG_FEATURES,
             required = true,
             defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_DIR)
     protected File features;
@@ -75,7 +78,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * the configured directory. Only feature files specified by
      * this include are processed.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_FEATURES_INCLUDES,
+    @Parameter(
+            name = FeatureProjectConfig.CFG_FEATURES_INCLUDES,
             defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
     private String featuresIncludes;
 
@@ -90,7 +94,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     /**
      * Directory containing test feature files.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES,
+    @Parameter(
+            name = FeatureProjectConfig.CFG_TEST_FEATURES,
             required = true,
             defaultValue = FeatureProjectConfig.DEFAULT_TEST_FEATURE_DIR)
     private File testFeatures;
@@ -98,7 +103,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     /**
      * Comma separated list of includes for the test features.
      */
-    @Parameter(name = FeatureProjectConfig.CFG_TEST_FEATURES_INCLUDES,
+    @Parameter(
+            name = FeatureProjectConfig.CFG_TEST_FEATURES_INCLUDES,
             defaultValue = FeatureProjectConfig.DEFAULT_FEATURE_INCLUDES)
     private String testFeaturesIncludes;
 
@@ -118,30 +124,26 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
      * If set to {@code true} the artifacts from the feature are not added as dependencies
      * with scope={@code provided} to the project.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_FEATURE_DEPENDENCIES,
-            defaultValue="false")
+    @Parameter(name = FeatureProjectConfig.CFG_SKIP_ADD_FEATURE_DEPENDENCIES, defaultValue = "false")
     private boolean skipAddFeatureDependencies;
 
     /**
      * If set to {@code true} the artifacts from the test feature are not added as dependencies
      * with scope={@code test} to the project.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES,
-            defaultValue="true")
+    @Parameter(name = FeatureProjectConfig.CFG_SKIP_ADD_TEST_FEATURE_DEPENDENCIES, defaultValue = "true")
     private boolean skipAddTestFeatureDependencies;
 
     /**
      * If set to {@code true} the main jar artifact is not added to the feature.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_FEATURE,
-            defaultValue="false")
+    @Parameter(name = FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_FEATURE, defaultValue = "false")
     private boolean skipAddJarToFeature;
 
     /**
      * If set to {@code true} the main jar artifact is not added to the test feature.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_TEST_FEATURE,
-            defaultValue="false")
+    @Parameter(name = FeatureProjectConfig.CFG_SKIP_ADD_JAR_TO_TEST_FEATURE, defaultValue = "false")
     private boolean skipAddJarToTestFeature;
 
     /**
@@ -168,7 +170,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     /**
      * The start level for the attached jar/bundle.
      */
-    @Parameter(name=FeatureProjectConfig.CFG_JAR_START_ORDER)
+    @Parameter(name = FeatureProjectConfig.CFG_JAR_START_ORDER)
     protected int jarStartOrder;
 
     /**
@@ -280,18 +282,19 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
                 }
             }
             if (!dir.isDirectory()) {
-                throw new MojoExecutionException(
-                        "Generated features configuration is not a directory: " + dir);
+                throw new MojoExecutionException("Generated features configuration is not a directory: " + dir);
             }
 
             final List<File> files = new ArrayList<>();
-            ProjectHelper.scan(files, dir, this.generatedFeaturesIncludes,
-                    this.generatedFeaturesExcludes);
+            ProjectHelper.scan(files, dir, this.generatedFeaturesIncludes, this.generatedFeaturesExcludes);
 
             for (final File file : files) {
                 getLog().debug("Reading feature file " + file);
                 try {
-                    final String json = ProjectHelper.readFeatureFile(project, file, null,
+                    final String json = ProjectHelper.readFeatureFile(
+                            project,
+                            file,
+                            null,
                             this.enableLegacyVariableReplacement,
                             this.enableProjectVariableReplacement,
                             this.replacePropertyVariables != null ? this.replacePropertyVariables.split(",") : null);
@@ -333,8 +336,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
     }
 
     private BuilderContext getBuilderContext() {
-        final BuilderContext builderContext = new BuilderContext(new BaseFeatureProvider())
-            .setArtifactProvider(new BaseArtifactProvider());
+        final BuilderContext builderContext =
+                new BuilderContext(new BaseFeatureProvider()).setArtifactProvider(new BaseArtifactProvider());
 
         return builderContext;
     }
@@ -348,7 +351,8 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
         @Override
         public Feature provide(ArtifactId id) {
             // Check for the feature in the local context
-            for (final Feature feat : ProjectHelper.getAssembledFeatures(project).values()) {
+            for (final Feature feat :
+                    ProjectHelper.getAssembledFeatures(project).values()) {
                 if (feat.getId().equals(id)) {
                     return feat;
                 }
@@ -359,8 +363,7 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
             }
 
             // Finally, look the feature up via Maven's dependency mechanism
-            return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager,
-                repoSystem, id);
+            return ProjectHelper.getOrResolveFeature(project, mavenSession, artifactHandlerManager, repoSystem, id);
         }
     }
 
@@ -373,9 +376,10 @@ public abstract class AbstractFeatureMojo extends AbstractMojo {
         @Override
         public URL provide(final ArtifactId id) {
             try {
-                return ProjectHelper
-                    .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id)
-                    .getFile().toURI().toURL();
+                return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id)
+                        .getFile()
+                        .toURI()
+                        .toURL();
             } catch (Exception e) {
                 getLog().debug("Artifact " + id.toMvnId() + " not found");
                 return null;

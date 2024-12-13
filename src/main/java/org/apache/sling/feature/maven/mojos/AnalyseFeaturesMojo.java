@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -42,11 +44,11 @@ import org.apache.sling.feature.scanner.Scanner;
 /**
  * Analyse the feature.
  */
-@Mojo(name = "analyse-features",
+@Mojo(
+        name = "analyse-features",
         defaultPhase = LifecyclePhase.VERIFY,
-      requiresDependencyResolution = ResolutionScope.TEST,
-      threadSafe = true
-    )
+        requiresDependencyResolution = ResolutionScope.TEST,
+        threadSafe = true)
 public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
     /**
@@ -84,15 +86,22 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             list = Collections.singletonList(a);
         }
 
-        getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("Scanner").a("...").toString());
+        getLog().debug(MessageUtils.buffer()
+                .a("Setting up the ")
+                .strong("Scanner")
+                .a("...")
+                .toString());
         Scanner scanner;
         try {
             scanner = new Scanner(getArtifactProvider());
         } catch (final IOException e) {
-            throw new MojoExecutionException("A fatal error occurred while setting up the Scanner, see error cause:",
-                    e);
+            throw new MojoExecutionException(
+                    "A fatal error occurred while setting up the Scanner, see error cause:", e);
         }
-        getLog().debug(MessageUtils.buffer().strong("Scanner").a(" successfully set up").toString());
+        getLog().debug(MessageUtils.buffer()
+                .strong("Scanner")
+                .a(" successfully set up")
+                .toString());
 
         FeatureProvider featureProvider = getFeatureProvider();
 
@@ -101,8 +110,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             try {
                 Map<String, Map<String, String>> taskConfiguration = an.getTaskConfiguration();
 
-                getLog().debug(MessageUtils.buffer().a("Setting up the ").strong("analyser")
-                        .a(" with following configuration:").toString());
+                getLog().debug(MessageUtils.buffer()
+                        .a("Setting up the ")
+                        .strong("analyser")
+                        .a(" with following configuration:")
+                        .toString());
                 getLog().debug(" * Task Configuration = " + taskConfiguration);
                 Set<String> includedTasks = an.getIncludeTasks();
                 if (includedTasks == null) {
@@ -122,14 +134,18 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                 getLog().debug(" * Include Tasks = " + includedTasks);
                 getLog().debug(" * Exclude Tasks = " + an.getExcludeTasks());
                 final Analyser analyser = new Analyser(scanner, taskConfiguration, includedTasks, an.getExcludeTasks());
-                getLog().debug(MessageUtils.buffer().strong("Analyser").a(" successfully set up").toString());
+                getLog().debug(MessageUtils.buffer()
+                        .strong("Analyser")
+                        .a(" successfully set up")
+                        .toString());
 
                 getLog().debug("Retrieving Feature files...");
-                final Collection<Feature> features = this.getSelectedFeatures(an).values();
+                final Collection<Feature> features =
+                        this.getSelectedFeatures(an).values();
 
                 if (features.isEmpty()) {
                     getLog().debug(
-                            "There are no associated feature files to current project, plugin execution will be skipped");
+                                    "There are no associated feature files to current project, plugin execution will be skipped");
                     continue;
                 } else {
                     getLog().debug("Starting analysis of features...");
@@ -137,18 +153,23 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
 
                 for (final Feature f : features) {
                     try {
-                        getLog().debug(MessageUtils.buffer().a("Analyzing feature ").strong(f.getId().toMvnId())
-                                .a(" ...").toString());
+                        getLog().debug(MessageUtils.buffer()
+                                .a("Analyzing feature ")
+                                .strong(f.getId().toMvnId())
+                                .a(" ...")
+                                .toString());
                         Dependency fwk = an.getFramework();
                         if (fwk == null) {
                             fwk = this.framework;
                         }
-                        final AnalyserResult result = analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
+                        final AnalyserResult result =
+                                analyser.analyse(f, ProjectHelper.toArtifactId(fwk), featureProvider);
 
                         results.computeIfAbsent(f, (key) -> new ArrayList<>()).add(result);
                     } catch (final Exception t) {
                         throw new MojoFailureException(
-                                "Exception during analysing feature " + f.getId().toMvnId() + " : " + t.getMessage(),
+                                "Exception during analysing feature "
+                                        + f.getId().toMvnId() + " : " + t.getMessage(),
                                 t);
                     }
                 }
@@ -160,21 +181,26 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             }
         }
         boolean hasErrors = false;
-        for(final Map.Entry<Feature, List<AnalyserResult>> entry : results.entrySet()) {
+        for (final Map.Entry<Feature, List<AnalyserResult>> entry : results.entrySet()) {
             final Feature f = entry.getKey();
             final List<AnalyserResult> result = entry.getValue();
 
-            final List<String> warnings = result.stream().flatMap(r -> r.getWarnings().stream()).collect(Collectors.toList());
-            final List<String> errors = result.stream().flatMap(r -> r.getErrors().stream()).collect(Collectors.toList());
+            final List<String> warnings =
+                    result.stream().flatMap(r -> r.getWarnings().stream()).collect(Collectors.toList());
+            final List<String> errors =
+                    result.stream().flatMap(r -> r.getErrors().stream()).collect(Collectors.toList());
 
-            if ( (warnings.isEmpty() || !logWarnings) && errors.isEmpty() ) {
-                getLog().debug(MessageUtils.buffer().a("feature ").project(f.getId().toMvnId())
-                        .a(" succesfully passed all analysis").toString());
+            if ((warnings.isEmpty() || !logWarnings) && errors.isEmpty()) {
+                getLog().debug(MessageUtils.buffer()
+                        .a("feature ")
+                        .project(f.getId().toMvnId())
+                        .a(" succesfully passed all analysis")
+                        .toString());
             } else {
                 final String message;
                 if (!errors.isEmpty()) {
                     if (logWarnings && !warnings.isEmpty()) {
-                        message ="errors and warnings";
+                        message = "errors and warnings";
                     } else {
                         message = "errors";
                     }
@@ -183,28 +209,32 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
                     message = "warnings";
                 }
                 final String m = "Analyser detected "
-                    .concat(message).concat(" on feature '").concat(f.getId().toMvnId()).concat("'.");
+                        .concat(message)
+                        .concat(" on feature '")
+                        .concat(f.getId().toMvnId())
+                        .concat("'.");
                 if (hasErrors) {
                     getLog().error(m);
                 } else {
                     getLog().warn(m);
                 }
-                if ( logWarnings ) {
+                if (logWarnings) {
                     for (final String msg : warnings) {
                         getLog().warn(msg);
                     }
                 }
-                 for (final String msg : errors) {
+                for (final String msg : errors) {
                     getLog().error(msg);
                 }
             }
         }
         if (hasErrors) {
-            if ( failOnAnalyserErrors ) {
+            if (failOnAnalyserErrors) {
                 throw new MojoFailureException(
-                    "One or more feature analyser(s) detected feature error(s), please read the plugin log for more details");
+                        "One or more feature analyser(s) detected feature error(s), please read the plugin log for more details");
             }
-            getLog().warn("Errors found during analyser run, but this plugin is configured to ignore errors and continue the build!");
+            getLog().warn(
+                            "Errors found during analyser run, but this plugin is configured to ignore errors and continue the build!");
         }
     }
 
@@ -214,7 +244,11 @@ public class AnalyseFeaturesMojo extends AbstractIncludingFeatureMojo {
             @Override
             public URL provide(final ArtifactId id) {
                 try {
-                    return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id).getFile().toURI().toURL();
+                    return ProjectHelper.getOrResolveArtifact(
+                                    project, mavenSession, artifactHandlerManager, repoSystem, id)
+                            .getFile()
+                            .toURI()
+                            .toURL();
                 } catch (final MalformedURLException e) {
                     getLog().debug("Malformed url " + e.getMessage(), e);
                     // ignore

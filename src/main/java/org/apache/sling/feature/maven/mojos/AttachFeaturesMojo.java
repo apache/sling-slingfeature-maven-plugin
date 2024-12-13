@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -43,11 +45,11 @@ import org.osgi.framework.Constants;
 /**
  * Attach the feature as a project artifact.
  */
-@Mojo(name = "attach-features",
+@Mojo(
+        name = "attach-features",
         defaultPhase = LifecyclePhase.PACKAGE,
-      requiresDependencyResolution = ResolutionScope.TEST,
-      threadSafe = true
-    )
+        requiresDependencyResolution = ResolutionScope.TEST,
+        threadSafe = true)
 public class AttachFeaturesMojo extends AbstractFeatureMojo {
     /**
      * Attach main features (source)
@@ -58,8 +60,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     /**
      * Attach test features (source)
      */
-    @Parameter(name = "attachTestFeatures",
-            defaultValue = "false")
+    @Parameter(name = "attachTestFeatures", defaultValue = "false")
     private boolean attachTestFeatures;
 
     /**
@@ -87,43 +88,47 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     /** Not found entry */
     private static final Map.Entry<String, String> NOT_FOUND = new AbstractMap.SimpleImmutableEntry<>("NULL", "NULL");
 
-    private void attach(final Feature feature)
-    throws MojoExecutionException {
+    private void attach(final Feature feature) throws MojoExecutionException {
         final String classifier = feature.getId().getClassifier();
 
         boolean changed = false;
         // check for metadata
-        if ( this.includeBundleMetadata ) {
-            for(final Artifact bundle : feature.getBundles()) {
-                if ( bundle.getMetadata().get(Constants.BUNDLE_SYMBOLICNAME) == null ) {
-                     Map.Entry<String, String> value = METADATA_CACHE.get(bundle.getId().toMvnId());
-                     if ( value == null ) {
-                        final org.apache.maven.artifact.Artifact source = ProjectHelper.getOrResolveArtifact(this.project,
-                             this.mavenSession,
-                            this.artifactHandlerManager,
-                            this.repoSystem,
-                            bundle.getId());
-        
+        if (this.includeBundleMetadata) {
+            for (final Artifact bundle : feature.getBundles()) {
+                if (bundle.getMetadata().get(Constants.BUNDLE_SYMBOLICNAME) == null) {
+                    Map.Entry<String, String> value =
+                            METADATA_CACHE.get(bundle.getId().toMvnId());
+                    if (value == null) {
+                        final org.apache.maven.artifact.Artifact source = ProjectHelper.getOrResolveArtifact(
+                                this.project,
+                                this.mavenSession,
+                                this.artifactHandlerManager,
+                                this.repoSystem,
+                                bundle.getId());
+
                         try (final JarFile jarFile = new JarFile(source.getFile())) {
-                            final String symbolicName = jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_SYMBOLICNAME);
-                            final String version = jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_VERSION);
-                            if ( symbolicName != null && version != null ) {
+                            final String symbolicName =
+                                    jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_SYMBOLICNAME);
+                            final String version =
+                                    jarFile.getManifest().getMainAttributes().getValue(Constants.BUNDLE_VERSION);
+                            if (symbolicName != null && version != null) {
                                 final int idx = symbolicName.indexOf(";");
-                                value = new AbstractMap.SimpleImmutableEntry<>(idx == -1 ? symbolicName : symbolicName.substring(0, idx), version);
+                                value = new AbstractMap.SimpleImmutableEntry<>(
+                                        idx == -1 ? symbolicName : symbolicName.substring(0, idx), version);
                             }
                         } catch (final IOException e) {
                             // we ignore this
                         }
-                        if ( value == null ) {
+                        if (value == null) {
                             value = NOT_FOUND;
                         }
                         METADATA_CACHE.put(bundle.getId().toMvnId(), value);
-                     }
-                     if ( value != NOT_FOUND ) {
-                         bundle.getMetadata().put(Constants.BUNDLE_SYMBOLICNAME, value.getKey());
-                         bundle.getMetadata().put(Constants.BUNDLE_VERSION, value.getValue());
-                         changed = true;
-                     }
+                    }
+                    if (value != NOT_FOUND) {
+                        bundle.getMetadata().put(Constants.BUNDLE_SYMBOLICNAME, value.getKey());
+                        bundle.getMetadata().put(Constants.BUNDLE_VERSION, value.getValue());
+                        changed = true;
+                    }
                 }
             }
         }
@@ -132,13 +137,11 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
         final File outputFile = ProjectHelper.createTmpFeatureFile(project, feature, changed);
 
         // if this project is a feature, it's the main artifact
-        if ( project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE)
-             && classifier == null) {
+        if (project.getPackaging().equals(FeatureConstants.PACKAGING_FEATURE) && classifier == null) {
             project.getArtifact().setFile(outputFile);
         } else {
             // otherwise attach it as an additional artifact
-            projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE,
-                    classifier, outputFile);
+            projectHelper.attachArtifact(project, FeatureConstants.PACKAGING_FEATURE, classifier, outputFile);
         }
     }
 
@@ -147,8 +150,8 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
         checkPreconditions();
         final List<String> featureUrls = new ArrayList<>();
         this.attachClassifierFeatures(ProjectHelper.getFeatures(this.project), featureUrls, this.attachMainFeatures);
-        this.attachClassifierFeatures(ProjectHelper.getTestFeatures(this.project), featureUrls,
-                this.attachTestFeatures);
+        this.attachClassifierFeatures(
+                ProjectHelper.getTestFeatures(this.project), featureUrls, this.attachTestFeatures);
 
         if (this.createReferenceFile) {
             this.createReferenceFile(featureUrls);
@@ -158,7 +161,7 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
     private void createReferenceFile(final List<String> featureUrls) throws MojoExecutionException {
         if (featureUrls.isEmpty()) {
             getLog().warn(
-                    "Create reference file is enabled but no features are attached. Skipping reference file generation.");
+                            "Create reference file is enabled but no features are attached. Skipping reference file generation.");
         } else {
             String fileName = "references";
             if (this.referenceFileClassifier != null) {
@@ -184,8 +187,8 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
      * Attach all features
      * @throws MojoExecutionException
      */
-    void attachClassifierFeatures(final Map<String, Feature> features, final List<String> featureUrls,
-            final boolean addSourceFeatures)
+    void attachClassifierFeatures(
+            final Map<String, Feature> features, final List<String> featureUrls, final boolean addSourceFeatures)
             throws MojoExecutionException {
         for (final Map.Entry<String, Feature> entry : features.entrySet()) {
             final boolean add;

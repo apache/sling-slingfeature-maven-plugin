@@ -1,22 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
-
-import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -37,11 +37,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import static org.junit.Assert.assertEquals;
+
 public class ExtractExtensionsMojoTest {
 
-    @Rule 
+    @Rule
     public TemporaryFolder folder = new TemporaryFolder();
-    
+
     private Path tempDir;
 
     @Before
@@ -67,7 +69,11 @@ public class ExtractExtensionsMojoTest {
 
     @Test
     public void testExtractTxtExtensionFromFeatureFile() throws Exception {
-        ExtractExtensionMojo mojo = new ExtractExtensionMojo() {{this.features = tempDir.toFile();}};
+        ExtractExtensionMojo mojo = new ExtractExtensionMojo() {
+            {
+                this.features = tempDir.toFile();
+            }
+        };
         setupMavenProject(mojo);
 
         mojo.selection = new FeatureSelectionConfig();
@@ -94,8 +100,7 @@ public class ExtractExtensionsMojoTest {
         mojo.execute();
 
         byte[] bytes = Files.readAllBytes(new File(mojo.outputDir + "/myagg-my-artifact-ext.txt").toPath());
-        assertEquals("a:b:1" + System.lineSeparator() + "c:d:2" + System.lineSeparator(),
-                new String(bytes));
+        assertEquals("a:b:1" + System.lineSeparator() + "c:d:2" + System.lineSeparator(), new String(bytes));
     }
 
     private void setupMavenProject(ExtractExtensionMojo mojo) {

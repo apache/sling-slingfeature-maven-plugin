@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven;
 
@@ -65,10 +67,12 @@ public abstract class ProjectHelper {
 
     /** Read feature. */
     private static final String RAW_FEATURE_JSON = Feature.class.getName() + "/rawmain.json";
+
     private static final String RAW_TEST_FEATURE_JSON = Feature.class.getName() + "/rawtest.json";
 
     /** Assembled feature. */
     private static final String ASSEMBLED_FEATURE_JSON = Feature.class.getName() + "/assembledmain.json";
+
     private static final String ASSEMBLED_TEST_FEATURE_JSON = Feature.class.getName() + "/assembledtest.json";
 
     /** Default metadata */
@@ -78,17 +82,17 @@ public abstract class ProjectHelper {
     private static final String ARTIFACT_CACHE = Artifact.class.getName() + "/cache";
 
     private static void store(final MavenProject project, final String key, final Map<String, Feature> features) {
-        if ( features != null && !features.isEmpty()) {
+        if (features != null && !features.isEmpty()) {
             project.setContextValue(key, features.size());
             // we have to serialize as the dependency lifecycle participant uses a different class loader (!)
             int index = 0;
-            for(final Map.Entry<String, Feature> entry : features.entrySet()) {
-                try ( final StringWriter w1 = new StringWriter() ) {
+            for (final Map.Entry<String, Feature> entry : features.entrySet()) {
+                try (final StringWriter w1 = new StringWriter()) {
                     FeatureJSONWriter.write(w1, entry.getValue());
                     project.setContextValue(key + "_" + String.valueOf(index), w1.toString());
                     project.setContextValue(key + "_" + String.valueOf(index) + "f", entry.getKey());
                     index++;
-                } catch ( final IOException ioe) {
+                } catch (final IOException ioe) {
                     throw new RuntimeException(ioe.getMessage(), ioe);
                 }
             }
@@ -101,31 +105,31 @@ public abstract class ProjectHelper {
         Map<String, Feature> result = null;
         try {
             result = (Map<String, Feature>) project.getContextValue(cacheKey);
-            if (result != null && !result.isEmpty() ) {
+            if (result != null && !result.isEmpty()) {
                 final Feature f = result.values().iterator().next();
                 f.getId();
             }
-        } catch ( final Exception e) {
+        } catch (final Exception e) {
             // if we get a class cast exception, we read again
             result = null;
         }
-        if ( result == null ) {
+        if (result == null) {
             result = new TreeMap<>();
-            final Integer size = (Integer)project.getContextValue(key);
-            if ( size != null ) {
-                for(int i=0; i<size;i++) {
-                    final String text = (String)project.getContextValue(key + "_" + String.valueOf(i));
-                    if ( text == null ) {
+            final Integer size = (Integer) project.getContextValue(key);
+            if (size != null) {
+                for (int i = 0; i < size; i++) {
+                    final String text = (String) project.getContextValue(key + "_" + String.valueOf(i));
+                    if (text == null) {
                         throw new RuntimeException("Unable to get feature from internal store.");
                     }
-                    final String file = (String)project.getContextValue(key + "_" + String.valueOf(i) + "f");
-                    if ( file == null ) {
+                    final String file = (String) project.getContextValue(key + "_" + String.valueOf(i) + "f");
+                    if (file == null) {
                         throw new RuntimeException("Unable to get feature from internal store.");
                     }
-                    try ( final StringReader r = new StringReader(text) ) {
+                    try (final StringReader r = new StringReader(text)) {
                         final Feature feature = FeatureJSONReader.read(r, project.getId());
                         result.put(file, feature);
-                    } catch ( final IOException ioe) {
+                    } catch (final IOException ioe) {
                         throw new RuntimeException(ioe.getMessage(), ioe);
                     }
                 }
@@ -212,27 +216,25 @@ public abstract class ProjectHelper {
      * @return The default value if nothing is configured, the value otherwise.
      * @throws RuntimeException If more than one value is configured
      */
-    public static String getConfigValue(final Plugin plugin,
-            final String name,
-            final String defaultValue) {
+    public static String getConfigValue(final Plugin plugin, final String name, final String defaultValue) {
         final Set<String> values = new HashSet<>();
-        final Xpp3Dom config = plugin == null ? null : (Xpp3Dom)plugin.getConfiguration();
+        final Xpp3Dom config = plugin == null ? null : (Xpp3Dom) plugin.getConfiguration();
         final Xpp3Dom globalNode = (config == null ? null : config.getChild(name));
-        if ( globalNode != null ) {
+        if (globalNode != null) {
             values.add(globalNode.getValue());
         }
-        for(final PluginExecution exec : plugin.getExecutions()) {
-            final Xpp3Dom cfg = (Xpp3Dom)exec.getConfiguration();
+        for (final PluginExecution exec : plugin.getExecutions()) {
+            final Xpp3Dom cfg = (Xpp3Dom) exec.getConfiguration();
             final Xpp3Dom pluginNode = (cfg == null ? null : cfg.getChild(name));
-            if ( pluginNode != null
+            if (pluginNode != null
                     && pluginNode.getValue() != null
-                    && !pluginNode.getValue().isEmpty() ) {
+                    && !pluginNode.getValue().isEmpty()) {
                 values.add(pluginNode.getValue());
             }
         }
-        if ( values.size() > 1 ) {
-            throw new RuntimeException("More than one value configured in plugin (executions) of "
-                    + plugin.getKey() + " for " + name + " : " + values);
+        if (values.size() > 1) {
+            throw new RuntimeException("More than one value configured in plugin (executions) of " + plugin.getKey()
+                    + " for " + name + " : " + values);
         }
         return values.isEmpty() ? defaultValue : values.iterator().next();
     }
@@ -245,36 +247,37 @@ public abstract class ProjectHelper {
      * @return {@code null} if nothing is configured, the value otherwise.
      * @throws RuntimeException If more than one value is configured
      */
-    public static Xpp3Dom getConfig(final Plugin plugin,
-            final String name) {
+    public static Xpp3Dom getConfig(final Plugin plugin, final String name) {
         final Set<Xpp3Dom> values = new HashSet<>();
-        final Xpp3Dom config = plugin == null ? null : (Xpp3Dom)plugin.getConfiguration();
+        final Xpp3Dom config = plugin == null ? null : (Xpp3Dom) plugin.getConfiguration();
         final Xpp3Dom globalNode = (config == null ? null : config.getChild(name));
-        if ( globalNode != null && globalNode.getChildCount() > 0 ) {
+        if (globalNode != null && globalNode.getChildCount() > 0) {
             values.add(globalNode);
         }
-        for(final PluginExecution exec : plugin.getExecutions()) {
-            final Xpp3Dom cfg = (Xpp3Dom)exec.getConfiguration();
+        for (final PluginExecution exec : plugin.getExecutions()) {
+            final Xpp3Dom cfg = (Xpp3Dom) exec.getConfiguration();
             final Xpp3Dom pluginNode = (cfg == null ? null : cfg.getChild(name));
-            if ( pluginNode != null && pluginNode.getChildCount() > 0 ) {
+            if (pluginNode != null && pluginNode.getChildCount() > 0) {
                 values.add(pluginNode);
             }
         }
-        if ( values.size() > 1 ) {
-            throw new RuntimeException("More than one value configured in plugin (executions) of "
-                    + plugin.getKey() + " for " + name + " : " + values);
+        if (values.size() > 1) {
+            throw new RuntimeException("More than one value configured in plugin (executions) of " + plugin.getKey()
+                    + " for " + name + " : " + values);
         }
         return values.isEmpty() ? null : values.iterator().next();
     }
 
     private static Artifact findArtifact(final ArtifactId id, final Collection<Artifact> artifacts) {
         if (artifacts != null) {
-            for(final Artifact artifact : artifacts) {
-                if ( artifact.getGroupId().equals(id.getGroupId())
-                   && artifact.getArtifactId().equals(id.getArtifactId())
-                   && artifact.getVersion().equals(id.getVersion())
-                   && artifact.getType().equals(id.getType())
-                   && ((id.getClassifier() == null && artifact.getClassifier() == null) || (id.getClassifier() != null && id.getClassifier().equals(artifact.getClassifier()))) ) {
+            for (final Artifact artifact : artifacts) {
+                if (artifact.getGroupId().equals(id.getGroupId())
+                        && artifact.getArtifactId().equals(id.getArtifactId())
+                        && artifact.getVersion().equals(id.getVersion())
+                        && artifact.getType().equals(id.getType())
+                        && ((id.getClassifier() == null && artifact.getClassifier() == null)
+                                || (id.getClassifier() != null
+                                        && id.getClassifier().equals(artifact.getClassifier())))) {
                     return artifact.getFile() == null ? null : artifact;
                 }
             }
@@ -305,22 +308,23 @@ public abstract class ProjectHelper {
      * @param overwrite If set to {@code true} the feature is always written even if the file already exists
      * @return Return a temporary file
      */
-    public static File createTmpFeatureFile(final MavenProject project, final Feature feature, final boolean overwrite) {
+    public static File createTmpFeatureFile(
+            final MavenProject project, final Feature feature, final boolean overwrite) {
         final String classifier = feature.getId().getClassifier();
-        final File outputFile = new File(getTmpDir(project), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
-        if ( overwrite || !outputFile.exists() ) {
+        final File outputFile =
+                new File(getTmpDir(project), classifier == null ? "feature.json" : "feature-" + classifier + ".json");
+        if (overwrite || !outputFile.exists()) {
             outputFile.getParentFile().mkdirs();
 
-            try ( final Writer writer = new FileWriter(outputFile)) {
+            try (final Writer writer = new FileWriter(outputFile)) {
                 FeatureJSONWriter.write(writer, feature);
             } catch (final IOException e) {
-                throw new RuntimeException("Unable to write feature " + feature.getId().toMvnId() + " to " + outputFile, e);
+                throw new RuntimeException(
+                        "Unable to write feature " + feature.getId().toMvnId() + " to " + outputFile, e);
             }
         }
         return outputFile;
     }
-
-
 
     /**
      * Get a resolved Artifact from the coordinates provided
@@ -333,27 +337,36 @@ public abstract class ProjectHelper {
      * @return the artifact, which has been resolved.
      */
     @SuppressWarnings("deprecation")
-    public static Artifact getOrResolveArtifact(final MavenProject project,
+    public static Artifact getOrResolveArtifact(
+            final MavenProject project,
             final MavenSession session,
             final ArtifactHandlerManager artifactHandlerManager,
             final RepositorySystem repoSystem,
             final ArtifactId id) {
         @SuppressWarnings("unchecked")
         Map<String, Artifact> cache = (Map<String, Artifact>) project.getContextValue(ARTIFACT_CACHE);
-        if ( cache == null ) {
+        if (cache == null) {
             cache = new ConcurrentHashMap<>();
             project.setContextValue(ARTIFACT_CACHE, cache);
         }
         Artifact result = cache.get(id.toMvnId());
-        if ( result == null ) {
+        if (result == null) {
             result = findArtifact(id, project.getAttachedArtifacts());
-            if ( result == null ) {
+            if (result == null) {
                 result = findArtifact(id, project.getDependencyArtifacts());
-                if ( result == null ) {
-                    if ( isLocalProjectArtifact(project, id)) {
-                        for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
-                            if ( entry.getValue().getId().equals(id)) {
-                                final Artifact artifact = new DefaultArtifact(id.getGroupId(), id.getArtifactId(), id.getVersion(), Artifact.SCOPE_PROVIDED, id.getType(), id.getClassifier(), null);
+                if (result == null) {
+                    if (isLocalProjectArtifact(project, id)) {
+                        for (final Map.Entry<String, Feature> entry :
+                                getFeatures(project).entrySet()) {
+                            if (entry.getValue().getId().equals(id)) {
+                                final Artifact artifact = new DefaultArtifact(
+                                        id.getGroupId(),
+                                        id.getArtifactId(),
+                                        id.getVersion(),
+                                        Artifact.SCOPE_PROVIDED,
+                                        id.getType(),
+                                        id.getClassifier(),
+                                        null);
                                 artifact.setFile(createTmpFeatureFile(project, entry.getValue()));
 
                                 result = artifact;
@@ -361,19 +374,23 @@ public abstract class ProjectHelper {
                             }
                         }
                     }
-                    if ( result == null ) {
+                    if (result == null) {
                         try {
-                            
-                            org.eclipse.aether.artifact.Artifact prjArtifact = new org.eclipse.aether.artifact.DefaultArtifact(
+
+                            org.eclipse.aether.artifact.Artifact prjArtifact =
+                                    new org.eclipse.aether.artifact.DefaultArtifact(
                                             id.getGroupId(),
                                             id.getArtifactId(),
                                             id.getClassifier(),
                                             null, // extension retrieved via artifactTye
                                             id.getVersion(),
-                                            RepositoryUtils.newArtifactType(id.getType(), artifactHandlerManager.getArtifactHandler(id.getType()))
-                                    );
-                            ArtifactRequest artifactRequest = new ArtifactRequest(prjArtifact, project.getRemoteProjectRepositories(), null);
-                            ArtifactResult artifactResult = repoSystem.resolveArtifact(session.getRepositorySession(), artifactRequest);
+                                            RepositoryUtils.newArtifactType(
+                                                    id.getType(),
+                                                    artifactHandlerManager.getArtifactHandler(id.getType())));
+                            ArtifactRequest artifactRequest =
+                                    new ArtifactRequest(prjArtifact, project.getRemoteProjectRepositories(), null);
+                            ArtifactResult artifactResult =
+                                    repoSystem.resolveArtifact(session.getRepositorySession(), artifactRequest);
                             result = RepositoryUtils.toArtifact(artifactResult.getArtifact());
                         } catch (final org.eclipse.aether.resolution.ArtifactResolutionException e) {
                             throw new RuntimeException("Unable to get artifact for " + id.toMvnId(), e);
@@ -387,9 +404,14 @@ public abstract class ProjectHelper {
         return result;
     }
 
-    public static Feature getOrResolveFeature(final MavenProject project, final MavenSession session,
-            final ArtifactHandlerManager artifactHandlerManager, final RepositorySystem repoSystem, final ArtifactId id) {
-        final File artFile = getOrResolveArtifact(project, session, artifactHandlerManager, repoSystem, id).getFile();
+    public static Feature getOrResolveFeature(
+            final MavenProject project,
+            final MavenSession session,
+            final ArtifactHandlerManager artifactHandlerManager,
+            final RepositorySystem repoSystem,
+            final ArtifactId id) {
+        final File artFile = getOrResolveArtifact(project, session, artifactHandlerManager, repoSystem, id)
+                .getFile();
         try (final Reader reader = new FileReader(artFile)) {
             return FeatureJSONReader.read(reader, artFile.getAbsolutePath());
         } catch (final IOException ioe) {
@@ -401,9 +423,10 @@ public abstract class ProjectHelper {
         if (d == null) {
             return "null";
         }
-        return "Dependency {groupId=" + d.getGroupId() + ", artifactId=" + d.getArtifactId() + ", version=" + d.getVersion() +
-                (d.getClassifier() != null ? ", classifier=" + d.getClassifier() : "") +
-                ", type=" + d.getType() + "}";
+        return "Dependency {groupId=" + d.getGroupId() + ", artifactId=" + d.getArtifactId() + ", version="
+                + d.getVersion() + (d.getClassifier() != null ? ", classifier=" + d.getClassifier() : "")
+                + ", type="
+                + d.getType() + "}";
     }
 
     public static Dependency toDependency(final ArtifactId id, final String scope) {
@@ -422,26 +445,26 @@ public abstract class ProjectHelper {
         if (dep == null) {
             return null;
         }
-        return new ArtifactId(dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getClassifier(),
-                dep.getType());
+        return new ArtifactId(
+                dep.getGroupId(), dep.getArtifactId(), dep.getVersion(), dep.getClassifier(), dep.getType());
     }
 
     public static void setFeatureInfo(final MavenProject project, final Feature feature) {
         // set title, description, vendor, license
-        if ( feature.getTitle() == null ) {
+        if (feature.getTitle() == null) {
             feature.setTitle(project.getName());
         }
-        if ( feature.getDescription() == null ) {
+        if (feature.getDescription() == null) {
             feature.setDescription(project.getDescription());
         }
-        if ( feature.getVendor() == null && project.getOrganization() != null ) {
+        if (feature.getVendor() == null && project.getOrganization() != null) {
             feature.setVendor(project.getOrganization().getName());
         }
-        if ( feature.getLicense() == null
-             && project.getLicenses() != null
-             && !project.getLicenses().isEmpty()) {
+        if (feature.getLicense() == null
+                && project.getLicenses() != null
+                && !project.getLicenses().isEmpty()) {
             final String license = project.getLicenses().stream()
-                    .filter(l -> l.getName() != null )
+                    .filter(l -> l.getName() != null)
                     .map(l -> l.getName())
                     .collect(Collectors.joining(", "));
 
@@ -452,37 +475,37 @@ public abstract class ProjectHelper {
     private static final String AGGREGATE_PREFIX = ":aggregate:";
 
     private static String toString(final List<String> featureKeys) {
-    	final StringBuilder sb = new StringBuilder();
-    	if ( featureKeys.size() > 1 ) {
-    		sb.append('[');
-    	}
+        final StringBuilder sb = new StringBuilder();
+        if (featureKeys.size() > 1) {
+            sb.append('[');
+        }
         boolean first = true;
         for (String key : featureKeys) {
-        	if ( first ) {
-        		first = false;
-        	} else {
-        		sb.append(", ");
-        	}
-        	if ( key.startsWith(AGGREGATE_PREFIX) ) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            if (key.startsWith(AGGREGATE_PREFIX)) {
                 key = key.substring(0, key.length() - 2);
-        		sb.append("aggregate ");
+                sb.append("aggregate ");
                 if (key.length() == AGGREGATE_PREFIX.length()) {
                     sb.append("main artifact (no classifier)");
                 } else {
                     sb.append(key.substring(AGGREGATE_PREFIX.length()));
                 }
-        	} else {
-        		sb.append(key);
-        	}
+            } else {
+                sb.append(key);
+            }
         }
-    	if ( featureKeys.size() > 1 ) {
-    		sb.append(']');
-    	}
+        if (featureKeys.size() > 1) {
+            sb.append(']');
+        }
         return sb.toString();
     }
 
     public static boolean isAggregate(final String featureKey) {
-    	return featureKey.startsWith(AGGREGATE_PREFIX);
+        return featureKey.startsWith(AGGREGATE_PREFIX);
     }
 
     public static boolean isAttachAggregate(final String featureKey) {
@@ -490,20 +513,22 @@ public abstract class ProjectHelper {
     }
 
     public static String generateAggregateFeatureKey(final String classifier, final boolean attach) {
-        return (classifier != null ? AGGREGATE_PREFIX.concat(classifier) : AGGREGATE_PREFIX).concat(":")
+        return (classifier != null ? AGGREGATE_PREFIX.concat(classifier) : AGGREGATE_PREFIX)
+                .concat(":")
                 .concat(attach ? "T" : "F");
     }
 
     private static final String NULL_KEY = ":";
 
-    private static void addClassifier(final Map<String, List<String>> classifiers, final String classifier, final String featureKey) {
-    	final String key = classifier == null ? NULL_KEY : classifier;
-    	List<String> list = classifiers.get(key);
-    	if ( list == null ) {
-    		list = new ArrayList<>();
-    		classifiers.put(key, list);
-    	}
-    	list.add(featureKey);
+    private static void addClassifier(
+            final Map<String, List<String>> classifiers, final String classifier, final String featureKey) {
+        final String key = classifier == null ? NULL_KEY : classifier;
+        List<String> list = classifiers.get(key);
+        if (list == null) {
+            list = new ArrayList<>();
+            classifiers.put(key, list);
+        }
+        list.add(featureKey);
     }
 
     /**
@@ -520,8 +545,8 @@ public abstract class ProjectHelper {
      * @param additionalClassifier Optional additional classifier
      * @param attachFeature Set to true to attach the feature
      */
-    public static void validateFeatureClassifiers(final MavenProject project,
-            final String additionalClassifier, final boolean attachFeature) {
+    public static void validateFeatureClassifiers(
+            final MavenProject project, final String additionalClassifier, final boolean attachFeature) {
         validateFeatureClassifiers(project, true, additionalClassifier, attachFeature);
     }
 
@@ -531,33 +556,38 @@ public abstract class ProjectHelper {
      * @param project              The maven project
      * @param additionalClassifier Optional additional classifier
      */
-    private static void validateFeatureClassifiers(final MavenProject project, final boolean classifierProvided,
-            final String additionalClassifier, final boolean attachFeature) {
+    private static void validateFeatureClassifiers(
+            final MavenProject project,
+            final boolean classifierProvided,
+            final String additionalClassifier,
+            final boolean attachFeature) {
 
         final Map<String, List<String>> classifiers = new HashMap<>();
-        for(final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
-        	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
+        for (final Map.Entry<String, Feature> entry : getFeatures(project).entrySet()) {
+            addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
-        for(final Map.Entry<String, Feature> entry : getTestFeatures(project).entrySet()) {
-        	if ( entry.getValue().getId().getClassifier() == null ) {
-                throw new RuntimeException("Found test feature without classifier in project " + project.getId() + " : " + entry.getKey());
-        	}
-        	addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
+        for (final Map.Entry<String, Feature> entry : getTestFeatures(project).entrySet()) {
+            if (entry.getValue().getId().getClassifier() == null) {
+                throw new RuntimeException(
+                        "Found test feature without classifier in project " + project.getId() + " : " + entry.getKey());
+            }
+            addClassifier(classifiers, entry.getValue().getId().getClassifier(), entry.getKey());
         }
         if (classifierProvided) {
             final String key = ProjectHelper.generateAggregateFeatureKey(additionalClassifier, attachFeature);
-        	addClassifier(classifiers, additionalClassifier, key);
+            addClassifier(classifiers, additionalClassifier, key);
         }
-        for(final Map.Entry<String, List<String>> entry : classifiers.entrySet()) {
-        	if ( entry.getValue().size() > 1 ) {
-        		if ( entry.getKey().equals(NULL_KEY)) {
-                    throw new RuntimeException("More than one feature file without classifier in project " + project.getId() + " : " + toString(entry.getValue()));
-        		} else {
-                    throw new RuntimeException("More than one feature file for classifier " + entry.getKey() + " in project " + project.getId() + " : " + toString(entry.getValue()));
-        		}
-        	}
+        for (final Map.Entry<String, List<String>> entry : classifiers.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                if (entry.getKey().equals(NULL_KEY)) {
+                    throw new RuntimeException("More than one feature file without classifier in project "
+                            + project.getId() + " : " + toString(entry.getValue()));
+                } else {
+                    throw new RuntimeException("More than one feature file for classifier " + entry.getKey()
+                            + " in project " + project.getId() + " : " + toString(entry.getValue()));
+                }
+            }
         }
-
     }
 
     /**
@@ -566,15 +596,14 @@ public abstract class ProjectHelper {
      * @param id The artifact id
      * @return {@code true} if the artifact belongs to the project
      */
-    public static boolean isLocalProjectArtifact(final MavenProject project,
-    		final ArtifactId id) {
-    	return id.getGroupId().equals(project.getGroupId())
-    			&& id.getArtifactId().equals(project.getArtifactId())
-    			&& id.getVersion().equals(project.getVersion());
+    public static boolean isLocalProjectArtifact(final MavenProject project, final ArtifactId id) {
+        return id.getGroupId().equals(project.getGroupId())
+                && id.getArtifactId().equals(project.getArtifactId())
+                && id.getVersion().equals(project.getVersion());
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public static Map<String,String> propertiesToMap(final Properties value) {
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static Map<String, String> propertiesToMap(final Properties value) {
         Map m = value;
         return m;
     }
@@ -605,21 +634,28 @@ public abstract class ProjectHelper {
      * @param additionalVars any additional variables
      * @return The read and minified JSON
      */
-    public static String readFeatureFile(final MavenProject project,
+    public static String readFeatureFile(
+            final MavenProject project,
             final File file,
             final String suggestedClassifier,
             final boolean legacyReplace,
             final boolean enableProjectVars,
             final String[] additionalVars) {
-        final ArtifactId fileId = new ArtifactId(project.getGroupId(),
+        final ArtifactId fileId = new ArtifactId(
+                project.getGroupId(),
                 project.getArtifactId(),
                 project.getVersion(),
                 suggestedClassifier,
                 FeatureConstants.PACKAGING_FEATURE);
 
         // replace variables
-        try ( final Reader reader = new FileReader(file) ) {
-            return Substitution.replaceMavenVars(project, legacyReplace, enableProjectVars, additionalVars, JSONFeatures.read(reader, fileId, file.getAbsolutePath()));
+        try (final Reader reader = new FileReader(file)) {
+            return Substitution.replaceMavenVars(
+                    project,
+                    legacyReplace,
+                    enableProjectVars,
+                    additionalVars,
+                    JSONFeatures.read(reader, fileId, file.getAbsolutePath()));
         } catch (final IOException e) {
             throw new RuntimeException("Unable to read feature file " + file.getAbsolutePath(), e);
         }
@@ -648,7 +684,7 @@ public abstract class ProjectHelper {
     @SuppressWarnings("unchecked")
     public static final Map<String, Map<String, String>> getDefaultMetadata(final MavenProject project) {
         Map<String, Map<String, String>> map = (Map<String, Map<String, String>>) project.getContextValue(METADATA_KEY);
-        if ( map == null ) {
+        if (map == null) {
             map = Collections.emptyMap();
         }
         return map;

@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -49,8 +51,7 @@ import org.apache.sling.feature.maven.ProjectHelper;
         name = "attach-featurearchives",
         defaultPhase = LifecyclePhase.PACKAGE,
         requiresDependencyResolution = ResolutionScope.TEST,
-        threadSafe = true
-    )
+        threadSafe = true)
 public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
 
     private static final String DEFAULT_CLASSIFIER = "far";
@@ -83,7 +84,8 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
         checkPreconditions();
         if (archives == null || archives.size() == 0) {
             // by default create an archive of each feature individually
-            for (final Map.Entry<String, Feature> entry : ProjectHelper.getFeatures(this.project).entrySet()) {
+            for (final Map.Entry<String, Feature> entry :
+                    ProjectHelper.getFeatures(this.project).entrySet()) {
                 final boolean add;
                 if (ProjectHelper.isAggregate(entry.getKey())) {
                     add = ProjectHelper.isAttachAggregate(entry.getKey());
@@ -92,9 +94,11 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                 }
 
                 if (add) {
-                    final String classifier = entry.getValue().getId().getClassifier() == null ? DEFAULT_CLASSIFIER
+                    final String classifier = entry.getValue().getId().getClassifier() == null
+                            ? DEFAULT_CLASSIFIER
                             : entry.getValue().getId().getClassifier().concat(DEFAULT_CLASSIFIER);
-                    createArchive(Collections.singletonList(entry.getValue()), classifier, Archive.DEFAULT_EXTENSION, true);
+                    createArchive(
+                            Collections.singletonList(entry.getValue()), classifier, Archive.DEFAULT_EXTENSION, true);
                 }
             }
         } else {
@@ -144,8 +148,11 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
      * @param type The type to use for the archive
      * @param attach Whether the archive should be attached to the project
      */
-    private void createArchive(final List<Feature> features, final String classifier, final String type, final boolean attach) throws MojoExecutionException {
-        final ArtifactId archiveId = features.get(0).getId().changeClassifier(classifier).changeType(type);
+    private void createArchive(
+            final List<Feature> features, final String classifier, final String type, final boolean attach)
+            throws MojoExecutionException {
+        final ArtifactId archiveId =
+                features.get(0).getId().changeClassifier(classifier).changeType(type);
 
         // write the feature model archive
         final File outputFile = new File(
@@ -153,40 +160,43 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
         outputFile.getParentFile().mkdirs();
 
         getLog().info("Creating feature archive " + outputFile.getName());
-        try ( final FileOutputStream fos = new FileOutputStream(outputFile);
-              final JarOutputStream jos = ArchiveWriter.write(fos,
-                        createBaseManifest(features.size() == 1 ? features.get(0) : null), id -> {
-
-                        try {
-                            return ProjectHelper.getOrResolveArtifact(project, mavenSession, artifactHandlerManager,
-                                    repoSystem, id).getFile().toURI().toURL();
-                        } catch (final MalformedURLException e) {
-                            getLog().debug("Malformed url " + e.getMessage(), e);
-                            // ignore
-                            return null;
-                        }
-                    }
-                        , features.toArray(new Feature[features.size()]))) {
+        try (final FileOutputStream fos = new FileOutputStream(outputFile);
+                final JarOutputStream jos = ArchiveWriter.write(
+                        fos,
+                        createBaseManifest(features.size() == 1 ? features.get(0) : null),
+                        id -> {
+                            try {
+                                return ProjectHelper.getOrResolveArtifact(
+                                                project, mavenSession, artifactHandlerManager, repoSystem, id)
+                                        .getFile()
+                                        .toURI()
+                                        .toURL();
+                            } catch (final MalformedURLException e) {
+                                getLog().debug("Malformed url " + e.getMessage(), e);
+                                // ignore
+                                return null;
+                            }
+                        },
+                        features.toArray(new Feature[features.size()]))) {
 
             // handle license etc.
             final File classesDir = new File(this.project.getBuild().getOutputDirectory());
-            if ( classesDir.exists() ) {
+            if (classesDir.exists()) {
                 final File metaInfDir = new File(classesDir, "META-INF");
-                for(final String name : new String[] {"LICENSE", "NOTICE", "DEPENDENCIES"}) {
+                for (final String name : new String[] {"LICENSE", "NOTICE", "DEPENDENCIES"}) {
                     final File f = new File(metaInfDir, name);
-                    if ( f.exists() ) {
+                    if (f.exists()) {
                         final JarEntry artifactEntry = new JarEntry("META-INF/" + name);
                         jos.putNextEntry(artifactEntry);
 
                         final byte[] buffer = new byte[8192];
                         try (final InputStream is = new FileInputStream(f)) {
                             int l = 0;
-                            while ( (l = is.read(buffer)) > 0 ) {
+                            while ((l = is.read(buffer)) > 0) {
                                 jos.write(buffer, 0, l);
                             }
                         }
                         jos.closeEntry();
-
                     }
                 }
             }
@@ -196,7 +206,7 @@ public class AttachFeatureArchivesMojo extends AbstractIncludingFeatureMojo {
                     "Unable to write feature model archive to " + outputFile + " : " + e.getMessage(), e);
         }
 
-        if ( attach ) {
+        if (attach) {
             // attach it as an additional artifact
             projectHelper.attachArtifact(project, archiveId.getType(), archiveId.getClassifier(), outputFile);
         }

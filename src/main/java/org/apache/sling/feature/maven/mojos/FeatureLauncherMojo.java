@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -40,11 +42,7 @@ import org.apache.sling.feature.io.json.FeatureJSONWriter;
 /**
  * Launches the given Feature File
  */
-@Mojo(
-    name = "launch-features",
-    requiresProject = true,
-    threadSafe = true
-)
+@Mojo(name = "launch-features", requiresProject = true, threadSafe = true)
 public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
     public static final String CFG_FEATURE_ARCHIVE_FILES = "featureArchiveFiles";
@@ -147,27 +145,29 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
         checkPreconditions();
         List<String> arguments = new ArrayList<>();
         getLog().info("Feature Selection: " + selection);
-        if(featureArchiveFiles != null && !featureArchiveFiles.isEmpty()) {
+        if (featureArchiveFiles != null && !featureArchiveFiles.isEmpty()) {
             for (File file : featureArchiveFiles) {
                 handleFile(arguments, file, "-f");
             }
         }
-        ArtifactRepository artifactRepository = this.mavenSession.getProjectBuildingRequest().getLocalRepository();
+        ArtifactRepository artifactRepository =
+                this.mavenSession.getProjectBuildingRequest().getLocalRepository();
         String localPath = artifactRepository.getBasedir();
-        if(featureArchiveClassifiers != null && !featureArchiveClassifiers.isEmpty()) {
+        if (featureArchiveClassifiers != null && !featureArchiveClassifiers.isEmpty()) {
             for (String featureArchiveClassifier : featureArchiveClassifiers) {
                 ArtifactId id = new ArtifactId(
-                    this.project.getGroupId(), this.project.getArtifactId(),
-                    this.project.getVersion(), featureArchiveClassifier,
-                    "far"
-                );
+                        this.project.getGroupId(),
+                        this.project.getArtifactId(),
+                        this.project.getVersion(),
+                        featureArchiveClassifier,
+                        "far");
                 String artifactPath = id.toMvnPath();
                 getLog().info("Artifact Maven Path: " + artifactPath);
                 File file = new File(localPath, artifactPath);
                 handleFile(arguments, file, "-f");
             }
         }
-        if(featureArchiveIds != null && !featureArchiveIds.isEmpty()) {
+        if (featureArchiveIds != null && !featureArchiveIds.isEmpty()) {
             for (String featureArchive : featureArchiveIds) {
                 ArtifactId id = ArtifactId.parse(featureArchive);
                 if (id != null) {
@@ -178,17 +178,18 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
                 }
             }
         }
-        if(selection != null && !selection.getSelections().isEmpty()) {
+        if (selection != null && !selection.getSelections().isEmpty()) {
             final Collection<Feature> features = getSelectedFeatures(selection).values();
             getLog().info("Features from Selection: " + features);
             for (Feature feature : features) {
-                // Loop over all features found, create a temporary file, write the features there and add them to the launcher's file list
+                // Loop over all features found, create a temporary file, write the features there and add them to the
+                // launcher's file list
                 File folder;
-				try {
-					folder = Files.createTempDirectory("features").toFile();
-				} catch (IOException e1) {
-					throw new MojoExecutionException("Failed to create temp directory", e1);
-				}
+                try {
+                    folder = Files.createTempDirectory("features").toFile();
+                } catch (IOException e1) {
+                    throw new MojoExecutionException("Failed to create temp directory", e1);
+                }
                 ArtifactId id = feature.getId();
                 File featureFile = new File(folder, id.toMvnId().replaceAll(":", "-") + ".json");
                 // TODO: Do we need to support Prototypes etc?
@@ -205,7 +206,7 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
         handleString(arguments, repositoryUrl, "-u");
         handleStringList(arguments, frameworkProperties, "-D");
         handleStringList(arguments, variableValues, "-V");
-        if(verbose) {
+        if (verbose) {
             arguments.add("-v");
         }
         handleFile(arguments, cacheDirectory, "-c");
@@ -221,13 +222,15 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
 
     void launch(String[] arguments) throws MojoExecutionException {
         try {
-            Class<?> clazz = Thread.currentThread().getContextClassLoader().loadClass(
-                "org.apache.sling.feature.launcher.impl.Main"
-            );
+            Class<?> clazz = Thread.currentThread()
+                    .getContextClassLoader()
+                    .loadClass("org.apache.sling.feature.launcher.impl.Main");
             Method main = clazz.getMethod("main", String[].class);
             main.invoke(null, (Object) arguments);
         } catch (ClassNotFoundException | NoSuchMethodException e) {
-            throw new MojoExecutionException("Failed to load Feature Launcher or Method not available, make sure the Launcher Dependency is added to the Plugin", e);
+            throw new MojoExecutionException(
+                    "Failed to load Feature Launcher or Method not available, make sure the Launcher Dependency is added to the Plugin",
+                    e);
         } catch (InvocationTargetException e) {
             throw new MojoExecutionException("Invocation of Launcher's Main.main() failed", e.getCause());
         } catch (IllegalAccessException | IllegalArgumentException e) {
@@ -236,8 +239,8 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void handleStringList(List<String> arguments, String[] list, String parameter) {
-        if(list != null) {
-            for(String item: list) {
+        if (list != null) {
+            for (String item : list) {
                 arguments.add(parameter);
                 arguments.add(item);
             }
@@ -245,14 +248,14 @@ public class FeatureLauncherMojo extends AbstractIncludingFeatureMojo {
     }
 
     private void handleString(List<String> arguments, String item, String parameter) {
-        if(item != null && !item.isEmpty()) {
+        if (item != null && !item.isEmpty()) {
             arguments.add(parameter);
             arguments.add(item);
         }
     }
 
     private void handleFile(List<String> arguments, File file, String parameter) {
-        if(file != null) {
+        if (file != null) {
             arguments.add(parameter);
             arguments.add(file.getAbsolutePath());
         }

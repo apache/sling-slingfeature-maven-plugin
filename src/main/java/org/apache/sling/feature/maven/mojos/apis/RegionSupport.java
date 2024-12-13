@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.apis;
 
@@ -51,11 +53,12 @@ public class RegionSupport {
 
     private final boolean toggleApiOnly;
 
-    public RegionSupport(final Log logger,
-             final boolean incrementalApis,
-             final boolean toggleApiOnly,
-             final Set<String> includeRegions,
-             final Set<String> excludeRegions) {
+    public RegionSupport(
+            final Log logger,
+            final boolean incrementalApis,
+            final boolean toggleApiOnly,
+            final Set<String> includeRegions,
+            final Set<String> excludeRegions) {
         this.log = logger;
         this.incrementalApis = incrementalApis;
         this.includeRegions = includeRegions;
@@ -149,7 +152,7 @@ public class RegionSupport {
     public List<ApiExport> getAllExports(final ApiRegion region, final Set<String> enabledToggles) {
         final List<ApiExport> result = new ArrayList<>();
         for (final ApiExport exp : region.listExports()) {
-            if ( this.include(exp, enabledToggles) ) {
+            if (this.include(exp, enabledToggles)) {
                 result.add(exp);
             }
         }
@@ -158,11 +161,13 @@ public class RegionSupport {
 
     private boolean include(final ApiExport exp, final Set<String> enabledToggles) {
         boolean include = !toggleApiOnly;
-        if ( toggleApiOnly ) {
+        if (toggleApiOnly) {
             include = exp.getToggle() != null && enabledToggles.contains(exp.getToggle());
         } else {
             // if the package is behind a toggle,  only include if toggle is enabled or if previous artifact is set
-            if (exp.getToggle() != null && !enabledToggles.contains(exp.getToggle()) && exp.getPreviousArtifactId() == null) {
+            if (exp.getToggle() != null
+                    && !enabledToggles.contains(exp.getToggle())
+                    && exp.getPreviousArtifactId() == null) {
                 include = false;
             }
         }
@@ -179,10 +184,12 @@ public class RegionSupport {
      * @return Set of packages exported by this bundle and used in any region
      * @throws MojoExecutionException when the calculation cannot be made
      */
-    public Set<String> computeAllUsedExportPackages(final ApiRegions apiRegions,
+    public Set<String> computeAllUsedExportPackages(
+            final ApiRegions apiRegions,
             final Set<String> enabledToggles,
             final Clause[] exportedPackages,
-            final Artifact bundle) throws MojoExecutionException {
+            final Artifact bundle)
+            throws MojoExecutionException {
         final Set<String> result = new HashSet<>();
 
         // filter for each region
@@ -192,7 +199,7 @@ public class RegionSupport {
             for (ApiRegion apiRegion : apiRegions.listRegions()) {
                 final ApiExport exp = apiRegion.getExportByName(packageName);
                 if (exp != null) {
-                    if ( this.include(exp, enabledToggles) ) {
+                    if (this.include(exp, enabledToggles)) {
                         result.add(exportedPackage.getName());
                     }
                 }
@@ -205,7 +212,7 @@ public class RegionSupport {
         return result;
     }
 
-   /**
+    /**
      * Compute exports based on a single region
      *
      * @param apiRegion The API Region to use
@@ -214,9 +221,9 @@ public class RegionSupport {
      * @return List of packages exported by this bundle and used in the region
      * @throws MojoExecutionException When the computation cannot be done.
      */
-    public Set<Clause> computeUsedExportPackagesPerRegion(final ApiRegion apiRegion,
-            final Clause[] exportedPackages,
-            final Set<String> allPackages) throws MojoExecutionException {
+    public Set<Clause> computeUsedExportPackagesPerRegion(
+            final ApiRegion apiRegion, final Clause[] exportedPackages, final Set<String> allPackages)
+            throws MojoExecutionException {
 
         final Set<Clause> result = new HashSet<>();
 
@@ -253,8 +260,10 @@ public class RegionSupport {
             }
             return manifest;
         } catch (final IOException e) {
-            throw new MojoExecutionException("An error occurred while reading manifest from file " + bundleFile
-                    + " for artifact " + artifactId.toMvnId(), e);
+            throw new MojoExecutionException(
+                    "An error occurred while reading manifest from file " + bundleFile + " for artifact "
+                            + artifactId.toMvnId(),
+                    e);
         }
     }
 
@@ -271,13 +280,14 @@ public class RegionSupport {
         final Set<Clause> packages = new LinkedHashSet<>();
 
         final Manifest manifest = getManifest(artifact.getId(), artifactFile);
-        if (  manifest.getMainAttributes().getValue(Constants.BUNDLE_MANIFESTVERSION) != null ) {
-            for(final Clause c : getExportedPackages(manifest)) {
+        if (manifest.getMainAttributes().getValue(Constants.BUNDLE_MANIFESTVERSION) != null) {
+            for (final Clause c : getExportedPackages(manifest)) {
                 packages.add(c);
             }
         } else {
-            final Set<String> names = ApisUtil.getPackages(ctx, artifactFile, ArtifactType.APIS.getContentExtension()).getKey();
-            for(final String n : names) {
+            final Set<String> names = ApisUtil.getPackages(ctx, artifactFile, ArtifactType.APIS.getContentExtension())
+                    .getKey();
+            for (final String n : names) {
                 packages.add(new Clause(n, null, null));
             }
         }
@@ -292,7 +302,9 @@ public class RegionSupport {
      * @param usedExportedPackagesPerRegion Used exported packages
      * @return {@code null} if the artifact can be used as a dependency
      */
-    public String calculateOmitDependenciesFlag(final ApiRegion region, final Clause[] exportedPackageClauses,
+    public String calculateOmitDependenciesFlag(
+            final ApiRegion region,
+            final Clause[] exportedPackageClauses,
             final Set<Clause> usedExportedPackagesPerRegion) {
         // check whether all packages are exported in this region
         String reason = null;
@@ -312,7 +324,9 @@ public class RegionSupport {
                 // check deprecation - if deprecation is set, artifact can't be used as a
                 // dependency
                 final ApiExport exp = region.getAllExportByName(c.getName());
-                if (exp != null && (exp.getDeprecation().getPackageInfo() != null || !exp.getDeprecation().getMemberInfos().isEmpty())) {
+                if (exp != null
+                        && (exp.getDeprecation().getPackageInfo() != null
+                                || !exp.getDeprecation().getMemberInfos().isEmpty())) {
                     final String msg = "Package (or parts) ".concat(c.getName()).concat(" marked as deprecated.");
                     reason = reason == null ? msg : reason.concat(" ").concat(msg);
                 }

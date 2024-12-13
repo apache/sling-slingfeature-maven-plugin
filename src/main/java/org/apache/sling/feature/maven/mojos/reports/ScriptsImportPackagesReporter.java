@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.reports;
 
@@ -53,9 +55,10 @@ public class ScriptsImportPackagesReporter implements Reporter {
 
         for (final Feature feature : ctx.getFeatures()) {
             for (final Extension ext : feature.getExtensions()) {
-                if (ext.getType() == ExtensionType.ARTIFACTS && Extension.EXTENSION_NAME_CONTENT_PACKAGES.equals(ext.getName())) {
+                if (ext.getType() == ExtensionType.ARTIFACTS
+                        && Extension.EXTENSION_NAME_CONTENT_PACKAGES.equals(ext.getName())) {
                     for (final Artifact artifact : ext.getArtifacts()) {
-                        if ( ctx.matches(artifact.getId())) {
+                        if (ctx.matches(artifact.getId())) {
                             artifacts.add(artifact.getId());
                         }
                     }
@@ -65,23 +68,26 @@ public class ScriptsImportPackagesReporter implements Reporter {
 
         final List<String> report = new ArrayList<>();
 
-        for(final ArtifactId id : artifacts ) {
+        for (final ArtifactId id : artifacts) {
             final URL url = ctx.getArtifactProvider().provide(id);
-            try ( final ZipInputStream zis = new ZipInputStream(url.openStream())) {
+            try (final ZipInputStream zis = new ZipInputStream(url.openStream())) {
                 ZipEntry entry = null;
                 while ((entry = zis.getNextEntry()) != null) {
                     if (entry.getName().startsWith(PREFIX)) {
                         final String path = entry.getName().substring(PREFIX.length() - 1);
-                        if (path.endsWith(".jsp") ) {
+                        if (path.endsWith(".jsp")) {
                             final Set<String> imports = getImports(zis);
-                            for(final String imp : imports) {
-                                report.add(imp.concat("    ").concat(id.toMvnId()).concat("    ").concat(path));
+                            for (final String imp : imports) {
+                                report.add(imp.concat("    ")
+                                        .concat(id.toMvnId())
+                                        .concat("    ")
+                                        .concat(path));
                             }
                         }
                     }
                 }
             } catch (final IOException ioe) {
-               throw new MojoExecutionException("Unable to read from " + id.toMvnId(), ioe);
+                throw new MojoExecutionException("Unable to read from " + id.toMvnId(), ioe);
             }
         }
 
@@ -104,7 +110,7 @@ public class ScriptsImportPackagesReporter implements Reporter {
         // this is a very rough search
         int start = 0;
         int sectionStart = -1;
-        while ( start < script.length() ) {
+        while (start < script.length()) {
             // <%@page session="false" pageEncoding="utf-8" import=""
             if (sectionStart != -1) {
                 final int pos = script.indexOf("%>", start);
@@ -127,27 +133,30 @@ public class ScriptsImportPackagesReporter implements Reporter {
                                 }
                                 if (importStart < page.length()) {
                                     importStart++;
-                                    while (importStart < page.length() && Character.isWhitespace(page.charAt(importStart))) {
+                                    while (importStart < page.length()
+                                            && Character.isWhitespace(page.charAt(importStart))) {
                                         importStart++;
                                     }
                                     if (importStart < page.length() && page.charAt(importStart) == '"') {
                                         importStart++;
                                         int importEnd = importStart;
                                         while (importEnd < page.length() && page.charAt(importEnd) != '"') {
-                                             importEnd++;
+                                            importEnd++;
                                         }
                                         if (importEnd < page.length()) {
                                             final String imp = page.substring(importStart, importEnd);
                                             final StringTokenizer st = new StringTokenizer(imp, ",");
                                             while (st.hasMoreTokens()) {
-                                                final String statement = st.nextToken().trim();
+                                                final String statement =
+                                                        st.nextToken().trim();
                                                 final int lastDot = statement.lastIndexOf('.');
-                                                imports.add(lastDot == -1 ? statement : statement.substring(0, lastDot));
+                                                imports.add(
+                                                        lastDot == -1 ? statement : statement.substring(0, lastDot));
                                             }
                                         }
                                     }
-                               }
-                           }
+                                }
+                            }
                         }
                     }
                 }
