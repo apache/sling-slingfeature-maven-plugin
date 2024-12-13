@@ -1,26 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileReader;
@@ -70,13 +66,19 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.mockito.Mockito;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 public class AggregateFeaturesMojoTest {
-    
+
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
 
     private Path tempDir;
-    
+
     private static Map<String, ArtifactId> pluginCallbacks;
 
     public static final String FEATURE_PROCESSED_LOCATION = "/features/processed";
@@ -87,7 +89,6 @@ public class AggregateFeaturesMojoTest {
         tempDir = folder.newFolder().toPath();
     }
 
-
     public static void addPluginCallback(String plugin, ArtifactId artifactId) {
         pluginCallbacks.put(plugin, artifactId);
     }
@@ -95,8 +96,8 @@ public class AggregateFeaturesMojoTest {
     @Test
     public void testAggregateFeaturesFromDirectory() throws Exception {
 
-        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] { "*.json" } );
-         
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] {"*.json"});
+
         ctx.getMojo().execute();
 
         Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
@@ -110,10 +111,8 @@ public class AggregateFeaturesMojoTest {
         assertEquals("aggregated", id.getClassifier());
 
         Set<ArtifactId> expectedBundles = new HashSet<>();
-        expectedBundles.add(
-                new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null));
-        expectedBundles.add(
-                new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null));
+        expectedBundles.add(new ArtifactId("org.apache.aries", "org.apache.aries.util", "1.1.3", null, null));
+        expectedBundles.add(new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null));
         Set<ArtifactId> actualBundles = new HashSet<>();
         for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
             actualBundles.add(art.getId());
@@ -133,17 +132,16 @@ public class AggregateFeaturesMojoTest {
         }
         assertConfigsEquivalent(expectedConfigs, actualConfigs);
     }
-    
+
     @Test
     public void testAggregateFeaturesFromDirectoryWithIncludesExcludes() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "*.json", "*.foobar" }, 
-                (agg, mojo) -> {
+
+        TestContext ctx =
+                prepareTestContext("/aggregate-features/dir", new String[] {"*.json", "*.foobar"}, (agg, mojo) -> {
                     agg.setFilesExclude("*_v*");
                     agg.setFilesExclude("test_w.json");
-                }
-            );
-        
+                });
+
         ctx.getMojo().execute();
 
         Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
@@ -182,9 +180,9 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testNonMatchingDirectoryIncludes() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "doesnotexist.json" });
-        
+
+        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] {"doesnotexist.json"});
+
         try {
             ctx.getMojo().execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
@@ -195,9 +193,9 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testNonMatchingDirectoryExcludes() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] { "doesnotexist.json" });
-        
+
+        TestContext ctx = prepareTestContext("/aggregate-features/dir", new String[] {"doesnotexist.json"});
+
         try {
             ctx.getMojo().execute();
             fail("Should have thrown an exception because doesnotexist.json is not a file");
@@ -208,14 +206,15 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testIncludeOrdering() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir4",
-                new String[] { "test_x.json", "test_u.json", "test_y.json", "test_v.json", "test_z.json", "test_t.json" }, 
+
+        TestContext ctx = prepareTestContext(
+                "/aggregate-features/dir4",
+                new String[] {"test_x.json", "test_u.json", "test_y.json", "test_v.json", "test_z.json", "test_t.json"},
                 (agg, mojo) -> {
                     agg.configurationOverrides = Arrays.asList("*=" + BuilderContext.CONFIG_MERGE_LATEST);
                     agg.classifier = "agg";
                 });
-        
+
         ctx.getMojo().execute();
 
         Feature genFeat = ctx.getFeatureMap().get(":aggregate:agg:T");
@@ -243,9 +242,10 @@ public class AggregateFeaturesMojoTest {
         assertConfigsEquivalent(expectedConfigs, actualConfigs);
     }
 
-    private void assertConfigsEquivalent(Map<String, Dictionary<String, Object>> expectedConfigs,
+    private void assertConfigsEquivalent(
+            Map<String, Dictionary<String, Object>> expectedConfigs,
             Map<String, Dictionary<String, Object>> actualConfigs) {
-        for (Map.Entry<String, Dictionary<String,Object>> entry : expectedConfigs.entrySet()) {
+        for (Map.Entry<String, Dictionary<String, Object>> entry : expectedConfigs.entrySet()) {
             Dictionary<String, Object> actualValues = actualConfigs.get(entry.getKey());
             assertNotNull(actualValues);
 
@@ -259,7 +259,7 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testReadFeatureFromArtifact() throws Exception {
-       File featureFile = new File(
+        File featureFile = new File(
                 getClass().getResource("/aggregate-features/test_x.json").getFile());
         // read feature
         Map<String, Feature> featureMap = new HashMap<>();
@@ -287,13 +287,19 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("42");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
-        final Artifact fileArtifact = new DefaultArtifact(dep.getGroupId(), dep.getArtifactId(),
-                dep.getVersion(), Artifact.SCOPE_COMPILE, dep.getType(), dep.getClassifier(), Mockito.mock(org.apache.maven.artifact.handler.ArtifactHandler.class));
+        final Artifact fileArtifact = new DefaultArtifact(
+                dep.getGroupId(),
+                dep.getArtifactId(),
+                dep.getVersion(),
+                Artifact.SCOPE_COMPILE,
+                dep.getType(),
+                dep.getClassifier(),
+                Mockito.mock(org.apache.maven.artifact.handler.ArtifactHandler.class));
         fileArtifact.setFile(featureFile);
 
         Mockito.when(mockProj.getAttachedArtifacts()).thenReturn(Collections.singletonList(fileArtifact));
@@ -321,8 +327,7 @@ public class AggregateFeaturesMojoTest {
         for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
             numFound++;
 
-            ArtifactId expectedBundleCoords =
-                    new ArtifactId("mygroup", "org.apache.aries.util", "1.1.3", null, null);
+            ArtifactId expectedBundleCoords = new ArtifactId("mygroup", "org.apache.aries.util", "1.1.3", null, null);
             assertEquals(expectedBundleCoords, art.getId());
         }
         assertEquals("Expected only one bundle", 1, numFound);
@@ -330,21 +335,20 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testPluginHandling() throws Exception {
-        
-       TestContext ctx = prepareTestContext("/aggregate-features/dir3",
-               new String[] { "*.json" }, 
-               (agg, mojo) -> {
-                   Properties p3props = new Properties();
-                   p3props.put("test3cfg", "myval");
-                   p3props.put("test3cfg3", "somethingelse");
-                   
-                   mojo.handlerConfiguration = Map.of("TestPlugin3", p3props);
-                });
-        
+
+        TestContext ctx = prepareTestContext("/aggregate-features/dir3", new String[] {"*.json"}, (agg, mojo) -> {
+            Properties p3props = new Properties();
+            p3props.put("test3cfg", "myval");
+            p3props.put("test3cfg3", "somethingelse");
+
+            mojo.handlerConfiguration = Map.of("TestPlugin3", p3props);
+        });
+
         assertEquals("Precondition", 0, pluginCallbacks.size());
         ctx.getMojo().execute();
 
-        ArtifactId id = new ArtifactId("org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", FeatureConstants.PACKAGING_FEATURE);
+        ArtifactId id = new ArtifactId(
+                "org.foo", "org.foo.bar", "1.2.3-SNAPSHOT", "aggregated", FeatureConstants.PACKAGING_FEATURE);
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension1"));
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension2"));
         assertEquals(id, pluginCallbacks.get("TestPlugin1 - extension3"));
@@ -358,11 +362,11 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testHandlerConfiguration() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir3").getFile());
+        File featuresDir =
+                new File(getClass().getResource("/aggregate-features/dir3").getFile());
         // read features
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
@@ -382,15 +386,17 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
+            Feature assembleFeature(
+                    ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection)
+                    throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
@@ -410,11 +416,11 @@ public class AggregateFeaturesMojoTest {
     @SuppressWarnings("rawtypes")
     @Test
     public void testHandlerConfiguration2() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir3").getFile());
+        File featuresDir =
+                new File(getClass().getResource("/aggregate-features/dir3").getFile());
         // read features
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
@@ -434,15 +440,17 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
+            Feature assembleFeature(
+                    ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection)
+                    throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
@@ -474,11 +482,11 @@ public class AggregateFeaturesMojoTest {
     @SuppressWarnings("rawtypes")
     @Test
     public void testHandlerConfiguration3() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir3").getFile());
+        File featuresDir =
+                new File(getClass().getResource("/aggregate-features/dir3").getFile());
         // read features
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
@@ -498,15 +506,17 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         List<BuilderContext> capturedBuilderContext = new ArrayList<>();
         AggregateFeaturesMojo afm = new AggregateFeaturesMojo() {
             @Override
-            Feature assembleFeature(ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection) throws MojoExecutionException {
+            Feature assembleFeature(
+                    ArtifactId newFeatureID, BuilderContext builderContext, Map<String, Feature> selection)
+                    throws MojoExecutionException {
                 capturedBuilderContext.add(builderContext);
                 return super.assembleFeature(newFeatureID, builderContext, selection);
             }
@@ -539,36 +549,34 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testOverrides() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir5",
-                new String[] { "*.json" }, 
-                (agg, mojo) -> {
-                    agg.classifier = "myagg";
-                    agg.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                            "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
-                 });
+
+        TestContext ctx = prepareTestContext("/aggregate-features/dir5", new String[] {"*.json"}, (agg, mojo) -> {
+            agg.classifier = "myagg";
+            agg.artifactsOverrides = Arrays.asList(
+                    "org.apache.sling:mybundle:HIGHEST",
+                    "org.apache.sling:somebundle:1.1.0",
+                    "org.apache.sling:somebundle:2.0.0");
+        });
 
         ctx.getMojo().execute();
 
         Feature genFeat = ctx.getFeatureMap().get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(3, bundles.size());
-        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:mybundle:2"))));
-        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:myotherbundle:3"))));
-        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
+        assertTrue(bundles.contains(
+                new org.apache.sling.feature.Artifact(ArtifactId.fromMvnId("org.apache.sling:mybundle:2"))));
+        assertTrue(bundles.contains(
+                new org.apache.sling.feature.Artifact(ArtifactId.fromMvnId("org.apache.sling:myotherbundle:3"))));
+        assertTrue(bundles.contains(
+                new org.apache.sling.feature.Artifact(ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
     }
 
     @Test
     public void testOverrideWithManualArtifactIDNoOverride() throws Exception {
-        TestContext ctx = prepareTestContext("/aggregate-features/dir6",
-                new String[] { "*.json" }, 
-                (agg, mojo) -> {
-                    agg.classifier = "myagg";
-                 });
-        
+        TestContext ctx = prepareTestContext("/aggregate-features/dir6", new String[] {"*.json"}, (agg, mojo) -> {
+            agg.classifier = "myagg";
+        });
+
         try {
             ctx.getMojo().execute();
             fail("Should have thrown an exception as "
@@ -583,22 +591,20 @@ public class AggregateFeaturesMojoTest {
 
     @Test
     public void testOverrideWithManualArtifactID() throws Exception {
-        TestContext ctx = prepareTestContext("/aggregate-features/dir6",
-                new String[] { "test_c.json", "test_d.json" }, 
-                (agg, mojo) -> {
+        TestContext ctx = prepareTestContext(
+                "/aggregate-features/dir6", new String[] {"test_c.json", "test_d.json"}, (agg, mojo) -> {
                     agg.classifier = "myagg";
                     agg.artifactsOverrides = Arrays.asList("org.apache.sling:myotherbundle:LATEST");
-                 });
-        
+                });
+
         ctx.getMojo().execute();
 
         Feature genFeat = ctx.getFeatureMap().get(":aggregate:myagg:T");
         Bundles bundles = genFeat.getBundles();
         assertEquals(1, bundles.size());
-        assertTrue(bundles.contains(new org.apache.sling.feature.Artifact(
-                ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
+        assertTrue(bundles.contains(
+                new org.apache.sling.feature.Artifact(ArtifactId.fromMvnId("org.apache.sling:somebundle:1.0.0"))));
     }
-
 
     /**
      * Sling-9656 - verify that equals works for two equivalent Aggregate objects
@@ -613,8 +619,10 @@ public class AggregateFeaturesMojoTest {
         ag.title = "title";
         ag.description = "description";
         ag.vendor = "vendor";
-        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.0");
         ag.configurationOverrides = Arrays.asList("one");
         ag.variablesOverrides = Collections.singletonMap("key", "value");
         ag.frameworkPropertiesOverrides = Collections.singletonMap("key", "value");
@@ -629,8 +637,10 @@ public class AggregateFeaturesMojoTest {
         ag2.title = "title";
         ag2.description = "description";
         ag2.vendor = "vendor";
-        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag2.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.0");
         ag2.configurationOverrides = Arrays.asList("one");
         ag2.variablesOverrides = Collections.singletonMap("key", "value");
         ag2.frameworkPropertiesOverrides = Collections.singletonMap("key", "value");
@@ -642,7 +652,7 @@ public class AggregateFeaturesMojoTest {
         // hashCode should be equal too
         assertEquals(ag.hashCode(), ag2.hashCode());
 
-        Object [][] fieldChanges = new Object[][] {
+        Object[][] fieldChanges = new Object[][] {
             {"classifier", "myagg2"},
             {"attach", false},
             {"markAsFinal", false},
@@ -650,8 +660,13 @@ public class AggregateFeaturesMojoTest {
             {"title", "title2"},
             {"description", "description2"},
             {"vendor", "vendor2"},
-            {"artifactsOverrides", Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                    "org.apache.sling:somebundle:2.2.0", "org.apache.sling:somebundle:3.0.0")},
+            {
+                "artifactsOverrides",
+                Arrays.asList(
+                        "org.apache.sling:mybundle:HIGHEST",
+                        "org.apache.sling:somebundle:2.2.0",
+                        "org.apache.sling:somebundle:3.0.0")
+            },
             {"configurationOverrides", Arrays.asList("two")},
             {"variablesOverrides", Collections.singletonMap("key2", "value2")},
             {"frameworkPropertiesOverrides", Collections.singletonMap("key2", "value2")}
@@ -659,7 +674,7 @@ public class AggregateFeaturesMojoTest {
 
         // change something in each field to make them not equal
         for (Object[] objects : fieldChanges) {
-            String fieldName = (String)objects[0];
+            String fieldName = (String) objects[0];
             Field field = ag2.getClass().getField(fieldName);
             Object originalValue = field.get(ag2);
             try {
@@ -667,7 +682,10 @@ public class AggregateFeaturesMojoTest {
 
                 // now the two object should no longer be equal
                 assertNotEquals("expected not equal after changing field: " + fieldName, ag, ag2);
-                assertNotEquals("expected hashCode not equal after changing field: " + fieldName, ag.hashCode(), ag2.hashCode());
+                assertNotEquals(
+                        "expected hashCode not equal after changing field: " + fieldName,
+                        ag.hashCode(),
+                        ag2.hashCode());
             } finally {
                 // put the old value back
                 field.set(ag2, originalValue);
@@ -680,7 +698,8 @@ public class AggregateFeaturesMojoTest {
 
         // now the two object should no longer be equal
         assertNotEquals("expected not equal after changing included/excluded files", ag, ag2);
-        assertNotEquals("expected hashCode not equal after changing included/excluded files", ag.hashCode(), ag2.hashCode());
+        assertNotEquals(
+                "expected hashCode not equal after changing included/excluded files", ag.hashCode(), ag2.hashCode());
     }
 
     /**
@@ -689,11 +708,11 @@ public class AggregateFeaturesMojoTest {
      */
     @Test
     public void testAggregateFeaturesInvokedMultipleTimes() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir5").getFile());
+        File featuresDir =
+                new File(getClass().getResource("/aggregate-features/dir5").getFile());
 
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
@@ -701,8 +720,10 @@ public class AggregateFeaturesMojoTest {
         Aggregate ag = new Aggregate();
         ag.setFilesInclude("*.json");
         ag.classifier = "myagg";
-        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.0");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -716,12 +737,13 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
         Map<Aggregate, Feature> handledAggregates = new HashMap<>();
-        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated")).thenReturn(handledAggregates);
+        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated"))
+                .thenReturn(handledAggregates);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregates = Collections.singletonList(ag);
@@ -737,8 +759,10 @@ public class AggregateFeaturesMojoTest {
         Aggregate ag2 = new Aggregate();
         ag2.setFilesInclude("*.json");
         ag2.classifier = "myagg";
-        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag2.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.0");
         af.aggregates = Collections.singletonList(ag2);
 
         af.execute();
@@ -749,11 +773,11 @@ public class AggregateFeaturesMojoTest {
      */
     @Test
     public void testAggregateFeaturesDuplicateClassifier() throws Exception {
-        File featuresDir = new File(
-                getClass().getResource("/aggregate-features/dir5").getFile());
+        File featuresDir =
+                new File(getClass().getResource("/aggregate-features/dir5").getFile());
 
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
@@ -761,15 +785,19 @@ public class AggregateFeaturesMojoTest {
         Aggregate ag = new Aggregate();
         ag.setFilesInclude("*.json");
         ag.classifier = "myagg";
-        ag.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.0");
+        ag.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.0");
 
         // a second different aggregate with the same classifier
         Aggregate ag2 = new Aggregate();
         ag2.setFilesInclude("*.json");
         ag2.classifier = "myagg";
-        ag2.artifactsOverrides = Arrays.asList("org.apache.sling:mybundle:HIGHEST",
-                "org.apache.sling:somebundle:1.1.0", "org.apache.sling:somebundle:2.0.2");
+        ag2.artifactsOverrides = Arrays.asList(
+                "org.apache.sling:mybundle:HIGHEST",
+                "org.apache.sling:somebundle:1.1.0",
+                "org.apache.sling:somebundle:2.0.2");
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -783,12 +811,13 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.0.1");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArt);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
         Map<Aggregate, Feature> handledAggregates = new HashMap<>();
-        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated")).thenReturn(handledAggregates);
+        Mockito.when(mockProj.getContextValue(AggregateFeaturesMojo.class.getName() + "/generated"))
+                .thenReturn(handledAggregates);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
         af.aggregates = Arrays.asList(ag, ag2);
@@ -802,22 +831,24 @@ public class AggregateFeaturesMojoTest {
 
             fail("Expected RuntimeException about duplicate aggregate classifier");
         } catch (RuntimeException e) {
-            assertEquals("More than one feature file for classifier myagg in project test.aggregate.project1 : [aggregate myagg, aggregate myagg]", e.getMessage());
+            assertEquals(
+                    "More than one feature file for classifier myagg in project test.aggregate.project1 : [aggregate myagg, aggregate myagg]",
+                    e.getMessage());
         }
     }
-    
+
     @Test
     public void customAggregate() throws Exception {
-        
-        TestContext ctx = prepareTestContext("/aggregate-features/dir2", 
-                new String[] { "test_w.json", "test_y.json" }, // control the number of aggregations
-                (agg, mojo) -> mojo.additionalPostProcessHandlers.add(SpyAggregateHandler.class.getTypeName()) );
-        
+
+        TestContext ctx = prepareTestContext(
+                "/aggregate-features/dir2",
+                new String[] {"test_w.json", "test_y.json"}, // control the number of aggregations
+                (agg, mojo) -> mojo.additionalPostProcessHandlers.add(SpyAggregateHandler.class.getTypeName()));
+
         ctx.getMojo().execute();
-        
-        // we expect 2 invocations because we have 2 feature files as input 
+
+        // we expect 2 invocations because we have 2 feature files as input
         assertEquals("Additional postProcessHandler invocation count", 2, SpyAggregateHandler.invocationCount.get());
-        
     }
 
     private Artifact createMockArtifact() {
@@ -828,25 +859,25 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(parentArtifact.getType()).thenReturn("foo");
         return parentArtifact;
     }
-    
+
     private TestContext prepareTestContext(String featuresDirS, String[] filesInclude) throws IOException {
-        return prepareTestContext(featuresDirS, filesInclude, (a,m) -> {});
+        return prepareTestContext(featuresDirS, filesInclude, (a, m) -> {});
     }
-    
-    private TestContext prepareTestContext(String featuresDirS, String[] filesInclude, BiConsumer<Aggregate, AggregateFeaturesMojo> customiser) throws IOException {
-        File featuresDir = new File(
-                getClass().getResource(featuresDirS).getFile());
+
+    private TestContext prepareTestContext(
+            String featuresDirS, String[] filesInclude, BiConsumer<Aggregate, AggregateFeaturesMojo> customiser)
+            throws IOException {
+        File featuresDir = new File(getClass().getResource(featuresDirS).getFile());
         // read features
         Map<String, Feature> featureMap = new HashMap<>();
-        for (File f : featuresDir.listFiles((d,f) -> f.endsWith(".json"))) {
+        for (File f : featuresDir.listFiles((d, f) -> f.endsWith(".json"))) {
             Feature feat = FeatureJSONReader.read(new FileReader(f), null);
             featureMap.put(f.getAbsolutePath(), feat);
         }
 
         Aggregate fc = new Aggregate();
         fc.classifier = "aggregated";
-        for (String include : filesInclude)
-            fc.setFilesInclude(include);
+        for (String include : filesInclude) fc.setFilesInclude(include);
 
         Build mockBuild = Mockito.mock(Build.class);
         Mockito.when(mockBuild.getDirectory()).thenReturn(tempDir.toString());
@@ -859,9 +890,9 @@ public class AggregateFeaturesMojoTest {
         Mockito.when(mockProj.getVersion()).thenReturn("1.2.3-SNAPSHOT");
         Mockito.when(mockProj.getArtifact()).thenReturn(parentArtifact);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/rawmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Feature.class.getName() + "/assembledmain.json-cache"))
-            .thenReturn(featureMap);
+                .thenReturn(featureMap);
         Mockito.when(mockProj.getContextValue(Preprocessor.class.getName())).thenReturn(Boolean.TRUE);
 
         AggregateFeaturesMojo af = new AggregateFeaturesMojo();
@@ -871,10 +902,10 @@ public class AggregateFeaturesMojoTest {
         af.features = featuresDir;
 
         customiser.accept(fc, af);
-        
+
         return new TestContext(af, featureMap);
     }
-    
+
     static class TestContext {
         private final AggregateFeaturesMojo mojo;
         private final Map<String, Feature> featureMap;
@@ -883,18 +914,18 @@ public class AggregateFeaturesMojoTest {
             this.mojo = mojo;
             this.featureMap = featureMap;
         }
-        
+
         public AggregateFeaturesMojo getMojo() {
             return mojo;
         }
-        
+
         public Map<String, Feature> getFeatureMap() {
             return featureMap;
         }
     }
-    
+
     public static class SpyAggregateHandler implements PostProcessHandler {
-        
+
         static final AtomicInteger invocationCount = new AtomicInteger(0);
 
         @Override

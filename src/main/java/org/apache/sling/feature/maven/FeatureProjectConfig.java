@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven;
 
@@ -62,7 +64,6 @@ public class FeatureProjectConfig {
 
     public static final String CFG_DEFAULT_METADATA = "defaultMetadata";
 
-
     private final String featuresDirName;
 
     private final String includes;
@@ -90,7 +91,7 @@ public class FeatureProjectConfig {
     private final boolean enableLegacyVariableReplacement;
 
     private final Map<String, Map<String, String>> defaultMetadata = new HashMap<>();
-    
+
     public static FeatureProjectConfig getMainConfig(final FeatureProjectInfo info) {
         return new FeatureProjectConfig(info, false);
     }
@@ -107,7 +108,7 @@ public class FeatureProjectConfig {
         final String defaultSkipValue;
         final String incCfgName;
         final String exCfgName;
-        if ( test ) {
+        if (test) {
             featuresDirCfgName = CFG_TEST_FEATURES;
             defaultDir = DEFAULT_TEST_FEATURE_DIR;
             this.scope = Artifact.SCOPE_TEST;
@@ -116,7 +117,8 @@ public class FeatureProjectConfig {
             exCfgName = CFG_TEST_FEATURES_EXCLUDES;
             defaultSkipValue = "true";
             this.name = "test feature";
-            this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_TEST_FEATURE, "true"));
+            this.skipAddJar =
+                    "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_TEST_FEATURE, "true"));
         } else {
             featuresDirCfgName = CFG_FEATURES;
             defaultDir = DEFAULT_FEATURE_DIR;
@@ -126,7 +128,8 @@ public class FeatureProjectConfig {
             exCfgName = CFG_FEATURES_EXCLUDES;
             defaultSkipValue = "false";
             this.name = "feature";
-            this.skipAddJar = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_FEATURE, "true"));
+            this.skipAddJar =
+                    "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_SKIP_ADD_JAR_TO_FEATURE, "true"));
         }
         this.featuresDirName = ProjectHelper.getConfigValue(info.plugin, featuresDirCfgName, defaultDir);
         this.includes = ProjectHelper.getConfigValue(info.plugin, incCfgName, DEFAULT_FEATURE_INCLUDES);
@@ -135,29 +138,31 @@ public class FeatureProjectConfig {
         this.skipAddDep = "true".equals(skipCfg.toLowerCase());
         this.jarStartOrder = ProjectHelper.getConfigValue(info.plugin, CFG_JAR_START_ORDER, null);
         this.validate = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_VALIDATE_FEATURES, "true"));
-        this.enableProjectVariableReplacement = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_ENABLE_PROJ_VARS, "true"));
+        this.enableProjectVariableReplacement =
+                "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_ENABLE_PROJ_VARS, "true"));
         String vars = ProjectHelper.getConfigValue(info.plugin, CFG_REPLACE_PROP_VARS, null);
-        if ( vars == null ) {
+        if (vars == null) {
             this.replacePropertyVariables = null;
         } else {
             this.replacePropertyVariables = vars.split(",");
         }
-        this.enableLegacyVariableReplacement = "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_LEGACY_REPLACE, "false"));
+        this.enableLegacyVariableReplacement =
+                "true".equals(ProjectHelper.getConfigValue(info.plugin, CFG_LEGACY_REPLACE, "false"));
 
         // process metadata
-        if ( !test ) {
+        if (!test) {
             final Xpp3Dom metadataRoot = ProjectHelper.getConfig(info.plugin, CFG_DEFAULT_METADATA);
-            if ( metadataRoot != null ) {
-                for(final Xpp3Dom extension : metadataRoot.getChildren()) {
+            if (metadataRoot != null) {
+                for (final Xpp3Dom extension : metadataRoot.getChildren()) {
                     final String name = extension.getName();
                     final Map<String, String> map = this.defaultMetadata.computeIfAbsent(name, id -> new HashMap<>());
-                    for(final Xpp3Dom key : extension.getChildren()) {
-                        if ( key.getValue() != null ) {
+                    for (final Xpp3Dom key : extension.getChildren()) {
+                        if (key.getValue() != null) {
                             map.put(key.getName(), key.getValue());
                         }
                     }
                 }
-            }    
+            }
         }
     }
 
@@ -217,4 +222,3 @@ public class FeatureProjectConfig {
         return this.defaultMetadata;
     }
 }
-

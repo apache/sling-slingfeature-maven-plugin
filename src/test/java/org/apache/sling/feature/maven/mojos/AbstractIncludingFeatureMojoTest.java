@@ -1,24 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -46,6 +44,10 @@ import org.apache.sling.feature.maven.ProjectHelper;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class AbstractIncludingFeatureMojoTest {
 
@@ -75,7 +77,7 @@ public class AbstractIncludingFeatureMojoTest {
         try {
             mojo.getSelectedFeatures(fsc);
             fail();
-        } catch ( MojoExecutionException mee) {
+        } catch (MojoExecutionException mee) {
             assertTrue(mee.getMessage().contains(" agg not found"));
         }
     }
@@ -92,10 +94,11 @@ public class AbstractIncludingFeatureMojoTest {
         assertEquals("agg", selection.values().iterator().next().getId().getClassifier());
     }
 
-
     @Test
     public void testSelectAggregateClassifierFromFiles() throws Exception {
-        setupProjectFeatures(mojo.project, Collections.singletonMap("/foo/file", new Feature(ArtifactId.parse("g:a:slingosgifeature:foo:1"))));
+        setupProjectFeatures(
+                mojo.project,
+                Collections.singletonMap("/foo/file", new Feature(ArtifactId.parse("g:a:slingosgifeature:foo:1"))));
 
         final FeatureSelectionConfig fsc = new FeatureSelectionConfig();
         fsc.setIncludeClassifier("foo");
@@ -117,27 +120,40 @@ public class AbstractIncludingFeatureMojoTest {
             final Feature f1 = new Feature(a1);
             final Feature f2 = new Feature(a2);
 
-            try ( final Writer writer = new FileWriter(new File(baseDirectory, "f1.json"))) {
+            try (final Writer writer = new FileWriter(new File(baseDirectory, "f1.json"))) {
                 FeatureJSONWriter.write(writer, f1);
             }
-            try ( final Writer writer = new FileWriter(new File(baseDirectory, "f2.json"))) {
+            try (final Writer writer = new FileWriter(new File(baseDirectory, "f2.json"))) {
                 FeatureJSONWriter.write(writer, f2);
             }
 
             final Set<Artifact> depArtifacts = new HashSet<>();
-            final Artifact art1 = new DefaultArtifact(a1.getGroupId(), a1.getArtifactId(), a1.getVersion(),
-                    Artifact.SCOPE_PROVIDED, a1.getType(), a1.getClassifier(), new DefaultArtifactHandler());
+            final Artifact art1 = new DefaultArtifact(
+                    a1.getGroupId(),
+                    a1.getArtifactId(),
+                    a1.getVersion(),
+                    Artifact.SCOPE_PROVIDED,
+                    a1.getType(),
+                    a1.getClassifier(),
+                    new DefaultArtifactHandler());
             art1.setFile(new File(baseDirectory, "f1.json"));
             depArtifacts.add(art1);
 
-            final Artifact art2 = new DefaultArtifact(a2.getGroupId(), a2.getArtifactId(), a2.getVersion(),
-                    Artifact.SCOPE_PROVIDED, a2.getType(), a2.getClassifier(), new DefaultArtifactHandler());
+            final Artifact art2 = new DefaultArtifact(
+                    a2.getGroupId(),
+                    a2.getArtifactId(),
+                    a2.getVersion(),
+                    Artifact.SCOPE_PROVIDED,
+                    a2.getType(),
+                    a2.getClassifier(),
+                    new DefaultArtifactHandler());
             art2.setFile(new File(baseDirectory, "f2.json"));
             depArtifacts.add(art2);
 
             Mockito.when(mojo.project.getDependencyArtifacts()).thenReturn(depArtifacts);
 
-            final File refsDir = new File(baseDirectory, "src" + File.separatorChar + "main" + File.separatorChar + "references");
+            final File refsDir =
+                    new File(baseDirectory, "src" + File.separatorChar + "main" + File.separatorChar + "references");
             refsDir.mkdirs();
 
             final List<String> refs = new ArrayList<>();
@@ -169,8 +185,10 @@ public class AbstractIncludingFeatureMojoTest {
 
     private void setupProjectFeatures(final MavenProject project, String... aggregates) {
         final Map<String, Feature> map = new HashMap<>();
-        for(final String agg : aggregates) {
-            map.put(ProjectHelper.generateAggregateFeatureKey(agg, true), new Feature(ArtifactId.parse("g:a:slingosgifeature:" + agg + ":1")));
+        for (final String agg : aggregates) {
+            map.put(
+                    ProjectHelper.generateAggregateFeatureKey(agg, true),
+                    new Feature(ArtifactId.parse("g:a:slingosgifeature:" + agg + ":1")));
         }
         setupProjectFeatures(project, map);
     }

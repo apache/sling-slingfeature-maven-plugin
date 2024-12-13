@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.apis;
 
@@ -31,7 +33,6 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.json.JsonValue.ValueType;
-
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.sling.feature.ArtifactId;
@@ -165,8 +166,8 @@ public class ApisConfiguration {
     public ApisConfiguration(final Feature feature) throws MojoExecutionException {
         // check for extension
         final Extension ext = feature.getExtensions().getByName(EXTENSION_NAME);
-        if ( ext != null ) {
-            if ( ext.getType() != ExtensionType.JSON) {
+        if (ext != null) {
+            if (ext.getType() != ExtensionType.JSON) {
                 throw new MojoExecutionException("Invalid extension type for " + ext.getName() + " : " + ext.getType());
             }
             final JsonObject json = ext.getJSONStructure().asJsonObject();
@@ -199,11 +200,12 @@ public class ApisConfiguration {
     }
 
     public void logConfiguration(final Log log) {
-        if ( log.isInfoEnabled() ) {
+        if (log.isInfoEnabled()) {
             log.info("Using configuration:");
             log.info("- useApiDependencies : " + this.useApiDependencies);
-            if ( this.useApiDependencies ) {
-                log.info("- dependencyRepositories : " + (this.dependencyRepositories.isEmpty() ? "NONE" : this.dependencyRepositories.toString()));
+            if (this.useApiDependencies) {
+                log.info("- dependencyRepositories : "
+                        + (this.dependencyRepositories.isEmpty() ? "NONE" : this.dependencyRepositories.toString()));
                 log.info("- useApiDependenciesForJavadoc : " + this.useApiDependenciesForJavadoc);
                 log.info("- generateJavadocForAllApi : " + this.generateJavadocForAllApi);
             }
@@ -231,16 +233,16 @@ public class ApisConfiguration {
     private String getStringOrArray(final JsonObject json, final String propName) {
         String result = null;
         final JsonValue val = json.containsKey(propName) ? json.get(propName) : null;
-        if ( val != null ) {
-            if ( val.getValueType() == ValueType.ARRAY ) {
+        if (val != null) {
+            if (val.getValueType() == ValueType.ARRAY) {
                 final StringBuilder sb = new StringBuilder();
-                for(final JsonValue v : val.asJsonArray()) {
+                for (final JsonValue v : val.asJsonArray()) {
                     sb.append(v);
                     sb.append('\n');
                 }
                 result = sb.toString();
             } else {
-                result = ((JsonString)val).getString();
+                result = ((JsonString) val).getString();
             }
         }
         return result;
@@ -248,18 +250,18 @@ public class ApisConfiguration {
 
     private void add(final List<String> list, final JsonObject json, final String propName) {
         final JsonArray array = json.containsKey(propName) ? json.getJsonArray(propName) : null;
-        if ( array != null ) {
-            for(final JsonValue val : array) {
-                list.add(((JsonString)val).getString());
+        if (array != null) {
+            for (final JsonValue val : array) {
+                list.add(((JsonString) val).getString());
             }
         }
     }
 
     private void add(final Map<String, String> map, final JsonObject json, final String propName) {
         final JsonObject obj = json.containsKey(propName) ? json.getJsonObject(propName) : null;
-        if ( obj != null ) {
-            for(final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
-                map.put(entry.getKey(), ((JsonString)entry.getValue()).getString());
+        if (obj != null) {
+            for (final Map.Entry<String, JsonValue> entry : obj.entrySet()) {
+                map.put(entry.getKey(), ((JsonString) entry.getValue()).getString());
             }
         }
     }
@@ -353,105 +355,105 @@ public class ApisConfiguration {
     }
 
     public void setLicenseDefaults(final List<String> licenseDefaultsFromProjcect) throws MojoExecutionException {
-        if ( this.licenseDefaults.isEmpty() && licenseDefaultsFromProjcect != null ) {
+        if (this.licenseDefaults.isEmpty() && licenseDefaultsFromProjcect != null) {
             this.licenseDefaults.addAll(licenseDefaultsFromProjcect);
         }
         this.licenseDefaultMatcher = new IncludeExcludeMatcher(this.licenseDefaults, null, "=", true);
     }
 
     public void setLicenseReport(final String licenseReportFromProjcect) {
-        if ( this.licenseReport == null ) {
+        if (this.licenseReport == null) {
             this.licenseReport = licenseReportFromProjcect;
         }
     }
 
     public void setLicenseReportHeader(final String licenseReportHeaderFromProjcect) {
-        if ( this.licenseReportHeader == null ) {
+        if (this.licenseReportHeader == null) {
             this.licenseReportHeader = licenseReportHeaderFromProjcect;
         }
     }
 
     public void setLicenseReportFooter(final String licenseReportFooterFromProjcect) {
-        if ( this.licenseReportFooter == null ) {
+        if (this.licenseReportFooter == null) {
             this.licenseReportFooter = licenseReportFooterFromProjcect;
         }
     }
 
     public void setJavadocLinks(final String[] javadocLinksFromProject) {
-        if ( this.javadocLinks.isEmpty() && javadocLinksFromProject != null ) {
-            for(final String v : javadocLinksFromProject) {
+        if (this.javadocLinks.isEmpty() && javadocLinksFromProject != null) {
+            for (final String v : javadocLinksFromProject) {
                 this.javadocLinks.add(v);
             }
         }
     }
 
     public void setJavadocClasspathRemovals(final List<String> javadocClasspathRemovalsFromProject) {
-        if ( this.javadocClasspathRemovals.isEmpty() && javadocClasspathRemovalsFromProject != null ) {
+        if (this.javadocClasspathRemovals.isEmpty() && javadocClasspathRemovalsFromProject != null) {
             this.javadocClasspathRemovals.addAll(javadocClasspathRemovalsFromProject);
         }
     }
 
     public void setJavadocClasspathHighestVersions(final List<String> javadocClasspathHighestVersionsFromProject) {
-        if ( this.javadocClasspathHighestVersions.isEmpty() && javadocClasspathHighestVersionsFromProject != null ) {
+        if (this.javadocClasspathHighestVersions.isEmpty() && javadocClasspathHighestVersionsFromProject != null) {
             this.javadocClasspathHighestVersions.addAll(javadocClasspathHighestVersionsFromProject);
         }
     }
 
     public void setJavadocClasspathTops(final List<String> javadocClasspathTopsFromProject) {
-        if ( this.javadocClasspathTops.isEmpty() && javadocClasspathTopsFromProject != null ) {
+        if (this.javadocClasspathTops.isEmpty() && javadocClasspathTopsFromProject != null) {
             this.javadocClasspathTops.addAll(javadocClasspathTopsFromProject);
         }
     }
 
     public void setJavadocSourceLevel(final String javadocSourceLevelFromProject) {
-        if ( this.javadocSourceLevel == null ) {
+        if (this.javadocSourceLevel == null) {
             this.javadocSourceLevel = javadocSourceLevelFromProject;
         }
     }
 
     public void setApiVersion(final String apiVersionFromProject) {
-        if ( this.apiVersion == null ) {
+        if (this.apiVersion == null) {
             this.apiVersion = apiVersionFromProject;
         }
     }
 
     public void setBundleResources(final String[] includeResourcesFromProject) {
-        if ( this.bundleResources.isEmpty() && includeResourcesFromProject != null ) {
-            for(final String v : includeResourcesFromProject) {
+        if (this.bundleResources.isEmpty() && includeResourcesFromProject != null) {
+            for (final String v : includeResourcesFromProject) {
                 this.bundleResources.add(v);
             }
         }
     }
 
     public void setBundleResourceFolders(final String resourceFoldersFromProject) {
-        if ( this.bundleResourceFolders.isEmpty() && resourceFoldersFromProject != null ) {
-            for(final String v : resourceFoldersFromProject.split(",")) {
+        if (this.bundleResourceFolders.isEmpty() && resourceFoldersFromProject != null) {
+            for (final String v : resourceFoldersFromProject.split(",")) {
                 this.bundleResourceFolders.add(v.trim());
             }
         }
     }
 
     public void setRegionMappings(final Map<String, String> valuesFromProject) {
-        if ( this.regionMappings.isEmpty() && valuesFromProject != null ) {
+        if (this.regionMappings.isEmpty() && valuesFromProject != null) {
             this.regionMappings.putAll(valuesFromProject);
         }
     }
 
     public void setClassifierMappings(final Map<String, String> valuesFromProject) {
-        if ( this.classifierMappings.isEmpty() && valuesFromProject != null ) {
+        if (this.classifierMappings.isEmpty() && valuesFromProject != null) {
             this.classifierMappings.putAll(valuesFromProject);
         }
     }
 
     public void setManifestEntries(final Properties valuesFromProject) {
-        if ( this.manifestEntries.isEmpty() && valuesFromProject != null ) {
+        if (this.manifestEntries.isEmpty() && valuesFromProject != null) {
             this.manifestEntries.putAll(ProjectHelper.propertiesToMap(valuesFromProject));
         }
     }
 
     public void setEnabledToggles(final String value) {
-        if (value != null ) {
-            for(final String name : value.split(",")) {
+        if (value != null) {
+            for (final String name : value.split(",")) {
                 enabledToggles.add(name.trim());
             }
         }
@@ -466,13 +468,15 @@ public class ApisConfiguration {
      * @param javadocAdditionalExtensions A list of strings
      */
     public void setAdditionalJavadocExtensions(final List<String> javadocAdditionalExtensions) {
-        if ( javadocAdditionalExtensions != null ) {
-            for(final String val : javadocAdditionalExtensions) {
+        if (javadocAdditionalExtensions != null) {
+            for (final String val : javadocAdditionalExtensions) {
                 final int sepPos = val.indexOf(":");
                 final String regionName = sepPos == -1 ? "*" : val.substring(0, sepPos);
-                for(final String name : val.substring(sepPos+1).split(",")) {
-                    if ( !name.trim().isEmpty() ) {
-                        this.additionJavadocExtensionNames.computeIfAbsent(regionName, key -> new LinkedHashSet<>()).add(name.trim());
+                for (final String name : val.substring(sepPos + 1).split(",")) {
+                    if (!name.trim().isEmpty()) {
+                        this.additionJavadocExtensionNames
+                                .computeIfAbsent(regionName, key -> new LinkedHashSet<>())
+                                .add(name.trim());
                     }
                 }
             }
@@ -537,16 +541,16 @@ public class ApisConfiguration {
         return this.dependencyRepositories;
     }
 
-   /**
+    /**
      * Set the dependency repositories
      * @param list Comma separated list or {@code null}
      */
     public void setDependencyRepositories(final String list) {
         this.dependencyRepositories.clear();
-        if ( list != null ) {
-            for(String val : list.split(",") ) {
+        if (list != null) {
+            for (String val : list.split(",")) {
                 val = val.trim();
-                if ( !val.endsWith("/") ) {
+                if (!val.endsWith("/")) {
                     val = val.concat("/");
                 }
                 this.dependencyRepositories.add(val);
@@ -555,7 +559,7 @@ public class ApisConfiguration {
     }
 
     public void setApiName(final String value) {
-        if ( this.apiName == null ) {
+        if (this.apiName == null) {
             this.apiName = value;
         }
     }

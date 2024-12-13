@@ -1,22 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
-
-import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -35,12 +35,13 @@ import java.util.zip.CRC32;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.commons.io.FileUtils;
+
 class JarDecompressor {
     private static final int BUFFER_SIZE = 16384;
 
     static void copyDecompress(File in, File out) throws IOException {
-        if (decompress(in, out))
-            return;
+        if (decompress(in, out)) return;
 
         // It's a signed jar, just copy it as-is...
         FileUtils.copyFile(in, out);
@@ -49,7 +50,7 @@ class JarDecompressor {
     // Returns false if the input file is a signed jar which should not be decompressed
     private static boolean decompress(File in, File out) throws IOException {
         try (JarInputStream jis = new JarInputStream(new FileInputStream(in));
-            ZipOutputStream jos = new JarOutputStream(new FileOutputStream(out))) {
+                ZipOutputStream jos = new JarOutputStream(new FileOutputStream(out))) {
             jos.setMethod(ZipOutputStream.STORED);
 
             writeManifestIfPresent(jis, jos);
@@ -57,11 +58,9 @@ class JarDecompressor {
             byte[] buffer = new byte[BUFFER_SIZE];
             JarEntry je = null;
             while ((je = jis.getNextJarEntry()) != null) {
-                if (JarFile.MANIFEST_NAME.equals(je.getName()))
-                    continue;
+                if (JarFile.MANIFEST_NAME.equals(je.getName())) continue;
 
-                if (je.getName().startsWith("META-INF/") &&
-                    je.getName().endsWith(".SF")) {
+                if (je.getName().startsWith("META-INF/") && je.getName().endsWith(".SF")) {
                     // This is a signed jar, don't decompress it.
                     return false;
                 }
@@ -96,7 +95,6 @@ class JarDecompressor {
                 if (!tmpFile.delete()) {
                     throw new IOException("Could not delete temp file " + tmpFile);
                 }
-
             }
         }
         return true;
@@ -148,8 +146,7 @@ class JarDecompressor {
 
     private static void writeManifestIfPresent(JarInputStream jis, ZipOutputStream jos) throws IOException {
         Manifest manifest = jis.getManifest();
-        if (manifest == null)
-            return;
+        if (manifest == null) return;
 
         ZipEntry e = new ZipEntry(JarFile.MANIFEST_NAME);
         crcEntryManifestEntry(e, manifest);

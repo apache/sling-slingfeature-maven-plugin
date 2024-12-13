@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -137,29 +139,32 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
         final boolean isStandalone = "standalone-pom".equals(project.getArtifactId());
 
-        if ( outputExportedPackages != null ) {
+        if (outputExportedPackages != null) {
             getLog().warn("Deprecated configuration 'outputExportedPackages' is used. Please use 'reports' instead.");
         }
-        if ( featureFile != null ) {
+        if (featureFile != null) {
             getLog().warn("Deprecated configuration 'featureFile' is used. Change to 'infoFeatureFiles'");
-            if ( infoFeatureFiles == null ) {
+            if (infoFeatureFiles == null) {
                 infoFeatureFiles = featureFile.getAbsolutePath();
             } else {
                 infoFeatureFiles = infoFeatureFiles.concat(",").concat(featureFile.getAbsolutePath());
             }
         }
-        if ( isStandalone && infoFeatureFiles == null ) {
-            throw new MojoExecutionException("Required configuration for standalone execution is missing. Please specify 'infoFeatureFiles'.");
+        if (isStandalone && infoFeatureFiles == null) {
+            throw new MojoExecutionException(
+                    "Required configuration for standalone execution is missing. Please specify 'infoFeatureFiles'.");
         }
         OutputFormat format = OutputFormat.FILE;
         try {
             format = OutputFormat.valueOf(outputFormat.toUpperCase());
-        } catch ( final IllegalArgumentException iae) {
-            throw new MojoExecutionException("Invalid value for 'outputFormat', allowed values are file, log or singlefile, configured : ".concat(outputFormat));
+        } catch (final IllegalArgumentException iae) {
+            throw new MojoExecutionException(
+                    "Invalid value for 'outputFormat', allowed values are file, log or singlefile, configured : "
+                            .concat(outputFormat));
         }
 
         final List<Reporter> reporters = getReporters(this.reports);
-        if ( reporters.isEmpty() ) {
+        if (reporters.isEmpty()) {
             getLog().warn("No reporters specified.");
             return;
         }
@@ -169,10 +174,18 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         final ArtifactProvider am = setupArtifactProvider();
         final Scanner scanner = setupScanner(am);
         final IncludeExcludeMatcher matcher;
-        if ( this.artifactIncludesList != null && !this.artifactIncludesList.isEmpty()) {
-            matcher = new IncludeExcludeMatcher(Stream.of(this.artifactIncludesList.split(",")).map(v -> v.trim()).collect(Collectors.toList()),
-                    this.artifactExcludesList == null ? null : Stream.of(this.artifactExcludesList.split(",")).map(v -> v.trim()).collect(Collectors.toList()),
-                    null, false);
+        if (this.artifactIncludesList != null && !this.artifactIncludesList.isEmpty()) {
+            matcher = new IncludeExcludeMatcher(
+                    Stream.of(this.artifactIncludesList.split(","))
+                            .map(v -> v.trim())
+                            .collect(Collectors.toList()),
+                    this.artifactExcludesList == null
+                            ? null
+                            : Stream.of(this.artifactExcludesList.split(","))
+                                    .map(v -> v.trim())
+                                    .collect(Collectors.toList()),
+                    null,
+                    false);
         } else {
             matcher = null;
         }
@@ -205,7 +218,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
             }
         };
         final Map<String, Map<String, List<String>>> allReports = new HashMap<>();
-        for(final Reporter reporter : reporters) {
+        for (final Reporter reporter : reporters) {
             getLog().info("Generating report ".concat(reporter.getName().concat("...")));
             reporter.generateReport(ctx);
             allReports.put(reporter.getName(), new HashMap<>(reportsFromSingleReporter));
@@ -213,9 +226,9 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         }
 
         final File directory;
-        if ( outputDirectory != null ) {
+        if (outputDirectory != null) {
             directory = outputDirectory;
-        } else if ( isStandalone ) {
+        } else if (isStandalone) {
             // wired code to get the current directory, but its needed
             directory = Paths.get(".").toAbsolutePath().getParent().toFile();
         } else {
@@ -240,7 +253,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
                 directory.mkdirs();
                 allReports.entrySet().forEach(entry -> {
                     final List<String> result = new ArrayList<>();
-                    for(final List<String> value : entry.getValue().values()) {
+                    for (final List<String> value : entry.getValue().values()) {
                         result.addAll(value);
                     }
                     Collections.sort(result);
@@ -269,7 +282,7 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
     }
 
     private List<Reporter> getReporters(final String reports) throws MojoExecutionException {
-        if ( reports == null ) {
+        if (reports == null) {
             throw new MojoExecutionException("No reports configured.");
         }
         final List<Reporter> available = new ArrayList<>();
@@ -280,9 +293,9 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         available.add(new ScriptsImportPackagesReporter());
 
         final List<Reporter> result = new ArrayList<>();
-        for(final String r : reports.split(",")) {
-            for(final Reporter current : available) {
-                if ( current.getName().equals(r.trim())) {
+        for (final String r : reports.split(",")) {
+            for (final Reporter current : available) {
+                if (current.getName().equals(r.trim())) {
                     result.add(current);
                     break;
                 }
@@ -296,17 +309,18 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
      * Select the features to process
      * @throws MojoExecutionException
      */
-    private List<Feature>  selectFeatures(final String infoFeatureFiles) throws MojoExecutionException {
+    private List<Feature> selectFeatures(final String infoFeatureFiles) throws MojoExecutionException {
         final List<Feature> result = new ArrayList<>();
-        if ( infoFeatureFiles != null ) {
-            for(final String file : infoFeatureFiles.split(",")) {
+        if (infoFeatureFiles != null) {
+            for (final String file : infoFeatureFiles.split(",")) {
                 final File f = new File(file.trim());
                 result.add(readFeature(f));
             }
         } else {
             checkPreconditions();
 
-            final Map<String, Feature> features = infoFeatures == null ? this.selectAllFeatureFiles() : this.getSelectedFeatures(infoFeatures);
+            final Map<String, Feature> features =
+                    infoFeatures == null ? this.selectAllFeatureFiles() : this.getSelectedFeatures(infoFeatures);
             for (final Feature f : features.values()) {
                 result.add(f);
             }
@@ -321,9 +335,11 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
             public URL provide(final ArtifactId id) {
                 getLog().info("Searching " + id.toMvnId());
                 try {
-                    return ProjectHelper
-                            .getOrResolveArtifact(project, mavenSession, artifactHandlerManager, repoSystem, id)
-                            .getFile().toURI().toURL();
+                    return ProjectHelper.getOrResolveArtifact(
+                                    project, mavenSession, artifactHandlerManager, repoSystem, id)
+                            .getFile()
+                            .toURI()
+                            .toURL();
                 } catch (final MalformedURLException e) {
                     getLog().debug("Malformed url " + e.getMessage(), e);
                     // ignore
@@ -338,8 +354,8 @@ public class InfoMojo extends AbstractIncludingFeatureMojo {
         try {
             return new Scanner(am);
         } catch (final IOException e) {
-            throw new MojoExecutionException("A fatal error occurred while setting up the Scanner, see error cause:",
-                    e);
+            throw new MojoExecutionException(
+                    "A fatal error occurred while setting up the Scanner, see error cause:", e);
         }
     }
 

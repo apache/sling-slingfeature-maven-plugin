@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven;
 
@@ -20,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
+import aQute.bnd.version.MavenVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.interpolation.InterpolationException;
@@ -31,41 +34,39 @@ import org.codehaus.plexus.interpolation.RecursionInterceptor;
 import org.codehaus.plexus.interpolation.RegexBasedInterpolator;
 import org.codehaus.plexus.interpolation.SimpleRecursionInterceptor;
 
-import aQute.bnd.version.MavenVersion;
-
 public class Substitution {
 
-    public static String replaceMavenVars(MavenProject project,
+    public static String replaceMavenVars(
+            MavenProject project,
             boolean legacyReplace,
             boolean replaceProjectProps,
-            String[] additionalProperties, String s) {
+            String[] additionalProperties,
+            String s) {
         RegexBasedInterpolator interpolator = new RegexBasedInterpolator();
         final RecursionInterceptor recursionInterceptor;
-        if ( legacyReplace ) {
+        if (legacyReplace) {
             project.getProperties().setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
             interpolator.addValueSource(new PropertiesBasedValueSource(System.getProperties()));
             interpolator.addValueSource(new PropertiesBasedValueSource(project.getProperties()));
 
             List<String> synonymPrefixes = Collections.singletonList("project.");
 
-            PrefixedValueSourceWrapper modelWrapper = new PrefixedValueSourceWrapper(
-                    new ObjectBasedValueSource(project),
-                    synonymPrefixes,
-                    true);
-            interpolator.addValueSource( modelWrapper );
+            PrefixedValueSourceWrapper modelWrapper =
+                    new PrefixedValueSourceWrapper(new ObjectBasedValueSource(project), synonymPrefixes, true);
+            interpolator.addValueSource(modelWrapper);
 
             recursionInterceptor = new PrefixAwareRecursionInterceptor(synonymPrefixes, true);
 
         } else {
             final Properties props = new Properties();
-            if ( replaceProjectProps ) {
+            if (replaceProjectProps) {
                 props.setProperty("project.groupId", project.getGroupId());
                 props.setProperty("project.artifactId", project.getArtifactId());
                 props.setProperty("project.version", project.getVersion());
                 props.setProperty("project.osgiVersion", getOSGiVersion(project.getVersion()));
             }
-            if ( additionalProperties != null ) {
-                for(String p : additionalProperties) {
+            if (additionalProperties != null) {
+                for (String p : additionalProperties) {
                     p = p.trim();
                     // check for a system property that overwrites the project property
                     String value = System.getProperty(p);
@@ -96,17 +97,17 @@ public class Substitution {
     private static String cleanVersionString(final String version) {
         final StringBuilder sb = new StringBuilder();
         boolean afterDot = false;
-        for(int i=0;i<version.length(); i++) {
+        for (int i = 0; i < version.length(); i++) {
             final char c = version.charAt(i);
-            if ( c == '.' ) {
-                if (afterDot == true ) {
+            if (c == '.') {
+                if (afterDot == true) {
                     sb.append('0');
                 }
                 afterDot = true;
                 sb.append(c);
-            } else if ( afterDot && c == '0' ) {
+            } else if (afterDot && c == '0') {
                 // skip
-            } else if ( afterDot && c == '-' ) {
+            } else if (afterDot && c == '-') {
                 sb.append('0');
                 sb.append(c);
                 afterDot = false;
@@ -126,7 +127,7 @@ public class Substitution {
         sb.append(dav.getMinorVersion());
         sb.append('.');
         sb.append(dav.getIncrementalVersion());
-        if ( dav.getQualifier() != null ) {
+        if (dav.getQualifier() != null) {
             sb.append('.');
             sb.append(dav.getQualifier());
         }

@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -67,10 +69,7 @@ import org.codehaus.plexus.util.StringUtils;
 /**
  * Update the bundles/artifact versions
  */
-@Mojo(
-        name = "update-feature-versions",
-        threadSafe = true
-    )
+@Mojo(name = "update-feature-versions", threadSafe = true)
 public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
     private static final int INFO_PAD_SIZE = 95;
@@ -141,24 +140,25 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     private Map<String, Feature> getFeatures() throws MojoExecutionException {
         final String[] selection = this.classifiers == null ? null : this.classifiers.split(",");
         final Map<String, Feature> features = new LinkedHashMap<>();
-        for (final Map.Entry<String, Feature> entry : this.selectAllFeatureFiles().entrySet()) {
+        for (final Map.Entry<String, Feature> entry :
+                this.selectAllFeatureFiles().entrySet()) {
             boolean selected = true;
-            if ( selection != null ) {
+            if (selection != null) {
                 selected = false;
                 final String classifier = entry.getValue().getId().getClassifier();
-                for(final String c : selection) {
-                    if ( classifier == null ) {
-                        if ( ":".equals(c) ) {
+                for (final String c : selection) {
+                    if (classifier == null) {
+                        if (":".equals(c)) {
                             selected = true;
                             break;
                         }
-                    } else if ( classifier.trim().equals(c)) {
+                    } else if (classifier.trim().equals(c)) {
                         selected = true;
                         break;
                     }
                 }
             }
-            if ( selected ) {
+            if (selected) {
                 features.put(entry.getKey(), ProjectHelper.getFeatures(project).get(entry.getKey()));
             }
         }
@@ -174,9 +174,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
      * @param artifacts The artifacts to check
      * @param cfg The configuration
      */
-    private void addDependencies(final Set<ArtifactHolder> dependencies, 
-            final List<Artifact> artifacts,
-            final UpdateConfig cfg) {
+    private void addDependencies(
+            final Set<ArtifactHolder> dependencies, final List<Artifact> artifacts, final UpdateConfig cfg) {
         for (final Artifact a : artifacts) {
             final String include = shouldHandle(a.getId(), cfg);
             if (include != null) {
@@ -216,7 +215,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         // we need to read the raw file
         try (final Reader r = new FileReader(new File(fileName))) {
             final String json = JSONFeatures.read(r, JSONFeatures.PLACEHOLDER_ID, fileName);
-            try ( final Reader featureReader = new StringReader(json)) {
+            try (final Reader featureReader = new StringReader(json)) {
                 return FeatureJSONReader.read(featureReader, fileName);
             }
         } catch (final IOException e) {
@@ -296,8 +295,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                         throw new MojoExecutionException("Unable to write feature file " + entry.getValue(), e);
                     }
                 }
-    		}
-    	}
+            }
+        }
 
         boolean printedHeader = false;
         for (final Map.Entry<String, UpdateResult> entry : results.entrySet()) {
@@ -339,7 +338,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
 
                 if (!entry.getValue().propertyUpdates.isEmpty()) {
                     getLog().info("  The following properties in the pom should be updated:");
-                    for (final Map.Entry<String, String> prop : entry.getValue().propertyUpdates.entrySet()) {
+                    for (final Map.Entry<String, String> prop :
+                            entry.getValue().propertyUpdates.entrySet()) {
                         final String left = "    Property '" + prop.getKey() + "' to ...";
                         final String right = prop.getValue();
                         if (right.length() + left.length() > INFO_PAD_SIZE) {
@@ -394,7 +394,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         boolean match = false;
 
         int index = 0;
-        for(final String[] m : matches) {
+        for (final String[] m : matches) {
             match = match(id.getGroupId(), m[0]);
             if (match && m.length > 1) {
                 match = match(id.getArtifactId(), m[1]);
@@ -429,30 +429,29 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         return null;
     }
 
-    private String update(final Artifact artifact, final Set<ArtifactHolder> updates)
-            throws MojoExecutionException {
-		getLog().debug("Searching for updates of " + artifact.getId().toMvnId());
+    private String update(final Artifact artifact, final Set<ArtifactHolder> updates) throws MojoExecutionException {
+        getLog().debug("Searching for updates of " + artifact.getId().toMvnId());
 
         // check updates
         String found = null;
         for (final ArtifactHolder entry : updates) {
-            if (artifact.getId().equals(entry.getArtifact().getId()) ) {
+            if (artifact.getId().equals(entry.getArtifact().getId())) {
                 found = entry.getUpdate();
                 break;
             }
-		}
+        }
 
-		String updated = null;
-		if ( found != null ) {
+        String updated = null;
+        if (found != null) {
             getLog().debug("Updating " + artifact.getId().toMvnId() + " to " + found);
 
             updated = found;
-		} else {
+        } else {
             getLog().debug("No newer version found for " + artifact.getId().toMvnId());
         }
 
-		return updated;
-	}
+        return updated;
+    }
 
     public static final class UpdateConfig {
         public List<String[]> includes;
@@ -463,21 +462,25 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         Set<ArtifactHolder> updateInfos;
 
         public Scope defaultScope;
-	}
+    }
 
-	public static final class ArtifactUpdate {
-		public Extension extension;
-		public Artifact artifact;
-		public String newVersion;
-	}
+    public static final class ArtifactUpdate {
+        public Extension extension;
+        public Artifact artifact;
+        public String newVersion;
+    }
 
     public static final class UpdateResult {
         public List<ArtifactUpdate> updates;
         public Map<String, String> propertyUpdates = new HashMap<>();
     }
 
-    private boolean updateVersions(final String fileName, final Feature rawFeature, final UpdateResult result,
-            final Map<String, Set<String>> globalPropertyUpdates) throws MojoExecutionException {
+    private boolean updateVersions(
+            final String fileName,
+            final Feature rawFeature,
+            final UpdateResult result,
+            final Map<String, Set<String>> globalPropertyUpdates)
+            throws MojoExecutionException {
         // update artifacts
         final Iterator<ArtifactUpdate> iter = result.updates.iterator();
         while (iter.hasNext()) {
@@ -487,7 +490,10 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             if (update.extension == null) {
                 container = rawFeature.getBundles();
             } else {
-                container = rawFeature.getExtensions().getByName(update.extension.getName()).getArtifacts();
+                container = rawFeature
+                        .getExtensions()
+                        .getByName(update.extension.getName())
+                        .getArtifacts();
             }
             final int pos = container.indexOf(update.artifact);
             final Artifact oldArtifact = pos == -1 ? null : container.get(pos);
@@ -496,12 +502,17 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 final Artifact same = container.getSame(update.artifact.getId());
                 boolean found = same != null;
                 if (same != null) {
-                    if (!same.getId().getVersion().startsWith("${") || !same.getId().getVersion().endsWith("}")) {
+                    if (!same.getId().getVersion().startsWith("${")
+                            || !same.getId().getVersion().endsWith("}")) {
                         found = false;
                     } else {
-                        final String propName = same.getId().getVersion().substring(2,
-                                same.getId().getVersion().length() - 1);
-                        if (!update.artifact.getId().getVersion().equals(this.project.getProperties().get(propName))) {
+                        final String propName = same.getId()
+                                .getVersion()
+                                .substring(2, same.getId().getVersion().length() - 1);
+                        if (!update.artifact
+                                .getId()
+                                .getVersion()
+                                .equals(this.project.getProperties().get(propName))) {
                             found = false;
                         } else {
                             Set<String> versions = globalPropertyUpdates.get(propName);
@@ -521,7 +532,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                 iter.remove();
             } else {
                 // oldArtifact is not null (removeExact returned true)
-                final Artifact newArtifact = new Artifact(update.artifact.getId().changeVersion(update.newVersion));
+                final Artifact newArtifact =
+                        new Artifact(update.artifact.getId().changeVersion(update.newVersion));
                 newArtifact.getMetadata().putAll(oldArtifact.getMetadata());
                 container.add(pos, newArtifact);
             }
@@ -539,8 +551,8 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
      * @param cfg
      * @throws MojoExecutionException
      */
-    private void addUpdates(final List<ArtifactUpdate> updates, final Extension ext, final Artifacts artifacts,
-            final UpdateConfig cfg)
+    private void addUpdates(
+            final List<ArtifactUpdate> updates, final Extension ext, final Artifacts artifacts, final UpdateConfig cfg)
             throws MojoExecutionException {
         for (final Artifact a : artifacts) {
             if (shouldHandle(a.getId(), cfg) != null) {
@@ -579,15 +591,13 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
     }
 
     /**
-     * Create a holder 
+     * Create a holder
      * @param artifact The artifact
      * @param scope The scope
      * @param newVersion The optional new version
      * @return The holder
      */
-    private ArtifactHolder createArtifactHolder(final Artifact artifact, 
-            final Scope scope,
-            final String newVersion) {
+    private ArtifactHolder createArtifactHolder(final Artifact artifact, final Scope scope, final String newVersion) {
         return new ArtifactHolder(artifact, scope, newVersion);
     }
 
@@ -595,38 +605,44 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
      * Lookup the version updates
      * @param dependencies The set of dependencies to check for version updates
      */
-    private void lookupVersionUpdates( final Set<ArtifactHolder> dependencies )
-        throws MojoExecutionException {
+    private void lookupVersionUpdates(final Set<ArtifactHolder> dependencies) throws MojoExecutionException {
 
-        final List<Callable<Void>> requestsForDetails = new ArrayList<>( dependencies.size() );
-        for ( final ArtifactHolder dependency : dependencies ) {
-            requestsForDetails.add( () -> {
+        final List<Callable<Void>> requestsForDetails = new ArrayList<>(dependencies.size());
+        for (final ArtifactHolder dependency : dependencies) {
+            requestsForDetails.add(() -> {
                 final ArtifactId id = dependency.getArtifact().getId();
 
-                getLog().debug( "Checking " + id.getGroupId() + ":" + id.getArtifactId() + " for updates newer than " + id.getVersion() );
+                getLog().debug("Checking " + id.getGroupId() + ":" + id.getArtifactId() + " for updates newer than "
+                        + id.getVersion());
 
-                final ArtifactHandler handler = artifactHandlerManager.getArtifactHandler( id.getType() );
+                final ArtifactHandler handler = artifactHandlerManager.getArtifactHandler(id.getType());
 
-                final org.apache.maven.artifact.Artifact artifact = new DefaultArtifact( id.getGroupId(), id.getArtifactId(), id.getVersion(), org.apache.maven.artifact.Artifact.SCOPE_PROVIDED, 
-                                                            id.getType(), id.getClassifier(), handler);
-                dependency.setVersions(artifactMetadataSource.retrieveAvailableVersions( artifact, 
-                        this.mavenSession.getLocalRepository(), this.remoteArtifactRepositories ));
+                final org.apache.maven.artifact.Artifact artifact = new DefaultArtifact(
+                        id.getGroupId(),
+                        id.getArtifactId(),
+                        id.getVersion(),
+                        org.apache.maven.artifact.Artifact.SCOPE_PROVIDED,
+                        id.getType(),
+                        id.getClassifier(),
+                        handler);
+                dependency.setVersions(artifactMetadataSource.retrieveAvailableVersions(
+                        artifact, this.mavenSession.getLocalRepository(), this.remoteArtifactRepositories));
                 return null;
             });
         }
 
         // Lookup details in parallel...
-        final ExecutorService executor = Executors.newFixedThreadPool( 5 );
+        final ExecutorService executor = Executors.newFixedThreadPool(5);
         try {
-            final List<Future<Void>> responseForDetails = executor.invokeAll( requestsForDetails );
+            final List<Future<Void>> responseForDetails = executor.invokeAll(requestsForDetails);
 
             // Construct the final results...
-            for ( final Future<Void> details : responseForDetails ) {
+            for (final Future<Void> details : responseForDetails) {
                 details.get();
             }
-        } catch ( final ExecutionException | InterruptedException ie ) {
-            throw new MojoExecutionException( "Unable to acquire metadata for dependencies " + dependencies
-                + ": " + ie.getMessage(), ie );
+        } catch (final ExecutionException | InterruptedException ie) {
+            throw new MojoExecutionException(
+                    "Unable to acquire metadata for dependencies " + dependencies + ": " + ie.getMessage(), ie);
         } finally {
             executor.shutdownNow();
         }
@@ -677,7 +693,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
          * The current version.
          */
         private final ArtifactVersion currentVersion;
- 
+
         /**
          * The update scope to use
          */
@@ -699,7 +715,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
          * @param updateScope The update scope.
          * @param newVersion optional new version info
          */
-        public ArtifactHolder( final Artifact artifact, final Scope updateScope, final String newVersion ) {
+        public ArtifactHolder(final Artifact artifact, final Scope updateScope, final String newVersion) {
             this.artifact = artifact;
             this.updateScope = updateScope;
             this.currentVersion = new DefaultArtifactVersion(artifact.getId().getVersion());
@@ -720,71 +736,74 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
          */
         public void setVersions(final List<ArtifactVersion> versions) {
             // filter out snapshots
-            for ( final ArtifactVersion candidate : versions ) {
-                if ( ArtifactUtils.isSnapshot( candidate.toString() ) ) {
+            for (final ArtifactVersion candidate : versions) {
+                if (ArtifactUtils.isSnapshot(candidate.toString())) {
                     continue;
                 }
-                this.versions.add( candidate );
+                this.versions.add(candidate);
             }
         }
 
-        private final ArtifactVersion getNewestVersion( ArtifactVersion lowerBound,
-                                                        ArtifactVersion upperBound,
-                                                        boolean includeLower, boolean includeUpper ) {
+        private final ArtifactVersion getNewestVersion(
+                ArtifactVersion lowerBound, ArtifactVersion upperBound, boolean includeLower, boolean includeUpper) {
             ArtifactVersion latest = null;
-            for ( final ArtifactVersion candidate : this.versions ) {
-                final int lower = lowerBound == null ? -1 : lowerBound.compareTo( candidate );
-                final int upper = upperBound == null ? +1 : upperBound.compareTo( candidate );
-                if ( lower > 0 || upper < 0 ) {
+            for (final ArtifactVersion candidate : this.versions) {
+                final int lower = lowerBound == null ? -1 : lowerBound.compareTo(candidate);
+                final int upper = upperBound == null ? +1 : upperBound.compareTo(candidate);
+                if (lower > 0 || upper < 0) {
                     continue;
                 }
-                if ( ( !includeLower && lower == 0 ) || ( !includeUpper && upper == 0 ) ) {
+                if ((!includeLower && lower == 0) || (!includeUpper && upper == 0)) {
                     continue;
                 }
-                if ( ArtifactUtils.isSnapshot( candidate.toString() ) ) {
+                if (ArtifactUtils.isSnapshot(candidate.toString())) {
                     continue;
                 }
-                if ( latest == null ) {
+                if (latest == null) {
                     latest = candidate;
-                } else if ( latest.compareTo( candidate ) < 0 ) {
+                } else if (latest.compareTo(candidate) < 0) {
                     latest = candidate;
                 }
-
             }
             return latest;
         }
 
         public final String getUpdate() {
-            if ( this.newVersion != null ) {
+            if (this.newVersion != null) {
                 return this.newVersion;
             }
             ArtifactVersion v = null;
-            switch ( updateScope ) {
-                case SUBINCREMENTAL :
-                    v = getSegmentCount( currentVersion ) < 3 ? null
-                                : this.getNewestVersion( currentVersion,
-                                                incrementSegment( currentVersion, 2 ),
-                                                false, false );
+            switch (updateScope) {
+                case SUBINCREMENTAL:
+                    v = getSegmentCount(currentVersion) < 3
+                            ? null
+                            : this.getNewestVersion(currentVersion, incrementSegment(currentVersion, 2), false, false);
                     break;
-                case INCREMENTAL :
-                    v = getSegmentCount( currentVersion ) < 3 ? null
-                                : this.getNewestVersion( incrementSegment( currentVersion, 2 ),
-                                                incrementSegment( currentVersion, 1 ),
-                                                true, false );
+                case INCREMENTAL:
+                    v = getSegmentCount(currentVersion) < 3
+                            ? null
+                            : this.getNewestVersion(
+                                    incrementSegment(currentVersion, 2),
+                                    incrementSegment(currentVersion, 1),
+                                    true,
+                                    false);
                     break;
-                case MINOR :
-                    v = getSegmentCount( currentVersion ) < 2 ? null
-                                : this.getNewestVersion( incrementSegment( currentVersion, 1 ),
-                                                                incrementSegment( currentVersion, 0 ),
-                                                                true, false );
+                case MINOR:
+                    v = getSegmentCount(currentVersion) < 2
+                            ? null
+                            : this.getNewestVersion(
+                                    incrementSegment(currentVersion, 1),
+                                    incrementSegment(currentVersion, 0),
+                                    true,
+                                    false);
                     break;
-                case MAJOR :
-                    v = getSegmentCount( currentVersion ) < 1 ? null
-                                : this.getNewestVersion( incrementSegment( currentVersion, 0 ),
-                                                                null, true, false );
+                case MAJOR:
+                    v = getSegmentCount(currentVersion) < 1
+                            ? null
+                            : this.getNewestVersion(incrementSegment(currentVersion, 0), null, true, false);
                     break;
-                case ANY :
-                    v = this.getNewestVersion( currentVersion, null, false, false );
+                case ANY:
+                    v = this.getNewestVersion(currentVersion, null, false, false);
                     break;
             }
             return v != null ? v.toString() : null;
@@ -796,71 +815,71 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private static final Pattern SNAPSHOT_PATTERN = Pattern.compile( "(-((\\d{8}\\.\\d{6})-(\\d+))|(SNAPSHOT))$" );
+    private static final Pattern SNAPSHOT_PATTERN = Pattern.compile("(-((\\d{8}\\.\\d{6})-(\\d+))|(SNAPSHOT))$");
 
-    private static final int getSegmentCount( final ArtifactVersion v ) {
-        if ( v == null ) {
+    private static final int getSegmentCount(final ArtifactVersion v) {
+        if (v == null) {
             return 0;
         }
-        if ( ArtifactUtils.isSnapshot( v.toString() ) ) {
-            return innerGetSegmentCount( stripSnapshot( v ) );
+        if (ArtifactUtils.isSnapshot(v.toString())) {
+            return innerGetSegmentCount(stripSnapshot(v));
         }
-        return innerGetSegmentCount( v );
+        return innerGetSegmentCount(v);
     }
 
-    private static ArtifactVersion incrementSegment( final ArtifactVersion v, final int segment ) {
-        if ( ArtifactUtils.isSnapshot( v.toString() ) ) {
-            return copySnapshot( v, innerIncrementSegment( stripSnapshot( v ), segment ) );
+    private static ArtifactVersion incrementSegment(final ArtifactVersion v, final int segment) {
+        if (ArtifactUtils.isSnapshot(v.toString())) {
+            return copySnapshot(v, innerIncrementSegment(stripSnapshot(v), segment));
         }
-        return innerIncrementSegment( v, segment );
+        return innerIncrementSegment(v, segment);
     }
 
-    private static int innerGetSegmentCount( final ArtifactVersion v ) {
+    private static int innerGetSegmentCount(final ArtifactVersion v) {
         // if the version does not match the maven rules, then we have only one segment
         // i.e. the qualifier
-        if ( v.getBuildNumber() != 0 ) {
+        if (v.getBuildNumber() != 0) {
             // the version was successfully parsed, and we have a build number
             // have to have four segments
             return 4;
         }
-        if ( ( v.getMajorVersion() != 0 || v.getMinorVersion() != 0 || v.getIncrementalVersion() != 0 )
-            && v.getQualifier() != null ) {
+        if ((v.getMajorVersion() != 0 || v.getMinorVersion() != 0 || v.getIncrementalVersion() != 0)
+                && v.getQualifier() != null) {
             // the version was successfully parsed, and we have a qualifier
             // have to have four segments
             return 4;
         }
         final String version = v.toString();
-        if ( version.indexOf( '-' ) != -1 ) {
+        if (version.indexOf('-') != -1) {
             // the version has parts and was not parsed successfully
             // have to have one segment
-            return version.equals( v.getQualifier() ) ? 1 : 4;
+            return version.equals(v.getQualifier()) ? 1 : 4;
         }
-        if ( version.indexOf( '.' ) != -1 ) {
+        if (version.indexOf('.') != -1) {
             // the version has parts and was not parsed successfully
             // have to have one segment
-            return version.equals( v.getQualifier() ) ? 1 : 3;
+            return version.equals(v.getQualifier()) ? 1 : 3;
         }
-        if ( StringUtils.isEmpty( version ) ) {
+        if (StringUtils.isEmpty(version)) {
             return 3;
         }
         try {
-            Integer.parseInt( version );
+            Integer.parseInt(version);
             return 3;
-        } catch ( final NumberFormatException e ) {
+        } catch (final NumberFormatException e) {
             return 1;
         }
     }
 
-    private static ArtifactVersion innerIncrementSegment( final ArtifactVersion v, final int segment ) {
-        int segmentCount = innerGetSegmentCount( v );
-        if ( segment < 0 || segment >= segmentCount ) {
-            throw new IllegalArgumentException( v.toString() );
+    private static ArtifactVersion innerIncrementSegment(final ArtifactVersion v, final int segment) {
+        int segmentCount = innerGetSegmentCount(v);
+        if (segment < 0 || segment >= segmentCount) {
+            throw new IllegalArgumentException(v.toString());
         }
         String version = v.toString();
-        if ( segmentCount == 1 ) {
+        if (segmentCount == 1) {
             // only the qualifier
-            version = alphaNumIncrement( version );
-            return new DefaultArtifactVersion( version );
+            version = alphaNumIncrement(version);
+            return new DefaultArtifactVersion(version);
         } else {
             int major = v.getMajorVersion();
             int minor = v.getMinorVersion();
@@ -868,15 +887,15 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             int build = v.getBuildNumber();
             String qualifier = v.getQualifier();
 
-            int minorIndex = version.indexOf( '.' );
+            int minorIndex = version.indexOf('.');
             boolean haveMinor = minorIndex != -1;
-            int incrementalIndex = haveMinor ? version.indexOf( '.', minorIndex + 1 ) : -1;
+            int incrementalIndex = haveMinor ? version.indexOf('.', minorIndex + 1) : -1;
             boolean haveIncremental = incrementalIndex != -1;
-            int buildIndex = version.indexOf( '-' );
+            int buildIndex = version.indexOf('-');
             boolean haveBuild = buildIndex != -1 && qualifier == null;
             boolean haveQualifier = buildIndex != -1 && qualifier != null;
 
-            switch ( segment ) {
+            switch (segment) {
                 case 0:
                     major++;
                     minor = 0;
@@ -888,7 +907,7 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                     minor++;
                     incremental = 0;
                     build = 0;
-                    if ( haveQualifier && qualifier.endsWith( "SNAPSHOT" ) ) {
+                    if (haveQualifier && qualifier.endsWith("SNAPSHOT")) {
                         qualifier = "SNAPSHOT";
                     }
                     break;
@@ -898,82 +917,84 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
                     qualifier = null;
                     break;
                 case 3:
-                    if ( haveQualifier ) {
-                        qualifier = qualifierIncrement( qualifier );
+                    if (haveQualifier) {
+                        qualifier = qualifierIncrement(qualifier);
                     } else {
                         build++;
                     }
                     break;
             }
             final StringBuilder result = new StringBuilder();
-            result.append( major );
-            if ( haveMinor || minor > 0 || incremental > 0 ) {
-                result.append( '.' );
-                result.append( minor );
+            result.append(major);
+            if (haveMinor || minor > 0 || incremental > 0) {
+                result.append('.');
+                result.append(minor);
             }
-            if ( haveIncremental || incremental > 0 ) {
-                result.append( '.' );
-                result.append( incremental );
+            if (haveIncremental || incremental > 0) {
+                result.append('.');
+                result.append(incremental);
             }
-            if ( haveQualifier && qualifier != null ) {
-                result.append( '-' );
-                result.append( qualifier );
-            } else if ( haveBuild || build > 0 ) {
-                result.append( '-' );
-                result.append( build );
+            if (haveQualifier && qualifier != null) {
+                result.append('-');
+                result.append(qualifier);
+            } else if (haveBuild || build > 0) {
+                result.append('-');
+                result.append(build);
             }
-            return new DefaultArtifactVersion( result.toString() );
+            return new DefaultArtifactVersion(result.toString());
         }
     }
 
-    private static String qualifierIncrement( final String qualifier ) {
-        if ( qualifier.toLowerCase().startsWith( "alpha" ) ) {
-            return qualifier.substring( 0, 5 ) + alphaNumIncrement( qualifier.substring( 5 ) );
+    private static String qualifierIncrement(final String qualifier) {
+        if (qualifier.toLowerCase().startsWith("alpha")) {
+            return qualifier.substring(0, 5) + alphaNumIncrement(qualifier.substring(5));
         }
-        if ( qualifier.toLowerCase().startsWith( "beta" ) ) {
-            return qualifier.substring( 0, 4 ) + alphaNumIncrement( qualifier.substring( 4 ) );
+        if (qualifier.toLowerCase().startsWith("beta")) {
+            return qualifier.substring(0, 4) + alphaNumIncrement(qualifier.substring(4));
         }
-        if ( qualifier.toLowerCase().startsWith( "milestone" ) ) {
-            return qualifier.substring( 0, 8 ) + alphaNumIncrement( qualifier.substring( 8 ) );
+        if (qualifier.toLowerCase().startsWith("milestone")) {
+            return qualifier.substring(0, 8) + alphaNumIncrement(qualifier.substring(8));
         }
-        if ( qualifier.toLowerCase().startsWith( "cr" ) || qualifier.toLowerCase().startsWith( "rc" ) || qualifier.toLowerCase().startsWith( "sp" ) ) {
-            return qualifier.substring( 0, 2 ) + alphaNumIncrement( qualifier.substring( 2 ) );
+        if (qualifier.toLowerCase().startsWith("cr")
+                || qualifier.toLowerCase().startsWith("rc")
+                || qualifier.toLowerCase().startsWith("sp")) {
+            return qualifier.substring(0, 2) + alphaNumIncrement(qualifier.substring(2));
         }
-        return alphaNumIncrement( qualifier );
+        return alphaNumIncrement(qualifier);
     }
 
-    private static String alphaNumIncrement( String token ) {
+    private static String alphaNumIncrement(String token) {
         String newToken;
         int i = token.length();
         boolean done = false;
         newToken = token;
-        while ( !done && i > 0 ) {
+        while (!done && i > 0) {
             i--;
-            char c = token.charAt( i );
-            if ( '0' <= c && c < '9' ) {
+            char c = token.charAt(i);
+            if ('0' <= c && c < '9') {
                 c++;
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
                 done = true;
-            } else if ( c == '9' ) {
+            } else if (c == '9') {
                 c = '0';
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
-            } else if ( 'A' <= c && c < 'Z' ) {
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
+            } else if ('A' <= c && c < 'Z') {
                 c++;
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
                 done = true;
-            } else if ( c == 'Z' ) {
+            } else if (c == 'Z') {
                 c = 'A';
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
-            } else if ( 'a' <= c && c < 'z' ) {
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
+            } else if ('a' <= c && c < 'z') {
                 c++;
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
                 done = true;
-            } else if ( c == 'z' ) {
+            } else if (c == 'z') {
                 c = 'a';
-                newToken = newToken.substring( 0, i ) + c + ( i + 1 < newToken.length() ? newToken.substring( i + 1 ) : "" );
+                newToken = newToken.substring(0, i) + c + (i + 1 < newToken.length() ? newToken.substring(i + 1) : "");
             }
         }
-        if ( done ) {
+        if (done) {
             return newToken;
         } else {
             // ok this is roll-over time
@@ -981,15 +1002,15 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
             boolean lastAlpha = false;
             boolean lastUpper = false;
             i = token.length();
-            while ( !lastAlpha && !lastNumeric && i > 0 ) {
+            while (!lastAlpha && !lastNumeric && i > 0) {
                 i--;
-                char c = token.charAt( i );
-                lastAlpha = Character.isLetter( c );
-                lastUpper = c == Character.toUpperCase( c );
-                lastNumeric = Character.isDigit( c );
+                char c = token.charAt(i);
+                lastAlpha = Character.isLetter(c);
+                lastUpper = c == Character.toUpperCase(c);
+                lastNumeric = Character.isDigit(c);
             }
-            if ( lastAlpha ) {
-                if ( lastUpper ) {
+            if (lastAlpha) {
+                if (lastUpper) {
                     return token + 'A';
                 }
                 return token + 'a';
@@ -998,25 +1019,25 @@ public class UpdateVersionsMojo extends AbstractIncludingFeatureMojo {
         }
     }
 
-    private static ArtifactVersion stripSnapshot( ArtifactVersion v ) {
+    private static ArtifactVersion stripSnapshot(ArtifactVersion v) {
         final String version = v.toString();
-        final Matcher matcher = SNAPSHOT_PATTERN.matcher( version );
-        if ( matcher.find() ) {
-            return new DefaultArtifactVersion( version.substring( 0, matcher.start( 1 ) - 1 ) );
+        final Matcher matcher = SNAPSHOT_PATTERN.matcher(version);
+        if (matcher.find()) {
+            return new DefaultArtifactVersion(version.substring(0, matcher.start(1) - 1));
         }
         return v;
     }
 
-    private static ArtifactVersion copySnapshot( ArtifactVersion source, ArtifactVersion destination ) {
-        if ( ArtifactUtils.isSnapshot( destination.toString() ) ) {
-            destination = stripSnapshot( destination );
+    private static ArtifactVersion copySnapshot(ArtifactVersion source, ArtifactVersion destination) {
+        if (ArtifactUtils.isSnapshot(destination.toString())) {
+            destination = stripSnapshot(destination);
         }
         final Pattern matchSnapshotRegex = SNAPSHOT_PATTERN;
-        final Matcher matcher = matchSnapshotRegex.matcher( source.toString() );
-        if ( matcher.find() ) {
-            return new DefaultArtifactVersion( destination.toString() + "-" + matcher.group( 0 ) );
+        final Matcher matcher = matchSnapshotRegex.matcher(source.toString());
+        if (matcher.find()) {
+            return new DefaultArtifactVersion(destination.toString() + "-" + matcher.group(0));
         } else {
-            return new DefaultArtifactVersion( destination.toString() + "-SNAPSHOT" );
+            return new DefaultArtifactVersion(destination.toString() + "-SNAPSHOT");
         }
     }
 }

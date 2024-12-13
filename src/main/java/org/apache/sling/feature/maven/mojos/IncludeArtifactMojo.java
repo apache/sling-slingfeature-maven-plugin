@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
 
@@ -68,9 +70,11 @@ import org.apache.sling.feature.maven.ProjectHelper;
  * allows to add extension files like 'repoinit' etc to be added to provide them with
  * the module.
  */
-@Mojo(name = "include-artifact", defaultPhase = LifecyclePhase.PREPARE_PACKAGE, requiresDependencyResolution = ResolutionScope.COMPILE,
-      threadSafe = true
-    )
+@Mojo(
+        name = "include-artifact",
+        defaultPhase = LifecyclePhase.PREPARE_PACKAGE,
+        requiresDependencyResolution = ResolutionScope.COMPILE,
+        threadSafe = true)
 public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
     public static final String CFG_CLASSIFIER = "includeArtifactClassifier";
@@ -138,7 +142,8 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         Feature found = null;
         String key = null;
         for (final Map.Entry<String, Feature> entry : featuresMap.entrySet()) {
-            if (includeArtifactClassifier != null && includeArtifactClassifier.equals(entry.getValue().getId().getClassifier())) {
+            if (includeArtifactClassifier != null
+                    && includeArtifactClassifier.equals(entry.getValue().getId().getClassifier())) {
                 key = entry.getKey();
                 found = entry.getValue();
                 break;
@@ -146,21 +151,29 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         }
         File file = null;
         if (found == null) {
-            found = new Feature(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
-                    this.project.getVersion(), includeArtifactClassifier, FeatureConstants.PACKAGING_FEATURE));
+            found = new Feature(new ArtifactId(
+                    this.project.getGroupId(),
+                    this.project.getArtifactId(),
+                    this.project.getVersion(),
+                    includeArtifactClassifier,
+                    FeatureConstants.PACKAGING_FEATURE));
 
             file = new File(
-                this.getTmpDir(),
-                "feature" + (includeArtifactClassifier == null ? "" : "-" + includeArtifactClassifier) + ".json");
+                    this.getTmpDir(),
+                    "feature" + (includeArtifactClassifier == null ? "" : "-" + includeArtifactClassifier) + ".json");
             key = file.getAbsolutePath();
             ProjectHelper.getFeatures(this.project).put(key, found);
             ProjectHelper.getAssembledFeatures(this.project).put(key, found);
         }
 
-        final Artifact art = new Artifact(new ArtifactId(this.project.getGroupId(), this.project.getArtifactId(),
-                this.project.getVersion(), includeClassifier, includeType != null ? includeType : this.project.getArtifact().getType()));
+        final Artifact art = new Artifact(new ArtifactId(
+                this.project.getGroupId(),
+                this.project.getArtifactId(),
+                this.project.getVersion(),
+                includeClassifier,
+                includeType != null ? includeType : this.project.getArtifact().getType()));
 
-        if(jarStartOrder > 0) {
+        if (jarStartOrder > 0) {
             art.setStartOrder(jarStartOrder);
         }
 
@@ -169,13 +182,15 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
         }
         includeArtifact(found, includeArtifactExtension, art);
 
-        includeArtifact(ProjectHelper.getAssembledFeatures(this.project).get(key), includeArtifactExtension,
+        includeArtifact(
+                ProjectHelper.getAssembledFeatures(this.project).get(key),
+                includeArtifactExtension,
                 art.copy(art.getId()));
 
         addDependencies(found);
 
         if (file != null) {
-            try ( final Writer writer = new FileWriter(file)) {
+            try (final Writer writer = new FileWriter(file)) {
                 FeatureJSONWriter.write(writer, found);
             } catch (final IOException ioe) {
                 throw new MojoExecutionException("Unable to write feature", ioe);
@@ -203,15 +218,18 @@ public class IncludeArtifactMojo extends AbstractIncludingFeatureMojo {
 
     private void addDependencies(Feature feature) {
         // Add Dependencies if configured so
-        for(String includeDependencyScope: includeDependenciesWithScope) {
+        for (String includeDependencyScope : includeDependenciesWithScope) {
             List<Dependency> dependencies = project.getDependencies();
-            for(Dependency dependency: dependencies) {
-                if(includeDependencyScope.equals(dependency.getScope())) {
+            for (Dependency dependency : dependencies) {
+                if (includeDependencyScope.equals(dependency.getScope())) {
                     ArtifactId id = new ArtifactId(
-                        dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion(), dependency.getClassifier(), dependency.getType()
-                    );
+                            dependency.getGroupId(),
+                            dependency.getArtifactId(),
+                            dependency.getVersion(),
+                            dependency.getClassifier(),
+                            dependency.getType());
                     Artifact artifact = new Artifact(id);
-                    if(bundlesStartOrder >= 0) {
+                    if (bundlesStartOrder >= 0) {
                         artifact.setStartOrder(bundlesStartOrder);
                     }
                     feature.getBundles().add(artifact);

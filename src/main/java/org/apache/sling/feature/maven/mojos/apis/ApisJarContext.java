@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.apis;
 
@@ -112,7 +114,7 @@ public class ApisJarContext {
 
         public String[] getUsedExportedPackageIncludes() {
             final Set<String> includes = new HashSet<>();
-            for(final String pck : usedExportedPackages) {
+            for (final String pck : usedExportedPackages) {
                 includes.add(pck.replace('.', '/').concat("/*"));
             }
             return includes.toArray(new String[includes.size()]);
@@ -122,9 +124,10 @@ public class ApisJarContext {
             return this.usedExportedPackagesPerRegion.get(regionName);
         }
 
-        public void setUsedExportedPackages(final String regionName, final Set<Clause> usedExportedPackages, final String useAsDependency) {
+        public void setUsedExportedPackages(
+                final String regionName, final Set<Clause> usedExportedPackages, final String useAsDependency) {
             this.usedExportedPackagesPerRegion.put(regionName, usedExportedPackages);
-            if ( useAsDependency != null ) {
+            if (useAsDependency != null) {
                 this.useAsDependencyPerRegion.put(regionName, useAsDependency);
             }
         }
@@ -132,7 +135,7 @@ public class ApisJarContext {
         public String[] getUsedExportedPackageIncludes(final String regionName) {
             final Set<Clause> clauses = this.getUsedExportedPackages(regionName);
             final Set<String> includes = new HashSet<>();
-            for(final Clause clause : clauses) {
+            for (final Clause clause : clauses) {
                 includes.add(clause.getName().replace('.', '/').concat("/*"));
             }
             return includes.toArray(new String[includes.size()]);
@@ -182,14 +185,14 @@ public class ApisJarContext {
         public List<ArtifactId> getDependencyArtifacts() throws MojoExecutionException {
             final List<ArtifactId> dependencies = new ArrayList<>();
             final List<ArtifactId> apiIds = ApisUtil.getApiIds(artifact);
-            if ( apiIds != null ) {
-                for(final ArtifactId id : apiIds) {
+            if (apiIds != null) {
+                for (final ArtifactId id : apiIds) {
                     dependencies.add(id);
                 }
             } else {
                 final List<ArtifactId> sourceIds = ApisUtil.getSourceIds(artifact);
-                if ( sourceIds != null ) {
-                    for(final ArtifactId id : sourceIds) {
+                if (sourceIds != null) {
+                    for (final ArtifactId id : sourceIds) {
                         dependencies.add(id.changeClassifier(null));
                     }
                 } else {
@@ -200,13 +203,13 @@ public class ApisJarContext {
         }
 
         public void addSourceInfo(final ArtifactId id) {
-            if ( id != null ) {
+            if (id != null) {
                 this.sources.add(id.toMvnId());
             }
         }
 
         public void addSourceInfo(final String connection) {
-            if ( connection != null ) {
+            if (connection != null) {
                 this.sources.add(connection);
             }
         }
@@ -236,10 +239,8 @@ public class ApisJarContext {
          */
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (!(obj instanceof ArtifactInfo))
-                return false;
+            if (this == obj) return true;
+            if (!(obj instanceof ArtifactInfo)) return false;
             ArtifactInfo other = (ArtifactInfo) obj;
             return Objects.equals(artifact, other.artifact);
         }
@@ -333,8 +334,8 @@ public class ApisJarContext {
     }
 
     public ArtifactInfo getArtifactInfo(final ArtifactId artifactId) {
-        for(final ArtifactInfo i : this.infos) {
-            if ( i.getArtifact().getId().equals(artifactId)) {
+        for (final ArtifactInfo i : this.infos) {
+            if (i.getArtifact().getId().equals(artifactId)) {
                 return i;
             }
         }
@@ -351,10 +352,10 @@ public class ApisJarContext {
 
     public Collection<ArtifactInfo> getArtifactInfos(final String regionName, final boolean omitDependencyArtifacts) {
         final Map<ArtifactId, ArtifactInfo> result = new TreeMap<>();
-        for(final ArtifactInfo info : this.infos) {
+        for (final ArtifactInfo info : this.infos) {
             final Set<Clause> pcks = info.getUsedExportedPackages(regionName);
-            if ( pcks != null && !pcks.isEmpty() ) {
-                if ( !omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(regionName) ) {
+            if (pcks != null && !pcks.isEmpty()) {
+                if (!omitDependencyArtifacts || !info.isUseAsDependencyPerRegion(regionName)) {
                     result.put(info.getId(), info);
                 }
             }
@@ -372,10 +373,13 @@ public class ApisJarContext {
      */
     private boolean findDependencyArtifact(final Log log, final ArtifactId id) throws MojoExecutionException {
         boolean result = true;
-        if ( !this.getConfig().getDependencyRepositories().isEmpty() ) {
+        if (!this.getConfig().getDependencyRepositories().isEmpty()) {
             result = false;
-            log.debug("Trying to resolve ".concat(id.toMvnId()).concat(" from ").concat(this.getConfig().getDependencyRepositories().toString()));
-            for(final String server : this.getConfig().getDependencyRepositories()) {
+            log.debug("Trying to resolve "
+                    .concat(id.toMvnId())
+                    .concat(" from ")
+                    .concat(this.getConfig().getDependencyRepositories().toString()));
+            for (final String server : this.getConfig().getDependencyRepositories()) {
                 try {
                     final URL url = new URL(server.concat(id.toMvnPath()));
                     try {
@@ -385,9 +389,14 @@ public class ApisJarContext {
                         break;
                     } catch (IOException e) {
                         // not available
-                        log.debug("Missed ".concat(id.toMvnId()).concat(" at ").concat(url.toString()).concat(" : ").concat(e.toString()));
+                        log.debug("Missed "
+                                .concat(id.toMvnId())
+                                .concat(" at ")
+                                .concat(url.toString())
+                                .concat(" : ")
+                                .concat(e.toString()));
                     }
-                } catch ( final MalformedURLException mue) {
+                } catch (final MalformedURLException mue) {
                     throw new MojoExecutionException("Unable to find dependency on ".concat(server), mue);
                 }
             }
@@ -404,8 +413,8 @@ public class ApisJarContext {
      */
     public boolean findDependencyArtifact(final Log log, final ArtifactInfo info) throws MojoExecutionException {
         boolean result = true;
-        for(final ArtifactId id : info.getDependencyArtifacts()) {
-            if ( !findDependencyArtifact(log, id) ) {
+        for (final ArtifactId id : info.getDependencyArtifacts()) {
+            if (!findDependencyArtifact(log, id)) {
                 result = false;
                 break;
             }

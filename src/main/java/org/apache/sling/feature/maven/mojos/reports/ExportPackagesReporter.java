@@ -1,18 +1,20 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos.reports;
 
@@ -40,7 +42,7 @@ public class ExportPackagesReporter implements Reporter {
 
     @Override
     public void generateReport(final ReportContext ctx) throws MojoExecutionException {
-        for(final Feature feature : ctx.getFeatures()) {
+        for (final Feature feature : ctx.getFeatures()) {
             FeatureDescriptor fd;
             try {
                 fd = ctx.getScanner().scan(feature);
@@ -50,7 +52,7 @@ public class ExportPackagesReporter implements Reporter {
 
             final List<String> exportedPackages = this.getExportedPackages(fd);
 
-            if ( !exportedPackages.isEmpty() ) {
+            if (!exportedPackages.isEmpty()) {
                 ctx.addReport(fd.getFeature().getId().changeType("packages.txt").toMvnName(), exportedPackages);
             }
         }
@@ -63,15 +65,15 @@ public class ExportPackagesReporter implements Reporter {
         for (final BundleDescriptor bd : fd.getBundleDescriptors()) {
             for (PackageInfo p : bd.getExportedPackages()) {
                 String version = p.getVersion();
-                if ( version == null ) {
+                if (version == null) {
                     version = "----";
                 }
                 String region = "----";
                 String deprecated = "";
                 if (regions != null) {
                     boolean found = false;
-                    for(final ApiRegion r : regions.listRegions()) {
-                        for(final ApiExport e : r.listExports()) {
+                    for (final ApiRegion r : regions.listRegions()) {
+                        for (final ApiExport e : r.listExports()) {
                             if (e.getName().equals(p.getName())) {
                                 found = true;
                                 region = r.getName();
@@ -82,21 +84,23 @@ public class ExportPackagesReporter implements Reporter {
                                 break;
                             }
                         }
-                        if ( found ) {
+                        if (found) {
                             break;
                         }
                     }
                 }
-                packages.add(p.getName().concat("    ")
-                    .concat(version).concat("    ")
-                    .concat(bd.getArtifact().getId().toMvnId()).concat("    ")
-                    .concat(region)
-                    .concat(deprecated));
+                packages.add(p.getName()
+                        .concat("    ")
+                        .concat(version)
+                        .concat("    ")
+                        .concat(bd.getArtifact().getId().toMvnId())
+                        .concat("    ")
+                        .concat(region)
+                        .concat(deprecated));
             }
         }
 
         Collections.sort(packages);
         return packages;
     }
-
 }

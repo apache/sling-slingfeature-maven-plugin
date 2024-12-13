@@ -1,23 +1,22 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 package org.apache.sling.feature.maven.mojos;
-
-import static org.apache.sling.feature.diff.FeatureDiff.compareFeatures;
-import static org.apache.sling.feature.io.json.FeatureJSONWriter.write;
 
 import java.io.File;
 import java.io.FileReader;
@@ -51,14 +50,17 @@ import org.eclipse.aether.resolution.VersionRangeResolutionException;
 import org.eclipse.aether.resolution.VersionRangeResult;
 import org.eclipse.aether.version.Version;
 
+import static org.apache.sling.feature.diff.FeatureDiff.compareFeatures;
+import static org.apache.sling.feature.io.json.FeatureJSONWriter.write;
+
 /**
  * Compares different versions of the same Feature Model.
  */
-@Mojo(name = "features-diff",
-    defaultPhase = LifecyclePhase.PACKAGE,
-    requiresDependencyResolution = ResolutionScope.TEST,
-    threadSafe = true
-)
+@Mojo(
+        name = "features-diff",
+        defaultPhase = LifecyclePhase.PACKAGE,
+        requiresDependencyResolution = ResolutionScope.TEST,
+        threadSafe = true)
 public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
     @Parameter
@@ -79,7 +81,8 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
         final Collection<Feature> features = getSelectedFeatures(selection).values();
 
         if (features.isEmpty()) {
-            getLog().debug("There are no assciated Feature files to current project, plugin execution will be interrupted");
+            getLog().debug(
+                            "There are no assciated Feature files to current project, plugin execution will be interrupted");
             return;
         }
 
@@ -104,24 +107,23 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
         getLog().info("Comparing current " + current + " to previous " + previous);
 
-        Feature featureDiff = compareFeatures(new DiffRequest()
-                                              .setPrevious(previous)
-                                              .setCurrent(current));
+        Feature featureDiff =
+                compareFeatures(new DiffRequest().setPrevious(previous).setCurrent(current));
 
-        File outputDiffFile = new File(mainOutputDir, featureDiff.getId().getClassifier().concat(".json"));
+        File outputDiffFile =
+                new File(mainOutputDir, featureDiff.getId().getClassifier().concat(".json"));
 
         getLog().info("Rendering differences to file " + outputDiffFile);
 
         try (FileWriter writer = new FileWriter(outputDiffFile)) {
             write(writer, featureDiff);
         } catch (IOException e) {
-            throw new MojoExecutionException("An error occurred while serializing Feature diff to " + outputDiffFile, e);
+            throw new MojoExecutionException(
+                    "An error occurred while serializing Feature diff to " + outputDiffFile, e);
         }
 
-        projectHelper.attachArtifact(project,
-                                     FeatureConstants.PACKAGING_FEATURE,
-                                     featureDiff.getId().getClassifier(),
-                                     outputDiffFile);
+        projectHelper.attachArtifact(
+                project, FeatureConstants.PACKAGING_FEATURE, featureDiff.getId().getClassifier(), outputDiffFile);
     }
 
     private Feature getPreviousFeature(Feature current) throws MojoExecutionException, MojoFailureException {
@@ -132,20 +134,24 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
             throw new MojoFailureException("Invalid comparison version: " + e.getMessage());
         }
 
-        org.eclipse.aether.artifact.Artifact previousArtifact = new DefaultArtifact(current.getId().getGroupId(),
-                                                                current.getId().getArtifactId(),
-                                                                current.getId().getType(),
-                                                                current.getId().getClassifier(),
-                                                                comparisonVersion);
+        org.eclipse.aether.artifact.Artifact previousArtifact = new DefaultArtifact(
+                current.getId().getGroupId(),
+                current.getId().getArtifactId(),
+                current.getId().getType(),
+                current.getId().getClassifier(),
+                comparisonVersion);
 
         try {
-            
+
             if (!range.isSelectedVersionKnown(RepositoryUtils.toArtifact(previousArtifact))) {
                 getLog().debug("Searching for versions in range: " + comparisonVersion);
-                VersionRangeRequest vrr = new VersionRangeRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
+                VersionRangeRequest vrr =
+                        new VersionRangeRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
                 VersionRangeResult vrResult = repoSystem.resolveVersionRange(mavenSession.getRepositorySession(), vrr);
                 // filter out snapshots
-                Optional<Version> version = vrResult.getVersions().stream().filter(v -> !ArtifactUtils.isSnapshot(v.toString())).reduce((first, second) -> second);
+                Optional<Version> version = vrResult.getVersions().stream()
+                        .filter(v -> !ArtifactUtils.isSnapshot(v.toString()))
+                        .reduce((first, second) -> second);
                 previousArtifact.setVersion(version.map(Version::toString).orElse(null));
             }
         } catch (OverConstrainedVersionException ocve) {
@@ -161,8 +167,10 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
 
         File featureFile = null;
         try {
-            ArtifactRequest artifactRequest = new ArtifactRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
-            ArtifactResult artifactResult = repoSystem.resolveArtifact(mavenSession.getRepositorySession(), artifactRequest);
+            ArtifactRequest artifactRequest =
+                    new ArtifactRequest(previousArtifact, project.getRemoteProjectRepositories(), null);
+            ArtifactResult artifactResult =
+                    repoSystem.resolveArtifact(mavenSession.getRepositorySession(), artifactRequest);
             featureFile = artifactResult.getArtifact().getFile();
         } catch (org.eclipse.aether.resolution.ArtifactResolutionException e) {
             getLog().warn("Artifact " + previousArtifact + " cannot be resolved : " + e.getMessage(), e);
@@ -175,8 +183,8 @@ public final class FeaturesDiffMojo extends AbstractIncludingFeatureMojo {
         try (FileReader reader = new FileReader(featureFile)) {
             return FeatureJSONReader.read(reader, featureFile.getAbsolutePath());
         } catch (IOException e) {
-            throw new MojoExecutionException("An error occurred while reading the " + featureFile + " Feature file:", e);
+            throw new MojoExecutionException(
+                    "An error occurred while reading the " + featureFile + " Feature file:", e);
         }
     }
-
 }
