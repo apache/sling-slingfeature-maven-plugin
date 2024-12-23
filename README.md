@@ -110,6 +110,8 @@ There might be other plugins involved which generate feature files are part of t
 * generatedFeaturesIncludes : The include pattern for feature files from the above directory. Default is `**/*.json`, therefore all files with the extension `.json` are read including sub directories.
 * generatedFeaturesExcludes : The exclude pattern for feature files from the above directory. Empty by default.
 
+For interoperability with other plugins, the location where this plug-in stores generated feature files is indicated by the expression `${project.slingfeature.outputDirectory}`.
+
 # Supported goals
 
 Most of the plugin goals take a selection of features as input, for example to aggregate a set of features to a new feature or to analyse a specific set of features according to some rules.
