@@ -150,6 +150,11 @@ public abstract class ProjectHelper {
         store(info.project, ASSEMBLED_FEATURE_JSON, info.assembledFeatures);
         store(info.project, ASSEMBLED_TEST_FEATURE_JSON, info.assembledTestFeatures);
         info.project.setContextValue(Preprocessor.class.getName(), Boolean.TRUE);
+        info.project
+                .getProperties()
+                .put(
+                        "project.slingfeature.outputDirectory",
+                        getTmpDir(info.project).getAbsolutePath());
     }
 
     /**
