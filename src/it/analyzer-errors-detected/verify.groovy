@@ -16,22 +16,21 @@
  */
 
 import java.io.*;
+import java.nio.charset.*;
 import java.util.*;
 
 
     boolean check() {
         File file = new File(basedir, "build.log");
-        final byte[] b = java.nio.file.Files.readAllBytes(file.toPath());
-        java.nio.charset.CharsetDecoder decoder = java.nio.charset.Charset.forName("UTF-8").newDecoder();
-        decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE);
-        BufferedReader reader = new LineNumberReader(new BufferedReader(new InputStreamReader(new FileInputStream(file), decoder)));
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        decoder.onMalformedInput(CodingErrorAction.REPLACE);
         String log = "";
-        String l;
-        while ((l = reader.readLine()) != null) {
-            log += l + "\n";
+        try (BufferedReader reader = new LineNumberReader(new BufferedReader(new InputStreamReader(new FileInputStream(file), decoder)))) {
+            String l;
+            while ((l = reader.readLine()) != null) {
+                log += l + "\n";
+            }
         }
-        reader.close();
-
 
         if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );
