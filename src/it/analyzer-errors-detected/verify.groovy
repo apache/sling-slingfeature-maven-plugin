@@ -22,7 +22,8 @@ import org.codehaus.plexus.util.*;
 
     boolean check() {
         File file = new File(basedir, "build.log");
-        String log = FileUtils.fileRead(file, "UTF-8");
+System.out.println(" Reading " + file + " : " + file.length());
+        String log = FileUtils.fileRead(file);
 
         if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );
