@@ -41,6 +41,8 @@
     </scm>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sling.java.version>11</sling.java.version>
         <maven.version>3.8.1</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
