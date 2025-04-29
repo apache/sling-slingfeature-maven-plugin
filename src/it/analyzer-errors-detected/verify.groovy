@@ -21,7 +21,17 @@ import java.util.*;
 
     boolean check() {
         File file = new File(basedir, "build.log");
-        String log = String.join('\n', java.nio.file.Files.readAllLines(file.toPath()));
+        final byte[] b = java.nio.file.Files.readAllBytes(file.toPath());
+        java.nio.charset.CharsetDecoder decoder = java.nio.charset.Charset.forName("UTF-8").newDecoder();
+        decoder.onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE);
+        BufferedReader reader = new LineNumberReader(new BufferedReader(new InputStreamReader(new FileInputStream(file), decoder)));
+        String log = "";
+        String l;
+        while ((l = reader.readLine()) != null) {
+            log += l + "\n";
+        }
+        reader.close();
+
 
         if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );
