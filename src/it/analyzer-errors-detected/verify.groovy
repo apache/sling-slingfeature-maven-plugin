@@ -18,12 +18,10 @@
 import java.io.*;
 import java.util.*;
 
-import org.codehaus.plexus.util.*;
 
     boolean check() {
         File file = new File(basedir, "build.log");
-System.out.println(" Reading " + file + " : " + file.length());
-        String log = FileUtils.fileRead(file);
+        String log = String.join('\n', java.nio.file.Files.readAllLines(file.toPath()));
 
         if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );
