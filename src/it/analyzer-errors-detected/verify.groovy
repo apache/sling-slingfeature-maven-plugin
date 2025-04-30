@@ -22,6 +22,9 @@ import java.util.*;
 
     boolean check() {
         File file = new File(basedir, "build.log");
+        // On windows + Java 17, the build log has some strange encoding, and as we need the entire log, but only
+        // some parts of it, we need to read it in a way, which allows us to check if it contains the
+        // message we are looking for.
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
         decoder.onMalformedInput(CodingErrorAction.REPLACE);
         String log = "";
