@@ -16,13 +16,24 @@
  */
 
 import java.io.*;
+import java.nio.charset.*;
 import java.util.*;
 
-import org.codehaus.plexus.util.*;
 
     boolean check() {
         File file = new File(basedir, "build.log");
-        String log = FileUtils.fileRead(file);
+        // On windows + Java 17, the build log has some strange encoding, and as we need the entire log, but only
+        // some parts of it, we need to read it in a way, which allows us to check if it contains the
+        // message we are looking for.
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder();
+        decoder.onMalformedInput(CodingErrorAction.REPLACE);
+        String log = "";
+        try (BufferedReader reader = new LineNumberReader(new BufferedReader(new InputStreamReader(new FileInputStream(file), decoder)))) {
+            String l;
+            while ((l = reader.readLine()) != null) {
+                log += l + "\n";
+            }
+        }
 
         if (log.indexOf("One or more feature analyser(s) detected feature error(s), please read the plugin log for more details") < 0) {
             System.out.println( "FAILED!" );

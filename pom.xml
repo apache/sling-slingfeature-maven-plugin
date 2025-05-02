@@ -41,6 +41,8 @@
     </scm>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <sling.java.version>11</sling.java.version>
         <maven.version>3.8.1</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
@@ -107,7 +109,7 @@
         <dependency>
             <groupId>org.apache.sling</groupId>
             <artifactId>org.apache.sling.repoinit.parser</artifactId>
-            <version>1.9.0</version>
+            <version>1.9.2</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
@@ -120,13 +122,13 @@
         <dependency>
             <groupId>org.apache.jackrabbit.vault</groupId>
             <artifactId>org.apache.jackrabbit.vault</artifactId>
-            <version>3.5.4</version>
+            <version>3.8.4</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.jackrabbit.vault</groupId>
             <artifactId>vault-validation</artifactId>
-            <version>3.5.4</version>
+            <version>3.8.4</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -419,7 +421,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-invoker-plugin</artifactId>
-                <version>3.6.1</version>
+                <version>3.9.0</version>
                 <configuration>
                     <debug>true</debug>
                     <projectsDirectory>src/it</projectsDirectory>
