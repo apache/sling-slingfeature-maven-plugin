@@ -93,8 +93,12 @@ public class FeatureSelectionConfig {
     }
 
     public void setIncludeArtifact(final Dependency a) {
-        selections.add(new Selection(
-                SelectionType.ARTIFACT, ProjectHelper.toArtifactId(a).toMvnId()));
+        try {
+            selections.add(new Selection(
+                    SelectionType.ARTIFACT, ProjectHelper.toArtifactId(a).toMvnId()));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unable to set include artifact: " + a, ex);
+        }
     }
 
     public void setIncludeClassifier(final String classifier) {
