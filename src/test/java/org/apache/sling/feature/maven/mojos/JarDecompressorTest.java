@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
@@ -37,7 +36,6 @@ import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 
 public class JarDecompressorTest {
     @Test
@@ -75,9 +73,6 @@ public class JarDecompressorTest {
 
     @Test
     public void testJarWithEmbeddedJar() throws Exception {
-
-        // SLING-12596
-        assumeFalse(System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("win"));
 
         File cj = new File(
                 getClass().getResource("/repository/compressed-embedded.jar").getFile());
