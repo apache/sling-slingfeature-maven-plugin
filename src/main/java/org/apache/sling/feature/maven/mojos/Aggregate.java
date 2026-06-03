@@ -18,6 +18,7 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -82,6 +83,15 @@ public class Aggregate extends FeatureSelectionConfig {
      */
     public boolean osgiBsnCollisionDetection = false;
 
+    /**
+     * Additional feature files to include in the aggregation, resolved at goal time
+     * rather than through the session-start Preprocessor scan. Use this to pull in
+     * feature JSONs that are produced by another plugin earlier in the same build
+     * (e.g. cpconverter output under <code>target/</code>) which therefore do not
+     * exist when the lifecycle participant runs.
+     */
+    public List<File> additionalFeatureFiles;
+
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */
@@ -89,6 +99,7 @@ public class Aggregate extends FeatureSelectionConfig {
     public int hashCode() {
         return Objects.hash(
                 super.hashCode(),
+                additionalFeatureFiles,
                 artifactsOverrides,
                 attach,
                 classifier,
@@ -112,7 +123,8 @@ public class Aggregate extends FeatureSelectionConfig {
         if (!super.equals(obj)) return false;
         if (getClass() != obj.getClass()) return false;
         Aggregate other = (Aggregate) obj;
-        return Objects.equals(artifactsOverrides, other.artifactsOverrides)
+        return Objects.equals(additionalFeatureFiles, other.additionalFeatureFiles)
+                && Objects.equals(artifactsOverrides, other.artifactsOverrides)
                 && attach == other.attach
                 && Objects.equals(classifier, other.classifier)
                 && Objects.equals(configurationOverrides, other.configurationOverrides)
@@ -133,7 +145,8 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
                 + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides="
-                + frameworkPropertiesOverrides + ", osgiBsnCollisionDetection=" + osgiBsnCollisionDetection + "]";
+                + frameworkPropertiesOverrides + ", additionalFeatureFiles=" + additionalFeatureFiles
+                + ", osgiBsnCollisionDetection=" + osgiBsnCollisionDetection + "]";
     }
 
     public List<ArtifactId> getArtifactOverrideRules() {
