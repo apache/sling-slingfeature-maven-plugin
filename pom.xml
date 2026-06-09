@@ -48,7 +48,7 @@
         <maven.scm.version>1.11.2</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
         <project.build.outputTimestamp>1771315797</project.build.outputTimestamp>
-        <sling.feature.version>2.0.0</sling.feature.version>
+        <sling.feature.version>2.0.6</sling.feature.version>
     </properties>
 
     <dependencies>

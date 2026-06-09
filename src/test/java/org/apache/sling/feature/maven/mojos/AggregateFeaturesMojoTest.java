@@ -838,6 +838,20 @@ public class AggregateFeaturesMojoTest {
     }
 
     @Test
+    public void testOsgiBsnCollisionDetectionFlagPropagates() throws Exception {
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] {"test_w.json"});
+
+        ctx.getMojo().aggregates.get(0).osgiBsnCollisionDetection = true;
+
+        // The assembly must succeed when there are no BSN collisions even with detection on.
+        // (Negative case — collision raises an exception — is covered in the feature-core unit tests
+        // for OsgiBsnDeduplicator; aggregating live OSGi bundles here would require a heavier fixture.)
+        ctx.getMojo().execute();
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
+        assertNotNull(genFeat);
+    }
+
+    @Test
     public void customAggregate() throws Exception {
 
         TestContext ctx = prepareTestContext(

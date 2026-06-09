@@ -74,6 +74,14 @@ public class Aggregate extends FeatureSelectionConfig {
 
     public Map<String, String> frameworkPropertiesOverrides;
 
+    /**
+     * When {@code true}, the aggregated feature is checked for OSGi bundles with
+     * duplicate {@code Bundle-SymbolicName} values and the build fails unless an
+     * {@code artifactsOverrides} rule resolves the collision. Requires
+     * {@code org.apache.sling.feature} 2.0.6 or later.
+     */
+    public boolean osgiBsnCollisionDetection = false;
+
     /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */
@@ -89,6 +97,7 @@ public class Aggregate extends FeatureSelectionConfig {
                 frameworkPropertiesOverrides,
                 markAsComplete,
                 markAsFinal,
+                osgiBsnCollisionDetection,
                 title,
                 variablesOverrides,
                 vendor);
@@ -111,6 +120,7 @@ public class Aggregate extends FeatureSelectionConfig {
                 && Objects.equals(frameworkPropertiesOverrides, other.frameworkPropertiesOverrides)
                 && markAsComplete == other.markAsComplete
                 && markAsFinal == other.markAsFinal
+                && osgiBsnCollisionDetection == other.osgiBsnCollisionDetection
                 && Objects.equals(title, other.title)
                 && Objects.equals(variablesOverrides, other.variablesOverrides)
                 && Objects.equals(vendor, other.vendor);
@@ -123,7 +133,7 @@ public class Aggregate extends FeatureSelectionConfig {
                 + ", markAsFinal=" + markAsFinal + ", markAsComplete=" + markAsComplete + ", title=" + title
                 + ", description=" + description + ", vendor=" + vendor + ", artifactsOverrides=" + artifactsOverrides
                 + ", variablesOverrides=" + variablesOverrides + ", frameworkPropertiesOverrides="
-                + frameworkPropertiesOverrides + "]";
+                + frameworkPropertiesOverrides + ", osgiBsnCollisionDetection=" + osgiBsnCollisionDetection + "]";
     }
 
     public List<ArtifactId> getArtifactOverrideRules() {

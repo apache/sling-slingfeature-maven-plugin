@@ -146,6 +146,10 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                                     false)
                             .toArray(MergeHandler[]::new))
                     .addPostProcessExtensions(postProcessHandlers().toArray(PostProcessHandler[]::new));
+            if (aggregate.osgiBsnCollisionDetection) {
+                builderContext.setOsgiBsnCollisionDetection(true);
+            }
+
             for (final ArtifactId rule : aggregate.getArtifactOverrideRules()) {
                 builderContext.addArtifactsOverride(rule);
             }
