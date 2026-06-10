@@ -852,6 +852,50 @@ public class AggregateFeaturesMojoTest {
     }
 
     @Test
+    public void testAdditionalFeatureFilesAreMerged() throws Exception {
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] {"test_w.json"});
+
+        File extra = folder.newFile("extra-feature.json");
+        java.nio.file.Files.write(
+                extra.toPath(),
+                ("{\"id\":\"org.test:extra:1.0.0:slingosgifeature\","
+                                + "\"bundles\":[\"org.apache.sling:extrabundle:2\"]}")
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        ctx.getMojo().aggregates.get(0).additionalFeatureFiles = Collections.singletonList(extra);
+        ctx.getMojo().execute();
+
+        Feature genFeat = ctx.getFeatureMap().get(":aggregate:aggregated:T");
+        assertNotNull(genFeat);
+        Set<ArtifactId> actualBundles = new HashSet<>();
+        for (org.apache.sling.feature.Artifact art : genFeat.getBundles()) {
+            actualBundles.add(art.getId());
+        }
+        assertTrue(
+                "bundle from dir2/test_w.json should be present",
+                actualBundles.contains(new ArtifactId("org.apache.sling", "someotherbundle", "1", null, null)));
+        assertTrue(
+                "bundle from additionalFeatureFiles should be present",
+                actualBundles.contains(new ArtifactId("org.apache.sling", "extrabundle", "2", null, null)));
+    }
+
+    @Test
+    public void testAdditionalFeatureFilesMissingFails() throws Exception {
+        TestContext ctx = prepareTestContext("/aggregate-features/dir2", new String[] {"test_w.json"});
+
+        File missing = new File(folder.getRoot(), "does-not-exist.json");
+        ctx.getMojo().aggregates.get(0).additionalFeatureFiles = Collections.singletonList(missing);
+
+        try {
+            ctx.getMojo().execute();
+            fail("expected MojoExecutionException for missing additionalFeatureFiles entry");
+        } catch (MojoExecutionException e) {
+            assertTrue(
+                    "message should reference the missing file", e.getMessage().contains("does-not-exist.json"));
+        }
+    }
+
+    @Test
     public void customAggregate() throws Exception {
 
         TestContext ctx = prepareTestContext(

@@ -18,6 +18,11 @@
  */
 package org.apache.sling.feature.maven.mojos;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +45,7 @@ import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
 import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
+import org.apache.sling.feature.io.json.FeatureJSONReader;
 import org.apache.sling.feature.maven.FeatureConstants;
 import org.apache.sling.feature.maven.ProjectHelper;
 
@@ -113,6 +119,14 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
             ProjectHelper.validateFeatureClassifiers(this.project, aggregate.classifier, aggregate.attach);
 
             final Map<String, Feature> selection = this.getSelectedFeatures(aggregate);
+
+            // Load feature files declared via <additionalFeatureFiles>. These are read at goal
+            // time so they can reference outputs produced earlier in the same build (e.g. by
+            // cpconverter) which do not exist when the lifecycle participant runs.
+            for (final Feature additional : readAdditionalFeatureFiles(aggregate.additionalFeatureFiles)) {
+                selection.put(additional.getId().toMvnId(), additional);
+            }
+
             if (selection.isEmpty()) {
                 getLog().warn("No features found for aggregate with classifier " + aggregate.classifier);
             }
@@ -218,6 +232,25 @@ public class AggregateFeaturesMojo extends AbstractIncludingFeatureMojo {
                 });
 
         return Stream.concat(serviceLoaderHandlers, additionalHandlers);
+    }
+
+    private List<Feature> readAdditionalFeatureFiles(final List<File> files) throws MojoExecutionException {
+        final List<Feature> result = new ArrayList<>();
+        if (files == null || files.isEmpty()) {
+            return result;
+        }
+        for (final File file : files) {
+            if (!file.isFile()) {
+                throw new MojoExecutionException("additionalFeatureFiles entry not found: " + file.getAbsolutePath());
+            }
+            try (final Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
+                result.add(FeatureJSONReader.read(reader, file.getAbsolutePath()));
+            } catch (final IOException e) {
+                throw new MojoExecutionException(
+                        "Unable to read additional feature file " + file.getAbsolutePath() + " : " + e.getMessage(), e);
+            }
+        }
+        return result;
     }
 
     Feature assembleFeature(
