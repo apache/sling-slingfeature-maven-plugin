@@ -805,6 +805,9 @@ public class ApisJarMojo extends AbstractIncludingFeatureMojo {
                     "jquery.jszip-utils.dist",
                     "jquery.jszip.dist",
                     "resources",
+                    "resource-files",
+                    "resource-files.fonts",
+                    "script-files",
                     "legal");
             apiPackages.removeAll(jqueryPackages);
         }
