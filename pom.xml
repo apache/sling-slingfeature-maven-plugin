@@ -22,7 +22,7 @@
     </parent>
 
     <artifactId>slingfeature-maven-plugin</artifactId>
-    <version>1.9.8</version>
+    <version>1.9.9-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <name>Apache Sling OSGi Feature Maven Plugin</name>
@@ -47,7 +47,7 @@
         <maven.version>3.8.1</maven.version>
         <maven.scm.version>1.11.2</maven.scm.version>
         <maven.site.path>${project.artifactId}-archives/${project.artifactId}-LATEST</maven.site.path>
-        <project.build.outputTimestamp>1793108640</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1793108770</project.build.outputTimestamp>
         <sling.feature.version>2.0.6</sling.feature.version>
     </properties>
 
