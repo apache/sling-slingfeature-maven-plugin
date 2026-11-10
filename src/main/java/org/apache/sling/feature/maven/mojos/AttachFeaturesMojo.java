@@ -121,6 +121,12 @@ public class AttachFeaturesMojo extends AbstractFeatureMojo {
                         }
                         if (value == null) {
                             value = NOT_FOUND;
+                        } else {
+                            // check for "bundle:rename-bsn"
+                            final String renameBsn = bundle.getMetadata().get("bundle:rename-bsn");
+                            if (renameBsn != null) {
+                                value = new AbstractMap.SimpleImmutableEntry<>(renameBsn, value.getValue());
+                            }
                         }
                         METADATA_CACHE.put(bundle.getId().toMvnId(), value);
                     }
