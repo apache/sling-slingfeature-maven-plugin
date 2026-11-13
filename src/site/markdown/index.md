@@ -20,6 +20,15 @@ As this Maven plugin comes with [Maven extensions](https://maven.apache.org/guid
 
 Additional Documentation can be found in the [README](https://github.com/apache/sling-slingfeature-maven-plugin/blob/master/README.md) page.
 
+## API package exclusions
+
+The `apis-jar` goal excludes an API region export if its properties contain
+`api-jar-exclude`, regardless of the property's value. The package remains in the
+API region definition, but is omitted from the generated API, source and Javadoc
+JARs and is not reported as missing. This also applies when its toggle is enabled.
+
+The existing per-bundle `apis-ignore` metadata remains supported.
+
 ## Plugin bindings for `slingosgifeature` packaging
 
 ```

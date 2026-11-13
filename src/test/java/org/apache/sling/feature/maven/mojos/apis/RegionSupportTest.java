@@ -121,6 +121,90 @@ public class RegionSupportTest {
     }
 
     @Test
+    public void testApiJarExcludeProperty() throws MojoExecutionException {
+        final ApiRegions regions = new ApiRegions();
+        final ApiRegion region = new ApiRegion("global");
+        regions.add(region);
+        final ApiExport included = new ApiExport("included");
+        region.add(included);
+        final ApiExport excluded = new ApiExport("excluded");
+        region.add(excluded);
+        final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
+        final Clause[] exportedPackages = {new Clause("included", null, null), new Clause("excluded", null, null)};
+        final Set<String> enabledToggles = Collections.singleton("feature");
+
+        for (final boolean toggleApiOnly : new boolean[] {false, true}) {
+            final RegionSupport support = new RegionSupport(
+                    Mockito.mock(Log.class), true, toggleApiOnly, Collections.singleton("*"), Collections.emptySet());
+            included.setToggle(toggleApiOnly ? "feature" : null);
+            excluded.setToggle(toggleApiOnly ? "feature" : null);
+
+            for (final String value : new String[] {"true", "false", ""}) {
+                excluded.getProperties().put("api-jar-exclude", value);
+
+                final Set<String> used =
+                        support.computeAllUsedExportPackages(regions, enabledToggles, exportedPackages, bundle);
+                assertEquals(Collections.singleton("included"), used);
+                assertEquals(
+                        Collections.singleton(exportedPackages[0]),
+                        support.computeUsedExportPackagesPerRegion(region, exportedPackages, used));
+                assertEquals(Collections.singletonList(included), support.getAllExports(region, enabledToggles));
+                assertEquals(excluded, region.getExportByName("excluded"));
+            }
+        }
+    }
+
+    @Test
+    public void testApiJarExcludeWithIgnoredPackages() throws MojoExecutionException {
+        final ApiRegions regions = new ApiRegions();
+        final ApiRegion region = new ApiRegion("global");
+        regions.add(region);
+        region.add(new ApiExport("included"));
+        region.add(new ApiExport("ignored"));
+        final ApiExport excluded = new ApiExport("excluded");
+        excluded.getProperties().put("api-jar-exclude", "true");
+        region.add(excluded);
+        final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
+        bundle.getMetadata().put(ApisUtil.IGNORE_PACKAGES, "ignored");
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+        final Clause[] exportedPackages = {
+            new Clause("included", null, null), new Clause("ignored", null, null), new Clause("excluded", null, null)
+        };
+
+        assertEquals(
+                Collections.singleton("included"),
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle));
+    }
+
+    @Test
+    public void testApiJarExcludePerRegion() throws MojoExecutionException {
+        final ApiRegions regions = new ApiRegions();
+        final ApiRegion includedRegion = new ApiRegion("included");
+        includedRegion.add(new ApiExport("p1"));
+        regions.add(includedRegion);
+        final ApiRegion excludedRegion = new ApiRegion("excluded");
+        final ApiExport excluded = new ApiExport("p1");
+        excluded.getProperties().put("api-jar-exclude", "true");
+        excludedRegion.add(excluded);
+        regions.add(excludedRegion);
+        final Artifact bundle = new Artifact(ArtifactId.parse("g:b:1"));
+        final RegionSupport support = new RegionSupport(
+                Mockito.mock(Log.class), true, false, Collections.singleton("*"), Collections.emptySet());
+        final Clause[] exportedPackages = {new Clause("p1", null, null)};
+
+        final Set<String> used =
+                support.computeAllUsedExportPackages(regions, Collections.emptySet(), exportedPackages, bundle);
+        assertEquals(Collections.singleton("p1"), used);
+        assertEquals(
+                Collections.singleton(exportedPackages[0]),
+                support.computeUsedExportPackagesPerRegion(includedRegion, exportedPackages, used));
+        assertTrue(support.computeUsedExportPackagesPerRegion(excludedRegion, exportedPackages, used)
+                .isEmpty());
+        assertTrue(support.getAllExports(excludedRegion, Collections.emptySet()).isEmpty());
+    }
+
+    @Test
     public void testApiExportWithToggles() throws MojoExecutionException {
         final ApiRegions regions = new ApiRegions();
         final ApiRegion region = new ApiRegion("global");

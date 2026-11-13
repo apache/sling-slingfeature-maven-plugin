@@ -43,6 +43,8 @@ import org.osgi.framework.Constants;
 
 public class RegionSupport {
 
+    private static final String API_JAR_EXCLUDE = "api-jar-exclude";
+
     private final Log log;
 
     private final boolean incrementalApis;
@@ -160,6 +162,9 @@ public class RegionSupport {
     }
 
     private boolean include(final ApiExport exp, final Set<String> enabledToggles) {
+        if (exp.getProperties().containsKey(API_JAR_EXCLUDE)) {
+            return false;
+        }
         boolean include = !toggleApiOnly;
         if (toggleApiOnly) {
             include = exp.getToggle() != null && enabledToggles.contains(exp.getToggle());
@@ -233,7 +238,7 @@ public class RegionSupport {
 
             if (allPackages.contains(packageName)) {
                 final ApiExport exp = apiRegion.getExportByName(packageName);
-                if (exp != null) {
+                if (exp != null && !exp.getProperties().containsKey(API_JAR_EXCLUDE)) {
                     result.add(exportedPackage);
                 }
             }
